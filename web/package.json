@@ -1,0 +1,23 @@
+{
+  "name": "halone-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sdk": "pnpm --dir ../sdk install && pnpm --dir ../sdk build",
+    "dev": "pnpm -r --parallel --filter \"./apps/*\" dev",
+    "build": "pnpm -r build",
+    "test": "vitest run",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.2"
+  },
+  "packageManager": "pnpm@10.33.2",
+  "pnpm": {
+    "overrides": {
+      "@halone/sdk": "link:../sdk/packages/sdk"
+    }
+  }
+}

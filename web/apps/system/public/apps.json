@@ -1,0 +1,117 @@
+[
+  {
+    "id": "dock",
+    "name": "Dock",
+    "description": "Open windows, the time, the battery, and the launcher",
+    "icon": "",
+    "iconUrl": "/icons/apps/launcher.svg",
+    "entry": "/dock/index.html",
+    "widthPx": 880,
+    "heightPx": 104,
+    "hidden": true
+  },
+  {
+    "id": "launcher",
+    "name": "Launcher",
+    "description": "Open apps and web pages, and manage windows",
+    "icon": "",
+    "iconUrl": "/icons/apps/launcher.svg",
+    "entry": "/launcher/index.html",
+    "widthPx": 1280,
+    "heightPx": 800,
+    "hidden": true
+  },
+  {
+    "id": "browser",
+    "name": "Browser",
+    "description": "The toolbar and tabs of a web window",
+    "icon": "",
+    "iconUrl": "/icons/apps/browser.svg",
+    "entry": "/browser/index.html",
+    "widthPx": 1280,
+    "heightPx": 192,
+    "hidden": true
+  },
+  {
+    "id": "menu",
+    "name": "Menu",
+    "description": "Context menus, shown over the window they belong to",
+    "icon": "",
+    "iconUrl": "/icons/apps/launcher.svg",
+    "entry": "/menu/index.html",
+    "widthPx": 280,
+    "heightPx": 400,
+    "hidden": true
+  },
+  {
+    "id": "library",
+    "name": "Library",
+    "description": "Browser history, bookmarks and downloads",
+    "icon": "",
+    "iconUrl": "/icons/apps/library.svg",
+    "entry": "/library/index.html",
+    "widthPx": 1100,
+    "heightPx": 760,
+    "hidden": true
+  },
+  {
+    "id": "settings",
+    "name": "Settings",
+    "description": "Following, layout, display and input",
+    "icon": "",
+    "iconUrl": "/icons/apps/settings.svg",
+    "entry": "/settings/index.html",
+    "widthPx": 1024,
+    "heightPx": 800
+  },
+  {
+    "id": "about",
+    "name": "System",
+    "description": "Device, bridge and diagnostics",
+    "icon": "",
+    "iconUrl": "/icons/apps/system.svg",
+    "entry": "/about/index.html",
+    "widthPx": 1024,
+    "heightPx": 720,
+    "hidden": true
+  },
+  {
+    "id": "files",
+    "name": "Files",
+    "description": "Browse the phone's storage and open what is there",
+    "icon": "",
+    "iconUrl": "/icons/apps/files.svg",
+    "entry": "/files/index.html",
+    "widthPx": 1280,
+    "heightPx": 800
+  },
+  {
+    "id": "images",
+    "name": "Images",
+    "description": "Photos and pictures, one at a time",
+    "icon": "",
+    "iconUrl": "/icons/apps/images.svg",
+    "entry": "/images/index.html",
+    "widthPx": 1280,
+    "heightPx": 800,
+    "opens": [
+      "image/*"
+    ],
+    "hidden": true
+  },
+  {
+    "id": "video",
+    "name": "Video",
+    "description": "Films in a window, on a big screen, in 3D or all around you, and music",
+    "icon": "",
+    "iconUrl": "/icons/apps/video.svg",
+    "entry": "/video/index.html",
+    "widthPx": 1280,
+    "heightPx": 800,
+    "opens": [
+      "video/*",
+      "audio/*"
+    ],
+    "hidden": true
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "name": "@halone/simulator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
+    "build": "vite build",
+    "typecheck": "vue-tsc -p ."
+  },
+  "dependencies": {
+    "@halone/scene": "workspace:*",
+    "@halone/sdk": "^0.1.0",
+    "@halone/ui": "workspace:*",
+    "vue": "^3.5.43"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.9",
+    "vite": "^8.3.1",
+    "vue-tsc": "^3.3.11"
+  }
+}

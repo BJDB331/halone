@@ -1,0 +1,15 @@
+{
+  "name": "@halone/scene",
+  "private": true,
+  "version": "0.1.0",
+  "description": "core-compositor's scene compiled from android/core-scene; regenerate with ./gradlew :core-scene:syncWebPackage",
+  "type": "module",
+  "main": "dist/halone-scene.mjs",
+  "types": "dist/halone-scene.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/halone-scene.d.mts",
+      "default": "./dist/halone-scene.mjs"
+    }
+  }
+}

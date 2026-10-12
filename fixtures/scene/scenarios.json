@@ -1,0 +1,97 @@
+{
+  "catch-up-to-last-looked-at": {
+    "steps": [
+      { "open": "a" }, { "open": "b" }, { "run": 1 },
+      { "point": "b" }, { "run": 0.2 },
+      { "head": 80 }, { "run": 3 }
+    ]
+  },
+  "drift-waits-for-rest": {
+    "steps": [
+      { "open": "a" }, { "open": "b" }, { "run": 1 },
+      { "point": "a" },
+      { "turn": 15, "seconds": 0.5 },
+      { "turn": 30, "seconds": 0.25 },
+      { "run": 6 }
+    ]
+  },
+  "look-back-returns": {
+    "steps": [
+      { "open": "a" }, { "run": 0.5 },
+      { "head": 60 }, { "run": 0.15 },
+      { "head": 0 }, { "run": 2 },
+      { "head": 45 }, { "run": 0.4 },
+      { "head": 90 }, { "run": 3 }
+    ]
+  },
+  "pinned-parking-avoid-all": {
+    "settings": { "policy": "avoid-all" },
+    "steps": [
+      { "open": "a" }, { "open": "b", "widthPx": 1024 }, { "open": "c", "widthPx": 1024 }, { "run": 1.5 },
+      { "pin": "b" }, { "run": 2 },
+      { "head": -70 }, { "run": 3 },
+      { "head": 40 }, { "run": 3 },
+      { "head": 120 }, { "run": 3 }
+    ]
+  },
+  "pinned-crossing-avoid-pinned": {
+    "settings": { "policy": "avoid-pinned" },
+    "steps": [
+      { "open": "a" }, { "open": "b" }, { "run": 1 },
+      { "pin": "a" }, { "run": 2 },
+      { "turn": -90, "seconds": 1.5 }, { "run": 2 },
+      { "turn": 120, "seconds": 2 }, { "run": 3 }
+    ]
+  },
+  "overlap-policy": {
+    "settings": { "policy": "overlap" },
+    "steps": [
+      { "open": "a" }, { "open": "b" }, { "run": 1 },
+      { "pin": "a" }, { "run": 2 },
+      { "head": -60 }, { "run": 3 }
+    ]
+  },
+  "hand-placed-follower": {
+    "steps": [
+      { "open": "a" }, { "open": "b" }, { "open": "c" }, { "run": 1.5 },
+      { "grab": "c" }, { "drag": [20, 4] }, { "run": 0.3 }, { "drag": [15, 30] }, { "drag": [0, -10] }, { "drop": true },
+      { "run": 2 },
+      { "head": 100 }, { "run": 3 },
+      { "head": -40 }, { "run": 3 }
+    ]
+  },
+  "drop-onto-neighbour-resolves-in-place": {
+    "steps": [
+      { "open": "a" }, { "open": "b" }, { "open": "c" }, { "run": 1.5 },
+      { "grab": "a" }, { "drag": [32, 0] }, { "drop": true },
+      { "run": 3 }
+    ]
+  },
+  "lifted-panel-does-not-collide": {
+    "steps": [
+      { "open": "a" }, { "open": "b" }, { "run": 1 },
+      { "grab": "b" }, { "drag": [-30, 20] }, { "drop": true }, { "run": 2 },
+      { "pin": "b" }, { "run": 2 },
+      { "head": 50 }, { "run": 3 }
+    ]
+  },
+  "bring-into-view-and-close": {
+    "settings": { "follow": false },
+    "steps": [
+      { "open": "a" }, { "open": "b" }, { "open": "c" }, { "run": 1.5 },
+      { "head": -30 }, { "bringIntoView": "c" }, { "run": 2 },
+      { "close": "a" }, { "run": 2 },
+      { "set": { "spacing": 45 } }, { "run": 2 }
+    ]
+  },
+  "settings-change-mid-flight": {
+    "steps": [
+      { "open": "a" }, { "open": "b", "widthPx": 1024 }, { "run": 1 },
+      { "set": { "margin": 20, "catchUp": 0.6 } },
+      { "head": 45 }, { "run": 1 },
+      { "head": 110 }, { "run": 0.3 },
+      { "set": { "follow": false } }, { "run": 2 },
+      { "set": { "follow": true } }, { "run": 3 }
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+# Android / Gradle
+.gradle/
+build/
+local.properties
+*.apk
+*.aab
+captures/
+.cxx/
+
+# IDE
+.idea/
+*.iml
+.kotlin/
+
+# Node / web
+node_modules/
+dist/
+!web/packages/scene/dist/
+.vite/
+*.log
+
+# OS
+.DS_Store
+
+# Generated web bundles shipped into the APK
+android/app/src/main/assets/apps/
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Packed Halone apps
+*.halone

@@ -1,0 +1,11 @@
+{
+  "manifest_version": 2,
+  "name": "halone page helper",
+  "version": "1.2",
+  "description": "Tells the halone browser what is under the pointer, and copies and pastes for it.",
+  "browser_specific_settings": { "gecko": { "id": "page@halone.dev" } },
+  "content_scripts": [
+    { "matches": ["<all_urls>"], "js": ["content.js"], "run_at": "document_start" }
+  ],
+  "permissions": ["nativeMessaging", "nativeMessagingFromContent", "geckoViewAddons"]
+}

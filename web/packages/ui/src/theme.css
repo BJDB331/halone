@@ -1,0 +1,218 @@
+/*
+ * On additive optics black is transparent and bright areas are heavy, so
+ * surfaces stay near-black and emphasis comes from light, not fill. One degree
+ * is ~56 CSS px on a 1280x800 panel, which puts the readable floor near 20px.
+ */
+:root {
+  color-scheme: dark;
+  --bg: #000;
+  --surface: #0d1117;
+  --surface-raised: #161c26;
+  --surface-hover: #1d2533;
+  --border: #2a3444;
+  --text: #e8eef7;
+  --text-muted: #8b98ab;
+  --accent: #5cc8ff;
+  --accent-strong: #9adcff;
+  --pinned: #ffb454;
+  --danger: #ff6b6b;
+  --ok: #6be38f;
+  --radius: 18px;
+  --radius-small: 12px;
+  --gap: 20px;
+  --font-size: 22px;
+  --font-size-small: 18px;
+  --font-size-large: 30px;
+  --font-size-title: 40px;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: var(--font-size);
+  line-height: 1.4;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  user-select: none;
+}
+
+#app {
+  height: 100%;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+.x-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 0 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface-raised);
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms;
+}
+
+.x-button:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+}
+
+.x-button.primary {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.x-button.danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.x-button.small {
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: var(--font-size-small);
+}
+
+.x-input {
+  min-height: 56px;
+  padding: 0 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+  outline: none;
+  user-select: text;
+}
+
+.x-input:focus {
+  border-color: var(--accent);
+}
+
+.x-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: var(--gap);
+}
+
+.x-muted {
+  color: var(--text-muted);
+}
+
+.x-title {
+  font-size: var(--font-size-title);
+  font-weight: 600;
+  margin: 0;
+}
+
+.x-section-title {
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 12px;
+}
+
+/* Material Symbols Rounded, cut down to the symbols in tools/icons/fetch-icons.mjs. */
+@font-face {
+  font-family: 'Halone Symbols';
+  src: url('./symbols.ttf') format('truetype');
+  font-display: block;
+}
+
+.x-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 1em;
+  height: 1em;
+  overflow: hidden;
+  font-family: 'Halone Symbols';
+  font-size: 1.25em;
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  direction: ltr;
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+.x-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-raised);
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms;
+}
+
+.x-icon-button:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+}
+
+.x-icon-button.small {
+  width: 44px;
+  height: 44px;
+}
+
+.x-icon-button:disabled,
+.x-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* On the phone's own screen (`x-phone`, see shared/host.ts) the sizes above, made for a window across the room, are far too large. */
+:root.x-phone {
+  --radius: 14px;
+  --radius-small: 10px;
+  --gap: 14px;
+  --font-size: 16px;
+  --font-size-small: 13px;
+  --font-size-large: 20px;
+  --font-size-title: 26px;
+}
+
+.x-phone .x-button {
+  min-height: 44px;
+  padding: 0 16px;
+}
+
+.x-phone .x-button.small {
+  min-height: 36px;
+  padding: 0 12px;
+}
+
+.x-phone .x-input {
+  min-height: 44px;
+  padding: 0 14px;
+}
+
+.x-phone .x-icon-button {
+  width: 44px;
+  height: 44px;
+}

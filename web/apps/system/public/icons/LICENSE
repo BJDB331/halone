@@ -1,0 +1,7 @@
+The icons in this folder are not covered by Halone's MIT License.
+
+They come from the Papirus icon theme, tag 20260801, and are licensed
+under the GNU General Public License, version 3: see ../licenses/GPL-3.0.txt.
+Their source is at
+https://github.com/PapirusDevelopmentTeam/papirus-icon-theme/tree/20260801/Papirus/64x64
+and tools/icons/fetch-icons.mjs fetches them again.

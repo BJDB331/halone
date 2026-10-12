@@ -1,0 +1,158 @@
+package dev.halone.app
+
+import android.content.Context
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
+import android.content.res.ColorStateList
+import android.view.Gravity
+import android.view.View
+import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.TextView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+
+/** Where the glasses are on the way to a running environment, as the home screen tells it. */
+enum class GlassesStatus(val title: String, val dimmed: Boolean) {
+    DISCONNECTED("Glasses Disconnected", true),
+    AWAITING_PERMISSION("Awaiting Permission", true),
+    NO_VIDEO_OUTPUT("Video Output Not Supported", true),
+    READY("Glasses Ready", false),
+    STARTING("Starting…", false),
+    RUNNING("Environment Running", false),
+}
+
+/**
+ * What the phone shows when it is not a pointer pad: the glasses, whether
+ * they are ready, and the button that starts the environment on them.
+ */
+class HomeScreen(
+    context: Context,
+    private val onPrimary: (GlassesStatus) -> Unit,
+    onSettings: () -> Unit,
+) {
+    private val density = context.resources.displayMetrics.density
+    private var status = GlassesStatus.DISCONNECTED
+
+    private val icon = Symbols.view(context, "eyeglasses", 168f, Color.WHITE)
+
+    private val title = TextView(context).apply {
+        textSize = 28f
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        setTextColor(Color.WHITE)
+        gravity = Gravity.CENTER
+    }
+
+    private val detail = TextView(context).apply {
+        textSize = 16f
+        setTextColor(MUTED)
+        gravity = Gravity.CENTER
+    }
+
+    private val primary = TextView(context).apply {
+        textSize = 20f
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        gravity = Gravity.CENTER
+        isClickable = true
+        isFocusable = true
+        setOnClickListener { onPrimary(status) }
+    }
+
+    private val settings = Symbols.view(context, "settings", 28f, Color.WHITE).apply {
+        contentDescription = "Settings"
+        isClickable = true
+        isFocusable = true
+        background = RippleDrawable(ColorStateList.valueOf(PRESSED), null, GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) })
+        setOnClickListener { onSettings() }
+    }
+
+    val view: View = FrameLayout(context).apply {
+        setBackgroundColor(Color.BLACK)
+        val column = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            addView(icon, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+            addView(title, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(20) })
+            addView(detail, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
+        }
+        addView(column, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER).apply {
+            leftMargin = dp(24)
+            rightMargin = dp(24)
+            bottomMargin = dp(80)
+        })
+        addView(settings, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.TOP or Gravity.END))
+        addView(primary, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, dp(64), Gravity.BOTTOM))
+        val version = TextView(context).apply {
+            text = "Halone ${BuildConfig.VERSION_NAME}"
+            textSize = 12f
+            setTextColor(FAINT)
+            gravity = Gravity.CENTER
+        }
+        addView(version, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
+        ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            (settings.layoutParams as FrameLayout.LayoutParams).apply {
+                topMargin = bars.top + dp(12)
+                rightMargin = bars.right + dp(12)
+            }
+            (primary.layoutParams as FrameLayout.LayoutParams).apply {
+                leftMargin = bars.left + dp(24)
+                rightMargin = bars.right + dp(24)
+                bottomMargin = bars.bottom + dp(48)
+            }
+            (version.layoutParams as FrameLayout.LayoutParams).bottomMargin = bars.bottom + dp(16)
+            requestLayout()
+            insets
+        }
+    }
+
+    fun render(status: GlassesStatus, model: String?) {
+        this.status = status
+        icon.alpha = if (status.dimmed) 0.3f else 1f
+        title.text = status.title
+        detail.text = when (status) {
+            GlassesStatus.DISCONNECTED -> "Connect your glasses to the phone's USB-C port"
+            GlassesStatus.AWAITING_PERMISSION -> listOfNotNull(model, "Allow Halone to use them").joinToString("\n")
+            GlassesStatus.NO_VIDEO_OUTPUT -> "The glasses are connected, but this phone's USB-C port does not send video " +
+                "(DisplayPort Alt Mode), so it cannot drive them. Halone needs a phone that can show its screen on a USB-C display."
+            else -> model.orEmpty()
+        }
+        val (label, enabled) = when (status) {
+            GlassesStatus.DISCONNECTED -> "Start Environment" to false
+            GlassesStatus.AWAITING_PERMISSION -> "Allow Access" to true
+            GlassesStatus.NO_VIDEO_OUTPUT -> "Start Environment" to false
+            GlassesStatus.READY -> "Start Environment" to true
+            GlassesStatus.STARTING -> "Starting…" to false
+            GlassesStatus.RUNNING -> "Stop Environment" to true
+        }
+        primary.text = label
+        primary.isEnabled = enabled
+        val fill = when {
+            !enabled -> DISABLED
+            status == GlassesStatus.RUNNING -> STOP
+            else -> ACCENT
+        }
+        primary.setTextColor(if (enabled && status != GlassesStatus.RUNNING) Color.BLACK else Color.WHITE)
+        primary.background = RippleDrawable(
+            ColorStateList.valueOf(PRESSED),
+            GradientDrawable().apply {
+                cornerRadius = dp(32).toFloat()
+                setColor(fill)
+            },
+            null,
+        )
+    }
+
+    private fun dp(value: Int) = (value * density).toInt()
+
+    private companion object {
+        val ACCENT = Color.rgb(0x5c, 0xc8, 0xff)
+        val STOP = Color.rgb(0x5a, 0x1f, 0x24)
+        val DISABLED = Color.rgb(0x1d, 0x25, 0x33)
+        val MUTED = Color.rgb(0x8b, 0x98, 0xab)
+        val FAINT = Color.rgb(0x4a, 0x55, 0x66)
+        val PRESSED = Color.argb(0x40, 0xff, 0xff, 0xff)
+    }
+}

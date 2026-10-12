@@ -1,0 +1,40 @@
+:root {
+  --sidebar-width: 380px;
+  font-size: 14px;
+}
+
+html,
+body {
+  user-select: none;
+}
+
+.sim-root {
+  display: flex;
+  height: 100%;
+  background: #05070a;
+}
+
+.sim-stage-area {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.sim-sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 13px;
+}
+
+.sim-kbd {
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}

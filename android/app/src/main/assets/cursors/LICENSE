@@ -1,0 +1,9 @@
+The cursor images in this folder are not covered by Halone's MIT License.
+
+They are the Bibata-Material-Beige theme of Material Bibata Cursor v1.5.0,
+rasterised to PNG. Material Bibata recolours Bibata Cursor, so the artwork
+is licensed under the GNU General Public License, version 3 or later; the
+license text ships in the system apps as licenses/GPL-3.0.txt. The SVG
+sources are at
+https://github.com/SakibShahariar/material-bibata-cursor/releases/tag/v1.5.0
+and tools/icons/fetch-cursors.sh rebuilds these images from them.

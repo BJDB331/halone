@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="key_capture_description">Lets Halone use Alt+Tab, the Meta (Windows) key and PrintScreen as its own shortcuts while the environment is running on the glasses, instead of Android acting on them. It reads keys from a physical keyboard only, takes only those shortcuts, and does nothing while the environment is stopped.</string>
+</resources>
