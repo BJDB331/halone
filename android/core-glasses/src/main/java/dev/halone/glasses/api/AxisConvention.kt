@@ -34,13 +34,19 @@ data class AxisConvention(
     }
 
     fun apply(v: Vec3): Vec3 {
-        val c = floatArrayOf(v.x, v.y, v.z)
         return Vec3(
-            c[xFrom.index] * xFrom.sign,
-            c[yFrom.index] * yFrom.sign,
-            c[zFrom.index] * zFrom.sign,
+            component(v, xFrom),
+            component(v, yFrom),
+            component(v, zFrom),
         )
     }
+
+    private fun component(v: Vec3, axis: Axis): Float =
+        when (axis.index) {
+            0 -> v.x
+            1 -> v.y
+            else -> v.z
+        } * axis.sign
 
     /**
      * Re-expresses a rotation given in the hardware frame as the same rotation
