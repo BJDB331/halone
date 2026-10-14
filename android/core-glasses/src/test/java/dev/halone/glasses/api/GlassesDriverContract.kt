@@ -69,9 +69,10 @@ abstract class GlassesDriverContract {
 
     @Test
     fun `probe declares at least one transport`() {
+        val transports = requireMatch().transports
         assertTrue(
-            "a driver must say which interfaces it needs",
-            requireMatch().transports.interfaceIds.isNotEmpty(),
+            "a driver must say which interfaces or ports it needs",
+            transports.interfaceIds.isNotEmpty() || !transports.network?.ports.isNullOrEmpty(),
         )
     }
 

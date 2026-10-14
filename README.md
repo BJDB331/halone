@@ -43,6 +43,7 @@ worth reading before changing any of it.
 | XREAL Air | raw IMU, **per-unit calibration read from the glasses** | full SBS 3840x1080 | yes | **verified on hardware** |
 | XREAL Air 2 | expected | expected | expected | same protocol, untested |
 | XREAL Air 2 Ultra | expected | expected | expected | different interfaces, untested |
+| XREAL One Pro, One | 1 kHz raw IMU over USB networking, axes from a 1S | full SBS 3840x1080 | expected | written from [published notes](docs/protocol/xreal-one.md), untested |
 
 Glasses we don't own are welcome — the driver layer is designed so support can
 be written and tested against recorded packet captures with no hardware.

@@ -27,6 +27,7 @@ internal object XrealCalibrationParser {
         bytes: ByteArray,
         axes: AxisConvention,
         source: DeviceCalibration.Source,
+        factoryFrame: AxisConvention = FACTORY_IMU_FRAME,
     ): Result<DeviceCalibration> = runCatching {
         val root = JSONObject(String(bytes, Charsets.UTF_8))
 
@@ -70,7 +71,7 @@ internal object XrealCalibrationParser {
             serial = root.optString("FSN").takeIf { it.isNotBlank() },
             source = source,
             eyes = eyes,
-            imu = root.optJSONObject("IMU")?.optJSONObject("device_1")?.let { imu(it, axes) },
+            imu = root.optJSONObject("IMU")?.optJSONObject("device_1")?.let { imu(it, axes, factoryFrame) },
             calibratedAt = root.optString("last_modified_time").takeIf { it.isNotBlank() },
             configVersion = root.opt("configuration_file_version")?.toString(),
         )
@@ -105,16 +106,16 @@ internal object XrealCalibrationParser {
         zFrom = AxisConvention.Axis.Y_NEG,
     )
 
-    private fun imu(o: JSONObject, axes: AxisConvention): ImuCalibration {
-        val accel = FACTORY_IMU_FRAME.apply(vec3(o.getJSONArray("accel_bias")))
-        val gyro = FACTORY_IMU_FRAME.apply(vec3(o.getJSONArray("gyro_bias")))
+    private fun imu(o: JSONObject, axes: AxisConvention, factoryFrame: AxisConvention): ImuCalibration {
+        val accel = factoryFrame.apply(vec3(o.getJSONArray("accel_bias")))
+        val gyro = factoryFrame.apply(vec3(o.getJSONArray("gyro_bias")))
         return ImuCalibration(
             accelBias = axes.apply(accel),
             gyroBias = axes.apply(gyro),
-            magBias = axes.apply(FACTORY_IMU_FRAME.apply(vec3(o.getJSONArray("mag_bias")))),
-            accelScale = axes.apply(FACTORY_IMU_FRAME.apply(vec3(o.getJSONArray("scale_accel")))).abs(),
-            gyroScale = axes.apply(FACTORY_IMU_FRAME.apply(vec3(o.getJSONArray("scale_gyro")))).abs(),
-            magScale = axes.apply(FACTORY_IMU_FRAME.apply(vec3(o.getJSONArray("scale_mag")))).abs(),
+            magBias = axes.apply(factoryFrame.apply(vec3(o.getJSONArray("mag_bias")))),
+            accelScale = axes.apply(factoryFrame.apply(vec3(o.getJSONArray("scale_accel")))).abs(),
+            gyroScale = axes.apply(factoryFrame.apply(vec3(o.getJSONArray("scale_gyro")))).abs(),
+            magScale = axes.apply(factoryFrame.apply(vec3(o.getJSONArray("scale_mag")))).abs(),
             // The stored quaternion, carried into the canonical frame and
             // nothing else.
             //

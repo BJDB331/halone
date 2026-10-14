@@ -195,7 +195,14 @@ Note that `screencap` wants the SurfaceFlinger id, not `Display.getDisplayId()`.
 ## If it isn't USB HID
 
 `HidTransport` is deliberately just "bytes in, bytes out", so Bluetooth or a
-vendor SDK can sit behind it. If your device needs a genuinely different shape —
+vendor SDK can sit behind it.
+
+Glasses that bring up a network over USB, like the XREAL One series, declare
+`TransportRequest(network = NetworkRequest(hosts, ports))` instead of interface
+ids. The host then skips USB permission, binds sockets to the glasses' network,
+and `open(port)` hands back a `SocketTransport`. A TCP read returns whatever
+part of the stream has arrived, so the driver does its own framing — see
+`XrealOneFramer`, and test it against a capture split at random points. If your device needs a genuinely different shape —
 control transfers, isochronous streams, an SDK that owns its own threads — open
 an issue before writing much code; the transport layer is the right place to
 extend, and we would rather extend it with you than have you fight it.

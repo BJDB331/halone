@@ -21,7 +21,24 @@ data class UsbIdentity(
  */
 data class TransportRequest(
     /** USB `bInterfaceNumber` values, in the order the driver wants them. */
-    val interfaceIds: List<Int>,
+    val interfaceIds: List<Int> = emptyList(),
+    /**
+     * Set when the device's data link is a network the glasses bring up over
+     * USB rather than a claimed interface. The host then opens TCP ports
+     * instead, and needs no USB permission at all.
+     */
+    val network: NetworkRequest? = null,
+) {
+    val needsUsbPermission: Boolean get() = interfaceIds.isNotEmpty()
+}
+
+/**
+ * [ports] are what the driver passes to [HidTransportProvider.open]. [hosts]
+ * are tried in order until one answers.
+ */
+data class NetworkRequest(
+    val hosts: List<String>,
+    val ports: List<Int>,
 )
 
 /**
