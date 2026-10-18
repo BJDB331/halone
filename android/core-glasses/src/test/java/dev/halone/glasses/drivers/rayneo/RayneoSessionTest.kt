@@ -149,7 +149,7 @@ class RayneoSessionTest {
     }
 
     @Test
-    fun `the mode button hands stabilisation to the glasses, once, without commands`() {
+    fun `the mode button hands stabilisation to the glasses, once, and frees the sensor`() {
         val glasses = FakeRayneoGlasses()
         val device = connect(0 to glasses).getOrThrow()
         val handedOver = CountDownLatch(1)
@@ -169,7 +169,12 @@ class RayneoSessionTest {
 
             assertTrue(device.onboardPinning!!.enabled)
             assertEquals("one hand-over, however many presses", 1, changes)
-            assertEquals("the wearer's mode is left alone", emptyList<Pair<Int, Int>>(), glasses.commands().drop(before))
+            assertEquals(
+                "the wearer's mode is left alone; only the stream is paused",
+                listOf(RayneoProtocol.CMD_STREAM_OFF to 0),
+                glasses.commands().drop(before),
+            )
+            assertFalse(glasses.streaming)
         }
     }
 
@@ -182,9 +187,14 @@ class RayneoSessionTest {
             Thread.sleep(200)
             assertTrue(device.onboardPinning!!.enabled)
 
+            val mark = glasses.commands().size
             device.onboardPinning!!.setEnabled(false).getOrThrow()
             assertFalse(device.onboardPinning!!.enabled)
-            assertEquals(RayneoProtocol.CMD_ANCHOR_MODE to 0, glasses.commands().last())
+            assertEquals(
+                listOf(RayneoProtocol.CMD_ANCHOR_MODE to 0, RayneoProtocol.CMD_STREAM_ON to 0),
+                glasses.commands().drop(mark),
+            )
+            assertTrue(glasses.streaming)
         }
     }
 

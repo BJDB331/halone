@@ -153,8 +153,24 @@ internal class RayneoSession(
         emit(DeviceEvent.ButtonPressed(DeviceEvent.Button.UNKNOWN))
         if (sink != null && !glassesInControl) {
             glassesInControl = true
+            pauseStreamForGlasses()
             emit(DeviceEvent.OnboardPinningChanged(true))
         }
+    }
+
+    /**
+     * The raw IMU stream off while the glasses stabilise the image themselves.
+     *
+     * **[suspected, GT Max]** With the stream left on, the glasses' own
+     * pinned and steady modes moved the image every couple of seconds instead
+     * of holding it. Halone draws nothing that moves in this mode, and the
+     * on-board tracker and the host stream share the sensor, so the host
+     * gives it back. To be confirmed on the glasses. The cost is the gaze pointer, which stops
+     * following the head; the phone's pointer modes still work.
+     */
+    private fun pauseStreamForGlasses() {
+        channel.expectTraffic = false
+        channel.send(RayneoProtocol.CMD_STREAM_OFF)
     }
 
     private fun onLost(reason: String) {
@@ -207,6 +223,10 @@ internal class RayneoSession(
                 channel.request(RayneoProtocol.CMD_ANCHOR_MODE, AnchorMode.FOLLOW.byte())
                     ?: return Result.failure(IllegalStateException("no acknowledgement for follow"))
                 glassesInControl = false
+                if (sink != null) {
+                    channel.request(RayneoProtocol.CMD_STREAM_ON)
+                    channel.expectTraffic = true
+                }
             }
             emit(DeviceEvent.OnboardPinningChanged(enabled))
             return Result.success(Unit)
