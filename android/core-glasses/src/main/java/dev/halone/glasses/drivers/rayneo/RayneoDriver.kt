@@ -54,7 +54,11 @@ class RayneoDriver : GlassesDriver {
     override fun connect(match: DriverMatch, transports: HidTransportProvider): Result<GlassesDevice> {
         val failures = mutableListOf<String>()
 
-        for (interfaceId in match.transports.interfaceIds) {
+        // The two numbers seen so far first, then any other HID interface the
+        // device has: the vendor interface has not been pinned down on Android.
+        val candidates = (match.transports.interfaceIds + transports.hidInterfaceIds()).distinct()
+
+        for (interfaceId in candidates) {
             val transport = transports.open(interfaceId).getOrElse {
                 failures += "interface $interfaceId: ${it.message}"
                 null
@@ -81,7 +85,10 @@ class RayneoDriver : GlassesDriver {
         }
 
         return Result.failure(
-            IllegalStateException("no RayNeo control interface answered (${failures.joinToString("; ")})")
+            IllegalStateException(
+                "no RayNeo control interface answered (tried ${candidates.joinToString()}: " +
+                    "${failures.joinToString("; ")})"
+            )
         )
     }
 
@@ -100,7 +107,9 @@ class RayneoDriver : GlassesDriver {
         RayneoChannel(transport, onReport = {}).also { probe ->
             probe.start()
             try {
-                probe.request(RayneoProtocol.CMD_STREAM_OFF)
+                // Not awaited: this runs on the caller's thread, which may be
+                // the UI's, once per candidate interface.
+                probe.send(RayneoProtocol.CMD_STREAM_OFF)
                 reply = probe.request(RayneoProtocol.CMD_DEVICE_INFO)
             } finally {
                 probe.close()

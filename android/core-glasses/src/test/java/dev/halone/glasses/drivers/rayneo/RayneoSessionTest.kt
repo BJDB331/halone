@@ -22,12 +22,17 @@ class RayneoSessionTest {
     private val identity = UsbIdentity(vendorId = 0x3941, productId = 0xAF50)
     private val driver = RayneoDriver()
 
-    private fun connect(vararg byInterface: Pair<Int, FakeRayneoGlasses>): Result<GlassesDevice> {
+    private fun connect(
+        vararg byInterface: Pair<Int, FakeRayneoGlasses>,
+        hidInterfaces: List<Int> = emptyList(),
+    ): Result<GlassesDevice> {
         val glasses = byInterface.toMap()
         val provider = object : HidTransportProvider {
             override fun open(interfaceId: Int): Result<HidTransport> =
                 glasses[interfaceId]?.let { Result.success(it) }
                     ?: Result.failure(IllegalArgumentException("no interface with id $interfaceId"))
+
+            override fun hidInterfaceIds() = hidInterfaces
         }
         return driver.connect(driver.probe(identity)!!, provider)
     }
@@ -68,6 +73,15 @@ class RayneoSessionTest {
         connect(0 to silent, 5 to real).getOrThrow().use {
             assertTrue("the silent interface should be released", silent.closed)
             assertFalse(real.closed)
+        }
+    }
+
+    @Test
+    fun `any other HID interface is tried when the known ones are absent`() {
+        val real = FakeRayneoGlasses()
+        connect(3 to real, hidInterfaces = listOf(3)).getOrThrow().use {
+            assertFalse(real.closed)
+            assertEquals(RayneoProtocol.CMD_DEVICE_INFO, real.commands()[1].first)
         }
     }
 
