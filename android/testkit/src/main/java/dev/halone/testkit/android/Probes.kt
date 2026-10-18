@@ -17,7 +17,6 @@ import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.NetworkInterface
 import java.util.Collections
-import javax.net.SocketFactory
 
 object PhoneProbe {
     fun describe(context: Context): String = JSONObject().apply {
@@ -62,10 +61,10 @@ object DisplayInfoProbe {
 
     fun current(context: Context): DisplayState? {
         val display: Display = DisplayProbe.externalDisplay(context) ?: return null
-        val modes = display.supportedModes.joinToString(",") {
+        val modes = display.supportedModes.map {
             "${it.physicalWidth}x${it.physicalHeight}@${"%.0f".format(it.refreshRate)}"
-        }
-        return DisplayState(display.name, "${display.name}|${display.mode.modeId}|$modes")
+        }.sorted().joinToString(",")
+        return DisplayState(display.name, modes)
     }
 }
 
@@ -77,14 +76,14 @@ object DisplayInfoProbe {
 class NetworkProbe(context: Context) {
     private val connectivity = context.getSystemService(ConnectivityManager::class.java)
 
-    fun socketFactoryFor(host: String): SocketFactory {
-        val target = runCatching { InetAddress.getByName(host) as? Inet4Address }.getOrNull()
-            ?: return SocketFactory.getDefault()
-        val linkLocal = networks().filter { (_, addresses) -> addresses.any { it.isLinkLocalAddress } }
+    /** The phone's own network to the glasses, if it brought one up. */
+    fun linkFor(host: String): Network? {
+        val target = runCatching { InetAddress.getByName(host) as? Inet4Address }.getOrNull() ?: return null
+        val linkLocal = networks().filter { (_, addresses) -> addresses.any { it is Inet4Address && it.isLinkLocalAddress } }
         val match = linkLocal.firstOrNull { (_, addresses) ->
             addresses.any { it is Inet4Address && it.address.take(3) == target.address.take(3) }
         } ?: linkLocal.firstOrNull()
-        return match?.first?.socketFactory ?: SocketFactory.getDefault()
+        return match?.first
     }
 
     fun describe(): String = buildString {

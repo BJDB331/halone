@@ -81,36 +81,44 @@ object CommonSteps {
         return late
     }
 
-    /** Has the tester switch modes in the glasses' menu, recording each mode list the phone sees. */
+    /**
+     * Has the tester switch modes in the glasses' menu, recording every distinct
+     * mode list the phone sees on the way. Signatures are mode lists, not ids,
+     * because each switch re-adds the display with new ids.
+     */
     suspend fun tourDisplayModes(kit: Kit) {
-        if (kit.externalDisplay() == null) {
+        val initial = kit.externalDisplay()?.signature
+        if (initial == null) {
             kit.io.say(kit.text(R.string.modes_no_display))
             kit.session.outcome("display_modes", "no-display")
             return
         }
         kit.io.say(kit.text(R.string.modes_intro))
+        val seen = linkedSetOf(initial)
         kit.snapshot("display-initial")
-        val switchedTo3d = switchMode(kit, "3d", R.string.modes_3d)
-        if (switchedTo3d) switchMode(kit, "2d-again", R.string.modes_2d)
-        val switchedRate = switchMode(kit, "refresh", R.string.modes_refresh)
-        if (switchedRate) switchMode(kit, "refresh-back", R.string.modes_refresh_back)
+        kit.session.outcome("display_state_1", initial)
+
+        suspend fun observe(): String? {
+            val now = kit.externalDisplay()?.signature ?: return null
+            if (seen.add(now)) {
+                delay(SETTLE_MS)
+                kit.snapshot("display-state-${seen.size}")
+                kit.session.outcome("display_state_${seen.size}", now)
+            }
+            return now
+        }
+
+        val switched = switchMode(kit, "3d", R.string.modes_3d) { observe().let { it != null && it != initial } }
+        if (switched) switchMode(kit, "2d-again", R.string.modes_2d) { observe() == initial }
+        val rated = switchMode(kit, "refresh", R.string.modes_refresh) { observe().let { it != null && it != initial } }
+        if (rated) switchMode(kit, "refresh-back", R.string.modes_refresh_back) { observe() == initial }
     }
 
-    private suspend fun switchMode(kit: Kit, label: String, prompt: Int): Boolean {
-        val before = kit.externalDisplay()?.signature
-        val changed = kit.io.waitUntil(kit.text(prompt), MODE_TIMEOUT_MS, kit.choice("skip", R.string.skip)) {
-            val now = kit.externalDisplay()?.signature
-            now != null && now != before
-        }
-        if (changed) {
-            delay(SETTLE_MS)
-            kit.snapshot("display-$label")
-            kit.io.say(kit.text(R.string.modes_changed))
-        } else {
-            kit.io.say(kit.text(R.string.modes_no_change))
-        }
-        kit.session.outcome("display_mode_$label", if (changed) "changed" else "skipped")
-        return changed
+    private suspend fun switchMode(kit: Kit, label: String, prompt: Int, reached: suspend () -> Boolean): Boolean {
+        val done = kit.io.waitUntil(kit.text(prompt), MODE_TIMEOUT_MS, kit.choice("skip", R.string.skip)) { reached() }
+        kit.io.say(kit.text(if (done) R.string.modes_changed else R.string.modes_no_change))
+        kit.session.outcome("display_mode_$label", if (done) "reached" else "skipped")
+        return done
     }
 
     suspend fun closing(kit: Kit) {

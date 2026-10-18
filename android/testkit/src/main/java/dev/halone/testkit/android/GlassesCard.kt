@@ -4,6 +4,7 @@ import android.app.Presentation
 import android.content.Context
 import android.graphics.Color
 import android.hardware.display.DisplayManager
+import android.opengl.GLSurfaceView
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -14,6 +15,9 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import dev.halone.display.DisplayProbe
 import dev.halone.testkit.R
+import dev.halone.testkit.ab.HeadView
+import dev.halone.testkit.ab.SceneParams
+import dev.halone.testkit.ab.SceneRenderer
 
 /**
  * Mirrors the current instruction onto the glasses, large, so the tester can
@@ -26,6 +30,8 @@ class GlassesCard(private val context: Context) : DisplayManager.DisplayListener
     private val main = Handler(Looper.getMainLooper())
     private var presentation: CardPresentation? = null
     private var text: String = ""
+    private var scene: SceneRenderer? = null
+    private var sceneView: HeadView? = null
 
     fun start() {
         displays.registerDisplayListener(this, main)
@@ -41,6 +47,20 @@ class GlassesCard(private val context: Context) : DisplayManager.DisplayListener
     fun show(text: String) {
         this.text = text
         presentation?.update(text)
+    }
+
+    fun showScene(view: HeadView?, params: SceneParams?) {
+        if (view == null) {
+            scene = null
+            sceneView = null
+            presentation?.showText()
+            return
+        }
+        if (view !== sceneView) {
+            sceneView = view
+            scene = SceneRenderer(view).also { presentation?.showScene(it) }
+        }
+        scene?.params = params
     }
 
     override fun onDisplayAdded(displayId: Int) = attach()
@@ -63,11 +83,18 @@ class GlassesCard(private val context: Context) : DisplayManager.DisplayListener
     private fun attach() {
         if (presentation != null) return
         val display = DisplayProbe.externalDisplay(context) ?: return
-        presentation = runCatching { CardPresentation(context, display).also { it.show(); it.update(text) } }.getOrNull()
+        presentation = runCatching {
+            CardPresentation(context, display).also { card ->
+                card.show()
+                card.update(text)
+                scene?.let { card.showScene(it) }
+            }
+        }.getOrNull()
     }
 
     private class CardPresentation(context: Context, display: Display) : Presentation(context, display) {
         private lateinit var body: TextView
+        private lateinit var card: LinearLayout
 
         override fun onCreate(savedInstanceState: Bundle?) {
             super.onCreate(savedInstanceState)
@@ -91,7 +118,20 @@ class GlassesCard(private val context: Context) : DisplayManager.DisplayListener
             }
             layout.addView(body)
             layout.addView(hint)
+            card = layout
             setContentView(layout)
+        }
+
+        fun showText() {
+            if (::card.isInitialized) setContentView(card)
+        }
+
+        fun showScene(renderer: SceneRenderer) {
+            setContentView(GLSurfaceView(context).apply {
+                setEGLContextClientVersion(2)
+                setRenderer(renderer)
+                renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
+            })
         }
 
         fun update(text: String) {

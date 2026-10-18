@@ -47,26 +47,58 @@ object AxisSolver {
         val swings: Map<String, D>,
     )
 
-    /** The direction and size, in radians, of the largest excursion during a segment. */
+    /**
+     * The first real movement after the start cue, measured at its furthest
+     * point, in radians. Real testers carry on from the previous step while the
+     * next instruction plays, and some fidget before they start; neither counts.
+     * Taking the peak rather than the episode's end keeps an out-and-back done
+     * without a pause from cancelling itself out.
+     */
     fun swing(samples: SegmentRecorder.Samples, bias: D): D {
-        var x = 0.0
-        var y = 0.0
-        var z = 0.0
-        var best = D(0.0, 0.0, 0.0)
-        for (i in 1 until samples.size) {
-            val dt = (samples.timestampsNs[i] - samples.timestampsNs[i - 1]) / 1e9
-            if (dt <= 0 || dt > MAX_GAP_SECONDS) continue
-            x += (samples.gyro[i * 3] - bias.x) * dt
-            y += (samples.gyro[i * 3 + 1] - bias.y) * dt
-            z += (samples.gyro[i * 3 + 2] - bias.z) * dt
-            if (x * x + y * y + z * z > best.dot(best)) best = D(x, y, z)
+        var i = maxOf(1, samples.goIndex)
+        while (i < samples.size) {
+            if (rate(samples, i, bias) < EPISODE_START) {
+                i++
+                continue
+            }
+            var x = 0.0
+            var y = 0.0
+            var z = 0.0
+            var peak = D(0.0, 0.0, 0.0)
+            var quietSince = -1L
+            while (i < samples.size) {
+                val dt = (samples.timestampsNs[i] - samples.timestampsNs[i - 1]) / 1e9
+                if (dt > 0 && dt <= MAX_GAP_SECONDS) {
+                    x += (samples.gyro[i * 3] - bias.x) * dt
+                    y += (samples.gyro[i * 3 + 1] - bias.y) * dt
+                    z += (samples.gyro[i * 3 + 2] - bias.z) * dt
+                    if (x * x + y * y + z * z > peak.dot(peak)) peak = D(x, y, z)
+                }
+                if (rate(samples, i, bias) < EPISODE_END) {
+                    if (quietSince < 0) quietSince = samples.timestampsNs[i]
+                    if (samples.timestampsNs[i] - quietSince > QUIET_NS) break
+                } else {
+                    quietSince = -1
+                }
+                i++
+            }
+            if (peak.length() >= MIN_SWING_RADIANS) return peak
+            i++
         }
-        return best
+        return D(0.0, 0.0, 0.0)
     }
 
-    fun meanGyro(samples: SegmentRecorder.Samples) = mean(samples.gyro, samples.size)
+    private fun rate(s: SegmentRecorder.Samples, i: Int, bias: D): Double {
+        val x = s.gyro[i * 3] - bias.x
+        val y = s.gyro[i * 3 + 1] - bias.y
+        val z = s.gyro[i * 3 + 2] - bias.z
+        return sqrt(x * x + y * y + z * z)
+    }
 
-    fun meanAccel(samples: SegmentRecorder.Samples) = mean(samples.accel, samples.size)
+    /** Means over what came after the start cue only. */
+    fun meanGyro(samples: SegmentRecorder.Samples) = mean(samples.gyro, samples.goIndex, samples.size)
+
+    fun meanAccel(samples: SegmentRecorder.Samples) = mean(samples.accel, samples.goIndex, samples.size)
 
     fun solve(swings: Map<String, D>, gravity: D?): Result {
         val problems = mutableListOf<String>()
@@ -189,12 +221,13 @@ object AxisSolver {
 
     private fun sign(v: Double) = if (v >= 0) 1.0 else -1.0
 
-    private fun mean(values: FloatArray, count: Int): D {
-        if (count == 0) return D(0.0, 0.0, 0.0)
+    private fun mean(values: FloatArray, from: Int, until: Int): D {
+        val count = until - from
+        if (count <= 0) return D(0.0, 0.0, 0.0)
         var x = 0.0
         var y = 0.0
         var z = 0.0
-        for (i in 0 until count) {
+        for (i in from until until) {
             x += values[i * 3]
             y += values[i * 3 + 1]
             z += values[i * 3 + 2]
@@ -206,6 +239,9 @@ object AxisSolver {
 
     const val MIN_SWING_RADIANS = 0.17
     private const val MAX_GAP_SECONDS = 0.1
+    private val EPISODE_START = Math.toRadians(15.0)
+    private val EPISODE_END = Math.toRadians(5.0)
+    private const val QUIET_NS = 250_000_000L
     private const val MAX_PAIR_DISAGREEMENT_DEGREES = 30.0
     private const val MAX_THIRD_AXIS_DEGREES = 30.0
     private const val MIN_DOMINANCE = 0.72

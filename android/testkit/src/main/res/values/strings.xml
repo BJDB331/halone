@@ -52,6 +52,8 @@
 
     <string name="one_menu">Using the buttons on your glasses, open their menu. Set the screen mode to Follow, and turn Stabilizer off. Take your time.</string>
     <string name="one_menu_cant_find">I can\'t find these</string>
+    <string name="usb_access_intro">Your phone will now ask whether this app may use the glasses. Please tap Allow.</string>
+    <string name="usb_access_denied">Without that permission I can\'t reach the sensors. That\'s OK, we\'ll carry on with the rest.</string>
     <string name="one_sensors_waiting">Connecting to the glasses\' sensors…</string>
     <string name="one_sensors_retry">I can\'t reach the sensors yet. Let\'s give the glasses a few more seconds.</string>
     <string name="one_stabilizer_question">Still nothing. In the glasses\' menu, is Stabilizer turned off?</string>
@@ -68,19 +70,32 @@
     <string name="model_other">Something else</string>
     <string name="model_unknown">I\'m not sure</string>
 
-    <string name="motion_intro">Now some head movements. Do each one slowly and comfortably, and only as far as feels easy.</string>
-    <string name="motion_rest">Take the glasses off and lay them on a table, lenses facing up. Don\'t touch them until I speak again.</string>
-    <string name="motion_level">Put the glasses back on. Look straight ahead and keep your head still.</string>
-    <string name="motion_turn_left">Slowly turn your head to the left, then back to the middle.</string>
-    <string name="motion_turn_right">Slowly turn your head to the right, then back to the middle.</string>
-    <string name="motion_look_up">Slowly look up, hold it for two seconds, then look back to the middle.</string>
-    <string name="motion_look_down">Slowly look down, hold it for two seconds, then look back to the middle.</string>
-    <string name="motion_tilt_left">Tilt your head towards your left shoulder, hold it, then come back to the middle.</string>
-    <string name="motion_tilt_right">Tilt your head towards your right shoulder, hold it, then come back to the middle.</string>
-    <string name="motion_free">Last one. Look around the room naturally until I speak again.</string>
+    <string name="motion_intro">Now some head movements. For each one, listen to the whole instruction first, then wait for the beep before you move. Move slowly, and only as far as feels easy.</string>
+    <string name="motion_rest_prepare">Take the glasses off and lay them on a table, lenses facing up. Tap Done once they\'re down.</string>
+    <string name="motion_rest">After the beep, don\'t touch the glasses until I speak again.</string>
+    <string name="motion_level_prepare">Put the glasses back on. Tap Done once they\'re on.</string>
+    <string name="motion_level">After the beep, look straight ahead and keep your head still until I speak again.</string>
+    <string name="motion_turn_left">After the beep, slowly turn your head to the left, pause, then come back to the middle.</string>
+    <string name="motion_turn_right">After the beep, slowly turn your head to the right, pause, then come back to the middle.</string>
+    <string name="motion_look_up">After the beep, slowly look up, hold it for two seconds, then look back to the middle.</string>
+    <string name="motion_look_down">After the beep, slowly look down, hold it for two seconds, then look back to the middle.</string>
+    <string name="motion_tilt_left">After the beep, tilt your head towards your left shoulder, hold it, then come back to the middle.</string>
+    <string name="motion_tilt_right">After the beep, tilt your head towards your right shoulder, hold it, then come back to the middle.</string>
+    <string name="motion_free">Last one. After the beep, look around the room naturally until I speak again.</string>
     <string name="motion_retry_still">I noticed some movement. Let\'s do that one again, keeping completely still.</string>
     <string name="motion_retry_turn">I didn\'t catch much movement. Let\'s try that one again, a little bigger.</string>
     <string name="motion_good">Good.</string>
     <string name="axes_repeat">To be sure I understood your movements, let\'s repeat a couple of them.</string>
+    <string name="ab_intro">Now a few comparisons. You\'ll see green lines on the glasses, fixed in the room around you. I\'ll show two versions, first and second, then ask which looked better. There are no wrong answers. If they look the same, say so.</string>
+    <string name="ab_first">First</string>
+    <string name="ab_second">Second</string>
+    <string name="ab_same">They look the same</string>
+    <string name="ab_mount_intro">For these, after the beep, slowly turn your head left and right while watching the bright horizontal line.</string>
+    <string name="ab_mount_question">Which one kept the line level, without tilting as you turned?</string>
+    <string name="ab_fov_intro">For these, look at something in the room straight ahead, under the white cross. After the beep, slowly turn your head left and right.</string>
+    <string name="ab_fov_question">Which one stayed stuck to the room, instead of sliding as you turned?</string>
+    <string name="ab_prediction_intro">For these, after the beep, turn your head quickly from side to side, a few times.</string>
+    <string name="ab_prediction_question">Which one kept up better, without lagging behind or swinging past?</string>
+    <string name="ab_done">Thank you, that\'s all the comparisons.</string>
     <string name="motion_no_data">The sensors stopped sending data, so I\'ll skip the remaining movements.</string>
 </resources>

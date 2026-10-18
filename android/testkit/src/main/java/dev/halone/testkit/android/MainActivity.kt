@@ -1,6 +1,8 @@
 package dev.halone.testkit.android
 
 import android.content.Intent
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
@@ -16,6 +18,8 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import dev.halone.testkit.BuildConfig
 import dev.halone.testkit.R
+import dev.halone.testkit.ab.HeadView
+import dev.halone.testkit.ab.SceneParams
 import dev.halone.testkit.engine.Choice
 import dev.halone.testkit.engine.GenericProfile
 import dev.halone.testkit.engine.Io
@@ -90,7 +94,11 @@ class MainActivity : AppCompatActivity(), Io {
             val session = Session()
             val kit = AndroidKit(this@MainActivity, this@MainActivity, session, workDir)
 
-            val gathered = Runner(kit, listOf(XrealOneProfile, GenericProfile)).run()
+            val gathered = try {
+                Runner(kit, listOf(XrealOneProfile, GenericProfile)).run()
+            } finally {
+                withContext(Dispatchers.IO) { kit.close() }
+            }
             if (!gathered) {
                 show(getString(R.string.cancelled_body))
                 workDir.deleteRecursively()
@@ -181,6 +189,15 @@ class MainActivity : AppCompatActivity(), Io {
         return false
     }
 
+    override suspend fun cue() {
+        val tone = runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, CUE_VOLUME) }.getOrNull() ?: return
+        tone.startTone(ToneGenerator.TONE_PROP_BEEP, CUE_MS)
+        delay(CUE_MS.toLong())
+        tone.release()
+    }
+
+    override fun showScene(view: HeadView?, params: SceneParams?) = card.showScene(view, params)
+
     override fun progress(done: Int, total: Int) {
         progressView.text = getString(R.string.step_progress, done, total)
     }
@@ -220,5 +237,7 @@ class MainActivity : AppCompatActivity(), Io {
         const val SPEECH_TIMEOUT_BASE_MS = 3_000L
         const val READING_MS_PER_CHAR = 70L
         const val POLL_MS = 300L
+        const val CUE_MS = 150
+        const val CUE_VOLUME = 90
     }
 }

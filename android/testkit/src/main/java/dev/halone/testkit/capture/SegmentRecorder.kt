@@ -7,7 +7,8 @@ fun interface ImuListener {
 /** Raw IMU samples in the hardware's own frame, kept per labelled segment for analysis on the phone. */
 class SegmentRecorder : ImuListener {
 
-    class Samples(val timestampsNs: LongArray, val gyro: FloatArray, val accel: FloatArray) {
+    /** [goIndex] is the first sample after the start cue; everything before it is the tester listening. */
+    class Samples(val timestampsNs: LongArray, val gyro: FloatArray, val accel: FloatArray, val goIndex: Int = 0) {
         val size: Int get() = timestampsNs.size
     }
 
@@ -17,17 +18,21 @@ class SegmentRecorder : ImuListener {
     private var gyro = FloatArray(INITIAL * 3)
     private var accel = FloatArray(INITIAL * 3)
     private var count = 0
+    private var goIndex = 0
     private val finished = mutableMapOf<String, Samples>()
 
     /** A later segment with the same label replaces the earlier one, so a retried motion keeps its last attempt. */
     fun begin(label: String) = synchronized(lock) {
         this.label = label
         count = 0
+        goIndex = 0
     }
+
+    fun go() = synchronized(lock) { goIndex = count }
 
     fun end() = synchronized(lock) {
         val current = label ?: return@synchronized
-        finished[current] = Samples(times.copyOf(count), gyro.copyOf(count * 3), accel.copyOf(count * 3))
+        finished[current] = Samples(times.copyOf(count), gyro.copyOf(count * 3), accel.copyOf(count * 3), goIndex)
         label = null
     }
 

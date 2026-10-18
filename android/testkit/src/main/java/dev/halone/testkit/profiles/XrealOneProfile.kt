@@ -2,6 +2,9 @@ package dev.halone.testkit.profiles
 
 import dev.halone.glasses.api.UsbIdentity
 import dev.halone.testkit.R
+import dev.halone.glasses.math.Quaternion
+import dev.halone.testkit.ab.AbRounds
+import dev.halone.testkit.ab.HeadView
 import dev.halone.testkit.analysis.AxisSolver
 import dev.halone.testkit.analysis.D
 import dev.halone.testkit.capture.ImuListener
@@ -15,6 +18,8 @@ import dev.halone.testkit.engine.retrying
 import kotlinx.coroutines.delay
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.atan
 import kotlin.math.abs
 import kotlin.math.acos
 
@@ -46,17 +51,18 @@ object XrealOneProfile : Profile {
         data object None : Check
     }
 
-    data class Motion(val label: String, val instruction: Int, val seconds: Int, val check: Check)
+    /** [prepare], when set, is something the tester does with the glasses first and confirms with Done. */
+    data class Motion(val label: String, val instruction: Int, val seconds: Int, val check: Check, val prepare: Int? = null)
 
     val MOTIONS = listOf(
-        Motion("rest", R.string.motion_rest, 10, Check.Still(6.0)),
-        Motion("level", R.string.motion_level, 6, Check.Still(20.0)),
-        Motion("turn-left", R.string.motion_turn_left, 6, Check.Turn(30.0)),
-        Motion("turn-right", R.string.motion_turn_right, 6, Check.Turn(30.0)),
-        Motion("look-up", R.string.motion_look_up, 7, Check.Turn(20.0)),
-        Motion("look-down", R.string.motion_look_down, 7, Check.Turn(20.0)),
-        Motion("tilt-left", R.string.motion_tilt_left, 7, Check.Turn(20.0)),
-        Motion("tilt-right", R.string.motion_tilt_right, 7, Check.Turn(20.0)),
+        Motion("rest", R.string.motion_rest, 8, Check.Still(6.0), prepare = R.string.motion_rest_prepare),
+        Motion("level", R.string.motion_level, 5, Check.Still(20.0), prepare = R.string.motion_level_prepare),
+        Motion("turn-left", R.string.motion_turn_left, 7, Check.Turn(30.0)),
+        Motion("turn-right", R.string.motion_turn_right, 7, Check.Turn(30.0)),
+        Motion("look-up", R.string.motion_look_up, 8, Check.Turn(20.0)),
+        Motion("look-down", R.string.motion_look_down, 8, Check.Turn(20.0)),
+        Motion("tilt-left", R.string.motion_tilt_left, 8, Check.Turn(20.0)),
+        Motion("tilt-right", R.string.motion_tilt_right, 8, Check.Turn(20.0)),
         Motion("free", R.string.motion_free, 12, Check.None),
     )
 
@@ -72,9 +78,11 @@ object XrealOneProfile : Profile {
         kit.io.progress(3, steps)
         val meter = MotionMeter()
         val recorder = SegmentRecorder()
+        val headView = AtomicReference<HeadView?>()
         val stream = XrealOneStream(ImuListener { t, gx, gy, gz, ax, ay, az ->
             meter.onGyro(t, gx, gy, gz)
             recorder.onImu(t, gx, gy, gz, ax, ay, az)
+            headView.get()?.onImu(t, gx, gy, gz, ax, ay, az)
         })
         val reports = connectSensors(kit, stream)
 
@@ -83,7 +91,8 @@ object XrealOneProfile : Profile {
 
         kit.io.progress(5, steps)
         if (reports != null && recordMotions(kit, reports, meter, recorder)) {
-            solveAxes(kit, reports, meter, recorder, control?.config)
+            val axes = solveAxes(kit, reports, meter, recorder, control?.config)
+            compare(kit, reports, axes, control?.config, headView)
         }
 
         kit.io.progress(6, steps)
@@ -109,6 +118,16 @@ object XrealOneProfile : Profile {
     }
 
     private suspend fun connectSensors(kit: Kit, stream: XrealOneStream): Tap? {
+        if (!kit.hasSystemLink(HOSTS)) {
+            kit.io.say(kit.text(R.string.usb_access_intro))
+            val granted = kit.requestUsbAccess()
+            kit.session.outcome("usb_access", if (granted) "granted" else "denied")
+            if (!granted) {
+                kit.io.say(kit.text(R.string.usb_access_denied))
+                kit.session.outcome("sensors", "no-usb-access")
+                return null
+            }
+        }
         var tap: Tap? = null
         val connected = retrying(3) { attempt ->
             when (attempt) {
@@ -207,11 +226,19 @@ object XrealOneProfile : Profile {
             if (attempt > 1) {
                 kit.io.say(kit.text(if (motion.check is Check.Still) R.string.motion_retry_still else R.string.motion_retry_turn))
             }
-            meter.reset()
-            kit.session.segment("motion:${motion.label}:$tag$attempt") {
+            motion.prepare?.let { prepare ->
+                val prompt = kit.text(prepare)
+                kit.session.answer("prepare_${motion.label}", prompt, kit.io.ask(prompt, listOf(kit.choice("done", R.string.done))), attempt)
+            }
+            val segment = "motion:${motion.label}:$tag$attempt"
+            kit.session.segment(segment) {
                 recorder.begin(motion.label)
                 try {
                     kit.io.say(kit.text(motion.instruction))
+                    recorder.go()
+                    meter.reset()
+                    kit.session.mark("$segment:go")
+                    kit.io.cue()
                     delay(motion.seconds * 1_000L)
                 } finally {
                     recorder.end()
@@ -262,8 +289,49 @@ object XrealOneProfile : Profile {
         return result
     }
 
+    /** Bias from the glasses lying still on the table; gravity from them worn and still. */
+    /** Blind A/B rounds, when the session has what they need to render a trustworthy scene. */
+    private suspend fun compare(kit: Kit, reports: Tap, axes: AxisSolver.Result, config: String?, holder: AtomicReference<HeadView?>) {
+        val convention = axes.convention
+        val reason = when {
+            convention == null || axes.status == AxisSolver.Status.AMBIGUOUS -> "axes-${axes.status.name.lowercase()}"
+            !reports.alive -> "stream-ended"
+            else -> null
+        }
+        val factory = config?.let { factoryDisplay(it) }
+        if (reason != null || factory == null || convention == null) {
+            kit.session.outcome("ab", "skipped-${reason ?: "no-calibration"}")
+            return
+        }
+        val view = HeadView(convention, convention.apply(factory.rotation))
+        holder.set(view)
+        try {
+            val report = AbRounds(kit, view, factory.verticalFovDegrees).run()
+            kit.session.attach("analysis/ab.json", report.toString(2))
+            kit.session.outcome("ab", "done")
+        } finally {
+            kit.io.showScene(null, null)
+            holder.set(null)
+        }
+    }
+
+    class FactoryDisplay(val rotation: Quaternion, val verticalFovDegrees: Double)
+
+    /** The left display's rotation against the IMU (hardware axes) and its vertical field of view, from the config. */
+    fun factoryDisplay(config: String): FactoryDisplay? = runCatching {
+        val json = JSONObject(config.substring(config.indexOf('{'), config.lastIndexOf('}') + 1))
+        val display = json.getJSONObject("display")
+        val q = display.getJSONArray("target_q_left_display")
+        val k = display.getJSONArray("k_left_display")
+        val height = display.getJSONArray("resolution").getDouble(1)
+        FactoryDisplay(
+            rotation = Quaternion(q.getDouble(3).toFloat(), q.getDouble(0).toFloat(), q.getDouble(1).toFloat(), q.getDouble(2).toFloat()).normalized(),
+            verticalFovDegrees = Math.toDegrees(2 * atan((height / 2) / k.getDouble(4))),
+        )
+    }.getOrNull()
+
     private fun solve(recorder: SegmentRecorder): AxisSolver.Result {
-        val still = recorder.samples("level") ?: recorder.samples("rest")
+        val still = recorder.samples("rest") ?: recorder.samples("level")
         val bias = still?.let { AxisSolver.meanGyro(it) } ?: D(0.0, 0.0, 0.0)
         val swings = AxisSolver.EXPECTED.keys.mapNotNull { label ->
             recorder.samples(label)?.let { label to AxisSolver.swing(it, bias) }

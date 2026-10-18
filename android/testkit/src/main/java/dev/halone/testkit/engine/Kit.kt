@@ -21,6 +21,12 @@ interface Kit {
 
     fun externalDisplay(): DisplayState?
 
+    /** True when the phone brought up a network to the glasses itself, so no USB access is needed. */
+    fun hasSystemLink(hosts: List<String>): Boolean
+
+    /** Asks for USB access to the glasses, for the in-app network stack. False if refused. */
+    suspend fun requestUsbAccess(): Boolean
+
     suspend fun openTcp(
         name: String,
         hosts: List<String>,

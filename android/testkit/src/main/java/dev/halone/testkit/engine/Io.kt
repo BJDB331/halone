@@ -1,5 +1,8 @@
 package dev.halone.testkit.engine
 
+import dev.halone.testkit.ab.HeadView
+import dev.halone.testkit.ab.SceneParams
+
 data class Choice(val id: String, val label: String)
 
 /**
@@ -24,6 +27,12 @@ interface Io {
         skip: Choice?,
         condition: suspend () -> Boolean,
     ): Boolean
+
+    /** A short beep: the moment to start a movement. */
+    suspend fun cue()
+
+    /** Replaces the instruction card on the glasses with a head-tracked scene; nulls bring the card back. */
+    fun showScene(view: HeadView?, params: SceneParams?)
 
     fun progress(done: Int, total: Int)
 }

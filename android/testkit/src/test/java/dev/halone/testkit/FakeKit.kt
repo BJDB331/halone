@@ -2,6 +2,8 @@ package dev.halone.testkit
 
 import dev.halone.glasses.api.AxisConvention
 import dev.halone.glasses.api.UsbIdentity
+import dev.halone.testkit.ab.HeadView
+import dev.halone.testkit.ab.SceneParams
 import dev.halone.testkit.analysis.D
 import dev.halone.testkit.capture.Tap
 import dev.halone.testkit.engine.Choice
@@ -45,6 +47,7 @@ class FakeKit(clock: () -> Long) : Kit, Io {
 
     var devices = listOf(UsbIdentity(vendorId = 0x3318, productId = 0x0436))
     var display: DisplayState? = DisplayState("XREAL One Pro", "2d")
+    var displays: () -> DisplayState? = { display }
     val spoken = mutableListOf<String>()
     val snapshots = mutableListOf<String>()
     val taps = mutableMapOf<String, FakeTap>()
@@ -52,8 +55,21 @@ class FakeKit(clock: () -> Long) : Kit, Io {
     /** Picks an answer per question; the default takes the first choice. */
     var answer: (question: String, choices: List<Choice>) -> Choice = { _, choices -> choices.first() }
     var onSay: (String) -> Unit = {}
+    var onCue: () -> Unit = {}
+    var cues = 0
     var tcp: (name: String, port: Int, listener: ((ByteArray, Int) -> Unit)?) -> Result<Tap> = { name, _, listener ->
         Result.success(FakeTap(listener).also { taps[name] = it })
+    }
+
+    var systemLink = true
+    var usbGranted = true
+    var usbRequests = 0
+
+    override fun hasSystemLink(hosts: List<String>) = systemLink
+
+    override suspend fun requestUsbAccess(): Boolean {
+        usbRequests++
+        return usbGranted
     }
 
     override fun text(id: Int, vararg args: Any) = said(id)
@@ -62,7 +78,7 @@ class FakeKit(clock: () -> Long) : Kit, Io {
         snapshots += label
         session.attach("recon/$label/marker.txt", label)
     }
-    override fun externalDisplay() = display
+    override fun externalDisplay() = displays()
     override suspend fun openTcp(
         name: String,
         hosts: List<String>,
@@ -95,6 +111,17 @@ class FakeKit(clock: () -> Long) : Kit, Io {
             waited += 100
         }
         return false
+    }
+
+    override suspend fun cue() {
+        cues++
+        onCue()
+    }
+
+    val scenes = mutableListOf<SceneParams?>()
+
+    override fun showScene(view: HeadView?, params: SceneParams?) {
+        scenes += params
     }
 
     override fun progress(done: Int, total: Int) = Unit

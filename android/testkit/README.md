@@ -15,8 +15,10 @@ needed: install the APK, tap Start, follow the voice.
    them, so the tester can read it while wearing them.
 3. Runs the profile. For the XREAL One series:
    - Asks the tester to set Follow mode and turn Stabilizer off.
-   - Connects to the report stream. On failure it retries, then asks about
-     Stabilizer, then carries on without sensors.
+   - Connects to the report stream, over the phone's own network to the glasses
+     if it brought one up, otherwise over the in-app USB network stack (after
+     asking for USB access). On failure it retries, then asks about Stabilizer,
+     then carries on without sensors.
    - Sends three read-only getters (config, firmware and DSP versions).
    - Records nine guided head motions. Each one is checked live from the gyro,
      and repeated if the tester didn't hold still or didn't move enough.
@@ -27,6 +29,14 @@ needed: install the APK, tap Start, follow the voice.
      are repeated once. The result, plus the IMU's tilt against the head, goes
      to `analysis/axes.json`, next to the factory calibration's display rotation
      for comparison.
+   - Runs blind A/B rounds when the axes came back confident or inferred and the
+     factory calibration was read. A green world-locked grid replaces the
+     instruction card on the glasses, tracked with the solved axes and Halone's
+     `HeadTracker`. Each round shows two candidates as "first" and "second" in
+     random order, and the answers bisect three parameters in three rounds each:
+     the mount pitch (does the horizon stay level while turning), the field of
+     view (does the grid stick to the room) and the prediction horizon (does it
+     lag or swing past). Results go to `analysis/ab.json`.
 4. Walks through the display modes (3D, refresh rate) in the glasses' own menu,
    noticing each change and recording the mode list the phone sees.
 5. Asks a few questions, takes an optional comment, and writes the zip.
@@ -39,6 +49,10 @@ and answers.
 - `manifest.json`: answers, per-step outcomes, timestamped markers, notes.
 - `recon/<moment>/`: phone, USB descriptors, networks and displays at that moment.
 - `analysis/axes.json`: the solved convention, mount angle, and the evidence.
+- `analysis/ab.json`: each A/B round (which candidate was first, the answer) and
+  the final estimates.
+- `captures/usbnet.pcap`: link-level frames when the in-app stack was used. The
+  first 3000 are kept whole, then everything but sensor data. Open it in Wireshark.
 - `captures/*.cap`: raw TCP traffic, written only inside motion segments (the
   control port always). The format is in the manifest. Markers and chunks
   share one clock, so each recorded byte falls inside the step that produced it.
@@ -61,7 +75,5 @@ Never send anything that changes a setting on hardware nobody here can recover.
 
 ## Not yet
 
-- Blind A/B rounds (field of view, mount angle, prediction) need a working
-  driver to render with. They're the next step now that the One driver exists.
 - Translations: all text is in `res/values/strings.xml`, and `tts_locale` picks
   the voice.
