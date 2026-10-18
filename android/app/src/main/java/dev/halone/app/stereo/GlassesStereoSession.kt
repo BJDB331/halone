@@ -39,6 +39,10 @@ class GlassesStereoSession(
 
     private var optics: Optics? = null
 
+    /** The glasses' display the compositor was last shown on. */
+    var display: Display? = null
+        private set
+
     suspend fun enterStereo(device: GlassesDevice, mode: DisplayMode? = null): Display? =
         displays.enterStereo(device, mode)
 
@@ -51,6 +55,7 @@ class GlassesStereoSession(
     ) {
         dismiss()
         this.optics = optics
+        this.display = display
         compositor = StereoCompositor(tracker, optics, scene, log).also {
             // The tracker already loaded it, and the two must agree: the head
             // frame the tracker publishes is defined by the same eye rotations

@@ -62,6 +62,7 @@ import dev.halone.app.tap.TapRecorder
 import dev.halone.app.tap.TapScript
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -1335,6 +1336,45 @@ class MainActivity : AppCompatActivity() {
     private fun showPad() {
         startHitHistory()
         if (pointerPad == null) pointerPad = PointerPad(this, padGestures, padActions).also { it.show() }
+        startPadStats()
+    }
+
+    private var padStatsJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * Once a second along the bottom of the pad: the mode the glasses' display
+     * is actually in, the rates it offers at that size, and how many frames
+     * the compositor really drew. The only way to check a refresh rate without
+     * adb, and the two numbers disagree in useful ways — a 120 Hz mode drawn
+     * at 60 fps is a rendering problem, a 60 Hz mode is a mode-selection one.
+     */
+    private fun startPadStats() {
+        padStatsJob?.cancel()
+        padStatsJob = lifecycleScope.launch {
+            var lastFrames = -1L
+            var lastAt = 0L
+            while (isActive && pointerPad != null) {
+                val compositor = stereoSession?.compositor
+                val display = stereoSession?.display
+                val now = android.os.SystemClock.elapsedRealtime()
+                if (compositor != null && display != null) {
+                    val frames = compositor.framesDrawn
+                    val fps = if (lastFrames >= 0 && now > lastAt) (frames - lastFrames) * 1000f / (now - lastAt) else null
+                    lastFrames = frames
+                    lastAt = now
+                    val mode = display.mode
+                    val offered = display.supportedModes
+                        .filter { it.physicalWidth == mode.physicalWidth && it.physicalHeight == mode.physicalHeight }
+                        .map { it.refreshRate.roundToInt() }
+                        .distinct().sorted().joinToString("/")
+                    pointerPad?.setStats(
+                        "Glasses ${mode.physicalWidth}×${mode.physicalHeight} @ ${mode.refreshRate.roundToInt()} Hz " +
+                            "(offers $offered) · drawing ${fps?.roundToInt() ?: "–"} fps"
+                    )
+                }
+                delay(1_000)
+            }
+        }
     }
 
     /** A gesture's action from the shell's settings, or the shipped default when no shell is running. */

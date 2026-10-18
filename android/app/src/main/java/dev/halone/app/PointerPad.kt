@@ -56,6 +56,7 @@ class PointerPad(
     private var record: TextView? = null
     private var switchMode: View? = null
     private var follow: TextView? = null
+    private var stats: TextView? = null
 
     /** When set, the pad is a touchpad and every touch goes here instead. */
     @Volatile
@@ -134,6 +135,13 @@ class PointerPad(
                 }
                 addView(centre, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER))
                 addView(bar, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP))
+                stats = TextView(activity).apply {
+                    textSize = 12f
+                    setTextColor(Color.argb(0x66, 0xff, 0xff, 0xff))
+                    gravity = Gravity.CENTER
+                }.also {
+                    addView(it, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM).apply { bottomMargin = dp(24) })
+                }
                 ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
                     val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
                     bar.setPadding(bars.left + dp(8), bars.top + dp(8), bars.right + dp(8), dp(8))
@@ -158,6 +166,11 @@ class PointerPad(
     fun setRecording(recording: Boolean) = activity.runOnUiThread {
         this.recording = recording
         refresh()
+    }
+
+    /** A line of display diagnostics along the bottom: refresh rate and frames drawn. */
+    fun setStats(text: String) = activity.runOnUiThread {
+        stats?.text = text
     }
 
     fun setFollowing(following: Boolean) = activity.runOnUiThread {

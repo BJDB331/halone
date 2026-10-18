@@ -3,7 +3,10 @@ package dev.halone.display
 import android.app.Presentation
 import android.content.Context
 import android.opengl.GLSurfaceView
+import android.os.Build
 import android.view.Display
+import android.view.Surface
+import android.view.SurfaceHolder
 import android.view.WindowManager
 
 /**
@@ -36,17 +39,33 @@ class RenderPresentation(
         val wide = widestStereoMode(display) ?: fastestMode(display)
         refreshHz = wide?.refreshRate ?: display.refreshRate
 
+        val rate = refreshHz
         val view = object : GLSurfaceView(context) {}.apply {
             setEGLContextClientVersion(3)
             setRenderer(renderer)
             renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
+            // The mode id alone is a request the system may weigh against
+            // others; saying the surface itself is a fixed-rate source at that
+            // rate is what tells it a 60 Hz mode would drop frames.
+            holder.addCallback(object : SurfaceHolder.Callback {
+                override fun surfaceCreated(holder: SurfaceHolder) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        runCatching { holder.surface.setFrameRate(rate, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE) }
+                    }
+                }
+                override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = Unit
+                override fun surfaceDestroyed(holder: SurfaceHolder) = Unit
+            })
         }
         surfaceView = view
 
         presentation = Presentation(context, display).apply {
             window?.let { w ->
                 wide?.let { mode ->
-                    w.attributes = w.attributes.apply { preferredDisplayModeId = mode.modeId }
+                    w.attributes = w.attributes.apply {
+                        preferredDisplayModeId = mode.modeId
+                        preferredRefreshRate = mode.refreshRate
+                    }
                 }
                 w.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
