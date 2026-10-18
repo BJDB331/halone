@@ -108,7 +108,13 @@ internal class RayneoChannel(
 
     private fun readLoop() {
         // Reused: at ~457 Hz a buffer per read is pointless garbage.
-        val buffer = ByteArray(RayneoProtocol.REPORT_SIZE + 1)
+        //
+        // Exactly one report, not one byte more. The IN endpoint's packets are
+        // 64 bytes, the same as a report, so a 64-byte packet is a *full*
+        // packet rather than a short one, and a transfer asking for 65 waits
+        // for the rest of a second packet that, for an acknowledgement, never
+        // comes. On a GT Max that read every reply as a timeout.
+        val buffer = ByteArray(RayneoProtocol.REPORT_SIZE)
         var silent = 0
 
         while (running) {

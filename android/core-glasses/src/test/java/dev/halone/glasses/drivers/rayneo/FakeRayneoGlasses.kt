@@ -67,6 +67,12 @@ internal class FakeRayneoGlasses(
 
     override fun read(into: ByteArray, timeoutMs: Int): Int {
         if (closed) return -1
+        // As measured on a GT Max: the IN endpoint's packets are a full 64
+        // bytes, so a transfer asking for more never completes on a reply.
+        if (into.size > RayneoProtocol.REPORT_SIZE) {
+            Thread.sleep(timeoutMs.toLong())
+            return -1
+        }
         val frame = pending.poll() ?: if (streaming && imuFrames.isNotEmpty()) {
             Thread.sleep(1)
             imuFrames[next++ % imuFrames.size]
