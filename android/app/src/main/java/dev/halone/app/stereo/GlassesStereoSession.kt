@@ -119,7 +119,13 @@ class GlassesStereoSession(
         }
     }
 
+    /** When a panel was last closed, on the uptime clock; 0 for never. */
+    @Volatile
+    var lastPanelClosedAt = 0L
+        private set
+
     fun closePanel(panel: Panel) {
+        lastPanelClosedAt = android.os.SystemClock.uptimeMillis()
         scene.remove(panel)
         compositor?.detach(panel) ?: panel.engine.close()
         // A drift, not a jump: closing a panel is a layout change like any

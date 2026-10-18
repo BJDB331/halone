@@ -547,6 +547,28 @@ class MainActivity : AppCompatActivity() {
         lifecycle("stopped")
         super.onStop()
         if (android.os.Build.VERSION.SDK_INT >= 34) screenCaptured?.let { unregisterScreenCaptureCallback(it) }
+        reclaimFromClosedApp()
+    }
+
+    /**
+     * Closing an Android app's window can hand the phone to that app: when
+     * the app's virtual display goes away, Android moves its activity onto
+     * the phone's own screen, in front of Halone — which then loses the pad.
+     * If Halone is pushed back just after a window closed while the
+     * environment runs, it brings itself back. A wearer leaving Halone on
+     * purpose (Home, another app) closed no window, so is left alone.
+     */
+    private fun reclaimFromClosedApp() {
+        if (isFinishing || shellSession == null) return
+        val closedAt = stereoSession?.lastPanelClosedAt ?: return
+        if (android.os.SystemClock.uptimeMillis() - closedAt > RECLAIM_AFTER_CLOSE_MS) return
+        logLine("  an app window closed and took the phone; bringing Halone back")
+        runCatching {
+            startActivity(
+                Intent(this, MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            )
+        }.onFailure { logLine("  could not come back: ${it.message}") }
     }
 
     private var projectionResult: ((android.media.projection.MediaProjection?) -> Unit)? = null
@@ -1803,6 +1825,16 @@ class MainActivity : AppCompatActivity() {
                 stereoSession?.scene?.setFollow(panel, panel.follow.copy(enabled = !pinned))
             }
             HitPart.BACK -> panel.engine.dispatchBack()
+            HitPart.SIZE -> {
+                val session = stereoSession ?: return
+                val oldWidth = panel.widthPx
+                val oldHeight = panel.heightPx
+                val (width, height) = dev.halone.compositor.TitleBar.nextSize(oldWidth, oldHeight)
+                panel.engine.resize(width, height)
+                // About its bottom centre, so the bar under it stays put.
+                session.scene.resized(panel, oldWidth, oldHeight, dev.halone.compositor.Corner.BOTTOM_LEFT, keepCentreX = true)
+                logLine("  resized '${panel.id}' ${oldWidth}x$oldHeight -> ${width}x$height")
+            }
             HitPart.CLOSE -> {
                 if (shell != null && runCatching { shell.close(panel.id) }.isSuccess) return
                 stereoSession?.closePanel(panel)
@@ -2475,6 +2507,9 @@ class MainActivity : AppCompatActivity() {
         const val CONNECT_TIMEOUT_MS = 60_000L
         const val LINK_RETURN_TIMEOUT_MS = 20_000L
         const val STEREO_TIMEOUT_MS = 20_000L
+
+        /** How soon after a window closes losing the phone counts as caused by it. */
+        const val RECLAIM_AFTER_CLOSE_MS = 3_000L
         const val TAP_RECORD_SECONDS = 240
         const val TAP_AIM_LEAD_MS = 30L
         const val HIT_HISTORY = 64
