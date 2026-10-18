@@ -91,6 +91,16 @@ data class Optics(
      * direction the rows run in.
      */
     val scanoutCompensation: Float = 1f,
+    /**
+     * How far, in degrees, the published head pose may sit still while the
+     * head is at rest before it follows — 0 for none.
+     *
+     * Glasses' own "pinned" modes look rock-solid largely because they hold
+     * the image while the head is still; a raw IMU that is noisy at rest
+     * (RayNeo GT series: ~0.7 °/s) otherwise shows its noise as a shimmer.
+     * Only engaged at rest, so a moving head is tracked without added lag.
+     */
+    val restDeadbandDegrees: Float = 0f,
 ) {
     /**
      * Vertical half-angle follows from the diagonal and the aspect:

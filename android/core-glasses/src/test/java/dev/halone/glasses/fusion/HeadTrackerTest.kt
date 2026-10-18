@@ -544,6 +544,36 @@ class HeadTrackerTest {
     }
 
     /**
+     * The rest hold: small jitter with the head still never reaches the
+     * published pose, and a real turn is followed at once with no added lag.
+     */
+    @Test
+    fun `rest hold absorbs jitter at rest and releases on a real turn`() {
+        val tracker = HeadTracker(optics.copy(restDeadbandDegrees = 0.5f), OrientationFilter(accelWeight = 0f))
+        tracker.velocitySmoothingMs = 0f
+        fun yaw(degrees: Float): Quaternion {
+            val half = Math.toRadians(degrees / 2.0)
+            return Quaternion(kotlin.math.cos(half).toFloat(), 0f, kotlin.math.sin(half).toFloat(), 0f)
+        }
+        var t = 0L
+        tracker.onSample(TrackingSample.Oriented(t, yaw(0f), Vec3.ZERO))
+        val rest = tracker.pose.orientation
+        // Jitter of ±0.3°, slow: held.
+        for (jitter in listOf(0.3f, -0.2f, 0.25f, -0.3f)) {
+            t += 2_000_000L
+            tracker.onSample(TrackingSample.Oriented(t, yaw(jitter), Vec3(0f, 0.01f, 0f)))
+            assertEquals("held through jitter", rest, tracker.pose.orientation)
+        }
+        // A real turn at 60°/s: passed straight through.
+        t += 2_000_000L
+        val turnRate = Math.toRadians(60.0).toFloat()
+        tracker.onSample(TrackingSample.Oriented(t, yaw(5f), Vec3(0f, turnRate, 0f)))
+        val (turned, _, _) = tracker.pose.orientation.toEulerDegrees()
+        assertEquals(5f, turned, 0.05f)
+        assertEquals(turnRate, tracker.pose.angularVelocity.y, 1e-4f)
+    }
+
+    /**
      * The mounting is in the glasses' frame, so it must stay corrected after a
      * turn. Composed on the world side it only held at the starting heading: a
      * 29° board pitch (RayNeo GT Max) turned into roll as the wearer panned.

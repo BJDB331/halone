@@ -834,6 +834,7 @@ class MainActivity : AppCompatActivity() {
 
         val head = HeadTracker(device.optics, calibration = calibration)
         tracker = head
+        applySavedTuning(head, device)
         // One sink, fanned out: the tracker drives the pose while the
         // development actions keep the last raw sample for axis identification.
         device.tracking.start { sample ->
@@ -1348,7 +1349,36 @@ class MainActivity : AppCompatActivity() {
     private fun showPad() {
         startHitHistory()
         if (pointerPad == null) pointerPad = PointerPad(this, padGestures, padActions).also { it.show() }
+        pointerPad?.tuning = trackingTuning()
         startPadStats()
+    }
+
+    /**
+     * The pad's live tuning for the connected glasses: prediction horizon and
+     * rest hold, remembered per driver so a wearer's settings survive restarts.
+     */
+    private fun trackingTuning(): PointerPad.Tuning? {
+        val head = tracker ?: return null
+        val device = connection.device ?: return null
+        val prefs = getSharedPreferences("tracking-tuning", MODE_PRIVATE)
+        val key = device.info.driverId
+        val defaultPrediction = head.predictionHorizonMs(1000f / (stereoSession?.display?.refreshRate ?: 60f)).roundToInt()
+        return PointerPad.Tuning(
+            predictionMs = prefs.getInt("$key.prediction", defaultPrediction),
+            deadbandTenths = prefs.getInt("$key.deadband", (head.restDeadbandDegrees * 10).roundToInt()),
+        ) { prediction, deadband ->
+            head.predictionOverrideMs = prediction.toFloat()
+            head.restDeadbandDegrees = deadband / 10f
+            prefs.edit().putInt("$key.prediction", prediction).putInt("$key.deadband", deadband).apply()
+        }
+    }
+
+    /** Puts a wearer's saved tuning back on a newly connected tracker. */
+    private fun applySavedTuning(head: HeadTracker, device: GlassesDevice) {
+        val prefs = getSharedPreferences("tracking-tuning", MODE_PRIVATE)
+        val key = device.info.driverId
+        if (prefs.contains("$key.prediction")) head.predictionOverrideMs = prefs.getInt("$key.prediction", 0).toFloat()
+        if (prefs.contains("$key.deadband")) head.restDeadbandDegrees = prefs.getInt("$key.deadband", 0) / 10f
     }
 
     private var padStatsJob: kotlinx.coroutines.Job? = null

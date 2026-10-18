@@ -212,6 +212,10 @@ class RayneoDriver : GlassesDriver {
             // like dropped frames. How these micro-OLEDs scan is not known,
             // and the end-of-frame warp still runs without it.
             scanoutCompensation = 0f,
+            // [starting point] Hold the image while the head is still, the way
+            // the glasses' own pinned mode does; the GT series' raw gyro is
+            // too noisy at rest to show unfiltered. Tunable live on the pad.
+            restDeadbandDegrees = 0.5f,
             predictionFrametimeMultiplier = 1f,
         )
 

@@ -57,6 +57,19 @@ class PointerPad(
     private var switchMode: View? = null
     private var follow: TextView? = null
     private var stats: TextView? = null
+    private var tuningPanel: View? = null
+
+    /**
+     * Live tracking tuning, shown by tapping the stats line: the prediction
+     * horizon and the rest hold, set by feel while wearing the glasses.
+     */
+    class Tuning(
+        val predictionMs: Int,
+        val deadbandTenths: Int,
+        val onChange: (predictionMs: Int, deadbandTenths: Int) -> Unit,
+    )
+
+    var tuning: Tuning? = null
 
     /** When set, the pad is a touchpad and every touch goes here instead. */
     @Volatile
@@ -139,8 +152,10 @@ class PointerPad(
                     textSize = 12f
                     setTextColor(Color.argb(0x66, 0xff, 0xff, 0xff))
                     gravity = Gravity.CENTER
+                    setPadding(0, dp(12), 0, dp(12))
+                    setOnClickListener { toggleTuning(this@apply.parent as FrameLayout) }
                 }.also {
-                    addView(it, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM).apply { bottomMargin = dp(24) })
+                    addView(it, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM).apply { bottomMargin = dp(12) })
                 }
                 ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
                     val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
@@ -166,6 +181,49 @@ class PointerPad(
     fun setRecording(recording: Boolean) = activity.runOnUiThread {
         this.recording = recording
         refresh()
+    }
+
+    private fun toggleTuning(pad: FrameLayout) {
+        tuningPanel?.let {
+            pad.removeView(it)
+            tuningPanel = null
+            return
+        }
+        val t = tuning ?: return
+        var prediction = t.predictionMs
+        var deadband = t.deadbandTenths
+        val panel = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(16), dp(24), dp(16))
+            setBackgroundColor(Color.argb(0xE6, 0x10, 0x14, 0x1c))
+            isClickable = true
+        }
+        fun row(label: (Int) -> String, max: Int, start: Int, set: (Int) -> Unit) {
+            val text = TextView(activity).apply {
+                textSize = 14f
+                setTextColor(Color.WHITE)
+                this.text = label(start)
+            }
+            val bar = android.widget.SeekBar(activity).apply {
+                this.max = max
+                progress = start
+                setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(s: android.widget.SeekBar, value: Int, fromUser: Boolean) {
+                        text.text = label(value)
+                        set(value)
+                        t.onChange(prediction, deadband)
+                    }
+                    override fun onStartTrackingTouch(s: android.widget.SeekBar) = Unit
+                    override fun onStopTrackingTouch(s: android.widget.SeekBar) = Unit
+                })
+            }
+            panel.addView(text)
+            panel.addView(bar, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(40)))
+        }
+        row({ "Prediction: $it ms  (more = less lag, too much = wobble)" }, 80, prediction) { prediction = it }
+        row({ "Steadiness: %.1f°  (more = stiller at rest, too much = sticky)".format(it / 10f) }, 30, deadband) { deadband = it }
+        tuningPanel = panel
+        pad.addView(panel, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM).apply { bottomMargin = dp(56) })
     }
 
     /** A line of display diagnostics along the bottom: refresh rate and frames drawn. */
