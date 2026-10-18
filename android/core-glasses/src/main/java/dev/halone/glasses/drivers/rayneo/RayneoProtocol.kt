@@ -126,11 +126,21 @@ internal object RayneoProtocol {
      * descriptor declares no report ids, so on a raw endpoint the frame starts
      * at the tag.
      */
-    fun command(cmd: Int, value: Int = 0): ByteArray = ByteArray(REPORT_SIZE).also {
-        it[0] = TAG_COMMAND
-        it[1] = cmd.toByte()
-        it[2] = value.toByte()
+    fun command(cmd: Int, value: Int = 0, framing: Framing = Framing.BARE): ByteArray {
+        val at = if (framing == Framing.REPORT_ID) 1 else 0
+        return ByteArray(REPORT_SIZE + at).also {
+            it[at] = TAG_COMMAND
+            it[at + 1] = cmd.toByte()
+            it[at + 2] = value.toByte()
+        }
     }
+
+    /**
+     * How a command goes on the wire. [BARE] is what the descriptor implies;
+     * [REPORT_ID] is the 65-byte frame hidapi callers build, kept as a
+     * fallback until real GT Max hardware says which one it wants.
+     */
+    enum class Framing { BARE, REPORT_ID }
 
     fun parse(buf: ByteArray, length: Int): RayneoReport {
         // Tolerate a leading report id, which some host stacks deliver.

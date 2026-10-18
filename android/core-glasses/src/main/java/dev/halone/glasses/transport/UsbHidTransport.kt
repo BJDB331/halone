@@ -101,9 +101,24 @@ class UsbHidTransportProvider(
             )
         }
 
-        val transport = UsbHidTransport("usb:iface$interfaceId", connection, iface, inEp, outEp)
+        // The name carries the descriptor, so a bring-up failure that quotes
+        // it says what the interface actually is.
+        val name = "usb:iface$interfaceId class=%d/%d/%d in=%s out=%s".format(
+            iface.interfaceClass, iface.interfaceSubclass, iface.interfaceProtocol,
+            describe(inEp), outEp?.let(::describe) ?: "SET_REPORT",
+        )
+        val transport = UsbHidTransport(name, connection, iface, inEp, outEp)
         opened += transport
         return Result.success(transport)
+    }
+
+    private fun describe(ep: UsbEndpoint): String {
+        val type = when (ep.type) {
+            UsbConstants.USB_ENDPOINT_XFER_INT -> "int"
+            UsbConstants.USB_ENDPOINT_XFER_BULK -> "bulk"
+            else -> "type${ep.type}"
+        }
+        return "0x%02x/%s/%d".format(ep.address, type, ep.maxPacketSize)
     }
 
     override fun hidInterfaceIds(): List<Int> =

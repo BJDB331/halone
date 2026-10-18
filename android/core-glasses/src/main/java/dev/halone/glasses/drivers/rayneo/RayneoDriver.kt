@@ -65,11 +65,12 @@ class RayneoDriver : GlassesDriver {
             } ?: continue
 
             val handshake = handshake(transport)
-            if (handshake == null) {
-                failures += "interface $interfaceId: no reply to device info"
+            if (handshake is Handshake.Silent) {
+                failures += "interface $interfaceId: no reply to device info [${transport.name}; ${handshake.diagnosis}]"
                 runCatching { transport.close() }
                 continue
             }
+            handshake as Handshake.Answered
 
             return Result.success(
                 RayneoSession(
@@ -80,6 +81,7 @@ class RayneoDriver : GlassesDriver {
                     initialBrightness = handshake.brightness,
                     transport = transport,
                     axes = AXES,
+                    framing = handshake.framing,
                 )
             )
         }
@@ -92,7 +94,17 @@ class RayneoDriver : GlassesDriver {
         )
     }
 
-    private class Handshake(val board: Int, val build: String?, val brightness: Int?)
+    private sealed interface Handshake {
+        class Answered(
+            val board: Int,
+            val build: String?,
+            val brightness: Int?,
+            val framing: RayneoProtocol.Framing,
+        ) : Handshake
+
+        /** What the endpoint did instead of answering, per framing tried. */
+        class Silent(val diagnosis: String) : Handshake
+    }
 
     /**
      * Asks the interface who it is. Doubles as the check that this is the
@@ -102,25 +114,30 @@ class RayneoDriver : GlassesDriver {
      * Also stops any stream a previous process left running — it survives the
      * host closing the device — so the endpoint starts quiet.
      */
-    private fun handshake(transport: HidTransport): Handshake? {
-        var reply: RayneoReport.Ack? = null
-        RayneoChannel(transport, onReport = {}).also { probe ->
-            probe.start()
-            try {
+    private fun handshake(transport: HidTransport): Handshake {
+        val diagnoses = mutableListOf<String>()
+        for (framing in RayneoProtocol.Framing.entries) {
+            val probe = RayneoChannel(transport, onReport = {}, framing = framing)
+            val info = try {
+                probe.start()
                 // Not awaited: this runs on the caller's thread, which may be
                 // the UI's, once per candidate interface.
                 probe.send(RayneoProtocol.CMD_STREAM_OFF)
-                reply = probe.request(RayneoProtocol.CMD_DEVICE_INFO)
+                probe.request(RayneoProtocol.CMD_DEVICE_INFO)
             } finally {
                 probe.close()
             }
+            if (info != null) {
+                return Handshake.Answered(
+                    board = info.board,
+                    build = RayneoProtocol.buildDate(info),
+                    brightness = RayneoProtocol.brightness(info),
+                    framing = framing,
+                )
+            }
+            diagnoses += "${framing.name.lowercase()}: ${probe.describe()}"
         }
-        val info = reply ?: return null
-        return Handshake(
-            board = info.board,
-            build = RayneoProtocol.buildDate(info),
-            brightness = RayneoProtocol.brightness(info),
-        )
+        return Handshake.Silent(diagnoses.joinToString("; "))
     }
 
     internal companion object {

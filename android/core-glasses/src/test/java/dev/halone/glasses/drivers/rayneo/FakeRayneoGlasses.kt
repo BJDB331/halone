@@ -18,6 +18,8 @@ internal class FakeRayneoGlasses(
     private val imuFrames: List<ByteArray> = listOf(RayneoCaptures.IMU_AT_REST),
     /** False to play an interface that never answers. */
     private val answers: Boolean = true,
+    /** True to play firmware that ignores commands without hidapi's leading report id. */
+    private val wantsReportId: Boolean = false,
     override val name: String = "fake-rayneo",
 ) : HidTransport {
 
@@ -40,14 +42,18 @@ internal class FakeRayneoGlasses(
     }
 
     /** Opcode and value of every command written, in order. */
-    fun commands(): List<Pair<Int, Int>> =
-        written.map { (it[1].toInt() and 0xFF) to (it[2].toInt() and 0xFF) }
+    fun commands(): List<Pair<Int, Int>> = written.map {
+        val at = if (it.size > 64) 1 else 0
+        (it[at + 1].toInt() and 0xFF) to (it[at + 2].toInt() and 0xFF)
+    }
 
     override fun write(packet: ByteArray, timeoutMs: Int): Int {
         if (closed) return -1
         written += packet.copyOf()
         if (!answers) return packet.size
-        val opcode = packet[1].toInt() and 0xFF
+        val prefixed = packet.size > 64
+        if (prefixed != wantsReportId) return packet.size
+        val opcode = packet[if (prefixed) 2 else 1].toInt() and 0xFF
         when (opcode) {
             RayneoProtocol.CMD_STREAM_ON -> streaming = true
             RayneoProtocol.CMD_STREAM_OFF -> streaming = false

@@ -86,6 +86,17 @@ class RayneoSessionTest {
     }
 
     @Test
+    fun `firmware that wants a report id is answered in its own framing`() {
+        val glasses = FakeRayneoGlasses(wantsReportId = true)
+        connect(0 to glasses).getOrThrow().use { device ->
+            device.brightness!!.set(2).getOrThrow()
+            val last = glasses.written.last()
+            assertEquals(65, last.size)
+            assertEquals(0, last[0].toInt())
+        }
+    }
+
+    @Test
     fun `connect fails clearly when nothing answers`() {
         val result = connect(0 to FakeRayneoGlasses(answers = false))
         assertTrue(result.isFailure)

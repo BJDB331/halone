@@ -32,6 +32,7 @@ internal class RayneoSession(
     initialBrightness: Int?,
     private val transport: HidTransport,
     private val axes: AxisConvention,
+    framing: RayneoProtocol.Framing = RayneoProtocol.Framing.BARE,
 ) : GlassesDevice {
 
     override val displayNameHints = listOf("SmartGlasses", "RayNeo")
@@ -47,7 +48,7 @@ internal class RayneoSession(
     private val listeners = CopyOnWriteArrayList<DeviceEventListener>()
     private val closed = AtomicBoolean(false)
 
-    private val channel = RayneoChannel(transport, ::onReport, ::onLost)
+    private val channel = RayneoChannel(transport, ::onReport, ::onLost, framing)
 
     private val rayneoTracking = RayneoTracking()
     override val tracking: TrackingSource get() = rayneoTracking
