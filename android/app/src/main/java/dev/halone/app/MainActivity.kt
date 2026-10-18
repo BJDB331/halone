@@ -1366,11 +1366,17 @@ class MainActivity : AppCompatActivity() {
         return PointerPad.Tuning(
             predictionMs = prefs.getInt("$key.prediction", defaultPrediction),
             deadbandTenths = prefs.getInt("$key.deadband", (head.restDeadbandDegrees * 10).roundToInt()),
-        ) { prediction, deadband ->
-            head.predictionOverrideMs = prediction.toFloat()
-            head.restDeadbandDegrees = deadband / 10f
-            prefs.edit().putInt("$key.prediction", prediction).putInt("$key.deadband", deadband).apply()
-        }
+            onChange = { prediction, deadband ->
+                head.predictionOverrideMs = prediction.toFloat()
+                head.restDeadbandDegrees = deadband / 10f
+                prefs.edit().putInt("$key.prediction", prediction).putInt("$key.deadband", deadband).apply()
+            },
+            latchPacing = stereoSession?.compositor?.paceOnLatch ?: true,
+            onLatchPacing = { on ->
+                stereoSession?.compositor?.paceOnLatch = on
+                prefs.edit().putBoolean("$key.latchPacing", on).apply()
+            },
+        )
     }
 
     /** Puts a wearer's saved tuning back on a newly connected tracker. */
@@ -1863,6 +1869,9 @@ class MainActivity : AppCompatActivity() {
             session.show(display, head, device.optics, displayClock)
             // A compositor built while the glasses pin the image must draw head-locked.
             session.compositor?.lockToHead = device.onboardPinning?.enabled == true
+            getSharedPreferences("tracking-tuning", MODE_PRIVATE)
+                .takeIf { it.contains("${device.info.driverId}.latchPacing") }
+                ?.let { session.compositor?.paceOnLatch = it.getBoolean("${device.info.driverId}.latchPacing", true) }
 
             // Whatever the wearer happens to be facing becomes forward. This
             // also papers over the unverified IMU axis convention: the constant

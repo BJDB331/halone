@@ -65,6 +65,10 @@ class GlassesStereoSession(
             presentation.show(display, it)
             // The presentation picks the mode, so it knows the rate.
             it.refreshHz = presentation.refreshHz
+            // Latch pacing waits on frame timestamps that arrive a beat late;
+            // tuned at XREAL's 60 Hz it fits, but at 120 Hz without a display
+            // clock (RayNeo GT series, measured) it halved the frame rate.
+            if (displayClock == null && presentation.refreshHz > 90f) it.paceOnLatch = false
         }
     }
 

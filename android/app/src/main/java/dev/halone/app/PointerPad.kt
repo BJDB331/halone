@@ -67,6 +67,9 @@ class PointerPad(
         val predictionMs: Int,
         val deadbandTenths: Int,
         val onChange: (predictionMs: Int, deadbandTenths: Int) -> Unit,
+        /** Whether each frame waits for the previous one to reach the display. */
+        val latchPacing: Boolean,
+        val onLatchPacing: (Boolean) -> Unit,
     )
 
     var tuning: Tuning? = null
@@ -222,6 +225,13 @@ class PointerPad(
         }
         row({ "Prediction: $it ms  (more = less lag, too much = wobble)" }, 80, prediction) { prediction = it }
         row({ "Steadiness: %.1f°  (more = stiller at rest, too much = sticky)".format(it / 10f) }, 30, deadband) { deadband = it }
+        panel.addView(android.widget.Switch(activity).apply {
+            text = "Wait for each frame to display (off may reach 120 fps)"
+            textSize = 14f
+            setTextColor(Color.WHITE)
+            isChecked = t.latchPacing
+            setOnCheckedChangeListener { _, on -> t.onLatchPacing(on) }
+        })
         tuningPanel = panel
         pad.addView(panel, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM).apply { bottomMargin = dp(56) })
     }
