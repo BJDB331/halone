@@ -227,9 +227,11 @@ class PointerPad(
                 null,
             )
             setOnClickListener { onClick() }
-            layoutParams = LinearLayout.LayoutParams(dp(48), dp(48)).apply {
-                leftMargin = dp(6)
-                rightMargin = dp(6)
+            // Seven buttons in gyro mode: at 48 + 12 dp each they ran past a
+            // phone's width and the last one, the glasses pin, was cut off.
+            layoutParams = LinearLayout.LayoutParams(dp(44), dp(44)).apply {
+                leftMargin = dp(3)
+                rightMargin = dp(3)
             }
         }
 

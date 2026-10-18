@@ -126,14 +126,14 @@ class RayneoSessionTest {
         }
 
         val sent = glasses.commands()
-        val follow = sent.indexOf(RayneoProtocol.CMD_ANCHOR_MODE to RayneoProtocol.AnchorMode.FOLLOW.value)
+        val follow = sent.indexOf(RayneoProtocol.CMD_ANCHOR_MODE to RayneoProtocol.anchorValue(RayneoProtocol.AnchorMode.FOLLOW, RayneoProtocol.BOARD_GT_MAX))
         val streamOn = sent.indexOf(RayneoProtocol.CMD_STREAM_ON to 0)
         assertTrue("follow must be set before streaming: $sent", follow in 0 until streamOn)
         assertEquals(
             "the stop should end the stream and return the glasses to pinned",
             listOf(
                 RayneoProtocol.CMD_STREAM_OFF to 0,
-                RayneoProtocol.CMD_ANCHOR_MODE to RayneoProtocol.AnchorMode.PINNED.value,
+                RayneoProtocol.CMD_ANCHOR_MODE to RayneoProtocol.anchorValue(RayneoProtocol.AnchorMode.PINNED, RayneoProtocol.BOARD_GT_MAX),
             ),
             sent.takeLast(2),
         )
@@ -165,7 +165,7 @@ class RayneoSessionTest {
             assertTrue(pressed.await(2, TimeUnit.SECONDS))
             Thread.sleep(50)
             assertEquals(
-                RayneoProtocol.CMD_ANCHOR_MODE to RayneoProtocol.AnchorMode.FOLLOW.value,
+                RayneoProtocol.CMD_ANCHOR_MODE to RayneoProtocol.anchorValue(RayneoProtocol.AnchorMode.FOLLOW, RayneoProtocol.BOARD_GT_MAX),
                 glasses.commands().drop(before).first(),
             )
         }
@@ -185,7 +185,7 @@ class RayneoSessionTest {
 
             pinning.setEnabled(true).getOrThrow()
             assertTrue(pinning.enabled)
-            val pinned = RayneoProtocol.CMD_ANCHOR_MODE to RayneoProtocol.AnchorMode.PINNED.value
+            val pinned = RayneoProtocol.CMD_ANCHOR_MODE to RayneoProtocol.anchorValue(RayneoProtocol.AnchorMode.PINNED, RayneoProtocol.BOARD_GT_MAX)
             assertEquals(pinned, glasses.commands().last())
 
             // The button must now restore pinned, not follow.
@@ -200,7 +200,7 @@ class RayneoSessionTest {
             val mark = glasses.commands().size
             pinning.recentre().getOrThrow()
             assertEquals(
-                listOf(RayneoProtocol.CMD_ANCHOR_MODE to RayneoProtocol.AnchorMode.FOLLOW.value, pinned),
+                listOf(RayneoProtocol.CMD_ANCHOR_MODE to RayneoProtocol.anchorValue(RayneoProtocol.AnchorMode.FOLLOW, RayneoProtocol.BOARD_GT_MAX), pinned),
                 glasses.commands().drop(mark),
             )
 

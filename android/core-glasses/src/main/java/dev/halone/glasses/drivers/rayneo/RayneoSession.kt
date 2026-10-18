@@ -56,6 +56,8 @@ internal class RayneoSession(
 
     override val brightness: BrightnessControl = RayneoBrightness(initialBrightness)
 
+    private fun AnchorMode.byte() = RayneoProtocol.anchorValue(this, board)
+
     /** What the glasses should be in while tracking: follow, or pinned when the wearer asked. */
     @Volatile
     private var sessionAnchor = AnchorMode.FOLLOW
@@ -143,7 +145,7 @@ internal class RayneoSession(
         emit(DeviceEvent.ButtonPressed(DeviceEvent.Button.UNKNOWN))
         if (sink != null) {
             unawaitedAnchorAcks.incrementAndGet()
-            if (!channel.send(RayneoProtocol.CMD_ANCHOR_MODE, sessionAnchor.value)) unawaitedAnchorAcks.decrementAndGet()
+            if (!channel.send(RayneoProtocol.CMD_ANCHOR_MODE, sessionAnchor.byte())) unawaitedAnchorAcks.decrementAndGet()
         }
     }
 
@@ -163,7 +165,7 @@ internal class RayneoSession(
             this@RayneoSession.sink = sink
             // Halone world-locks the scene itself, so the glasses' own
             // stabilisation has to be off while it does.
-            channel.request(RayneoProtocol.CMD_ANCHOR_MODE, sessionAnchor.value)
+            channel.request(RayneoProtocol.CMD_ANCHOR_MODE, sessionAnchor.byte())
             channel.request(RayneoProtocol.CMD_STREAM_ON)
             channel.expectTraffic = true
         }
@@ -176,7 +178,7 @@ internal class RayneoSession(
             runCatching { channel.request(RayneoProtocol.CMD_STREAM_OFF) }
             // The mode cannot be read back, so there is nothing exact to
             // restore. Pinned is what the earlier GT desktop app hands back.
-            runCatching { channel.request(RayneoProtocol.CMD_ANCHOR_MODE, RESTORED_ANCHOR.value) }
+            runCatching { channel.request(RayneoProtocol.CMD_ANCHOR_MODE, RESTORED_ANCHOR.byte()) }
         }
     }
 
@@ -189,7 +191,7 @@ internal class RayneoSession(
 
         override fun setEnabled(enabled: Boolean): Result<Unit> {
             val mode = if (enabled) AnchorMode.PINNED else AnchorMode.FOLLOW
-            channel.request(RayneoProtocol.CMD_ANCHOR_MODE, mode.value)
+            channel.request(RayneoProtocol.CMD_ANCHOR_MODE, mode.byte())
                 ?: return Result.failure(IllegalStateException("no acknowledgement for anchor mode $mode"))
             sessionAnchor = mode
             return Result.success(Unit)
@@ -201,10 +203,10 @@ internal class RayneoSession(
          */
         override fun recentre(): Result<Unit> {
             if (!enabled) return Result.success(Unit)
-            channel.request(RayneoProtocol.CMD_ANCHOR_MODE, AnchorMode.FOLLOW.value)
+            channel.request(RayneoProtocol.CMD_ANCHOR_MODE, AnchorMode.FOLLOW.byte())
                 ?: return Result.failure(IllegalStateException("no acknowledgement for follow"))
             Thread.sleep(RECENTRE_GAP_MS)
-            channel.request(RayneoProtocol.CMD_ANCHOR_MODE, AnchorMode.PINNED.value)
+            channel.request(RayneoProtocol.CMD_ANCHOR_MODE, AnchorMode.PINNED.byte())
                 ?: return Result.failure(IllegalStateException("no acknowledgement for pinned"))
             return Result.success(Unit)
         }

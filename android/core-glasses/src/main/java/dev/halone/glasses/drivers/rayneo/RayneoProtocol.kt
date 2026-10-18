@@ -113,10 +113,22 @@ internal object RayneoProtocol {
      * the glasses would counter-rotate the image as well, and every head turn
      * would be compensated twice.
      */
-    enum class AnchorMode(val value: Int) {
-        FOLLOW(0),
-        PINNED(1),
-        STEADY(2),
+    enum class AnchorMode { FOLLOW, PINNED, STEADY }
+
+    /**
+     * The command byte for [mode] on [board]: the two boards number pinned and
+     * steady differently.
+     *
+     * - GT, measured by the macOS project: 0 follow, 1 pinned, 2 steady.
+     * - GT Max **[measured, by eye]**: 1 is not pinned — a wearer saw it act
+     *   like steady — so pinned and steady are taken as swapped, 2 pinned.
+     *   0 is follow on both: Halone's own world-locking is right on a GT Max,
+     *   which it would not be if 0 stabilised the image as well.
+     */
+    fun anchorValue(mode: AnchorMode, board: Int): Int = when (mode) {
+        AnchorMode.FOLLOW -> 0
+        AnchorMode.PINNED -> if (board == BOARD_GT) 1 else 2
+        AnchorMode.STEADY -> if (board == BOARD_GT) 2 else 1
     }
 
     /**
