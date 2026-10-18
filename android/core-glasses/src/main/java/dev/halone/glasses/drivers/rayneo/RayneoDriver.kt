@@ -200,11 +200,13 @@ class RayneoDriver : GlassesDriver {
             // scene about 15° low at a level gaze, so 44°. Fine-tune by eye:
             // content high means lower this, content low means raise it.
             imuPitchOffsetDegrees = 44f,
-            // [unverified] A placeholder, not a measurement: about half
-            // XREAL's 85 ms, on the principle recorded there that residual lag
-            // is far less objectionable than overshoot. Measure with the
-            // `latency` action and a camera.
-            predictionConstantMs = 40f,
+            // [by feel, GT Max] 40 ms felt over-sensitive: the scene ran ahead
+            // of the head on every small movement, which is what too much
+            // prediction looks like, and it amplifies gyro noise into jitter.
+            // 16 ms is what the macOS GT project settled on by eye; with the
+            // frame time on top that is ~24 ms at 120 Hz. Residual lag is the
+            // lesser evil. Measure with the `latency` action and a camera.
+            predictionConstantMs = 16f,
             predictionFrametimeMultiplier = 1f,
         )
 
