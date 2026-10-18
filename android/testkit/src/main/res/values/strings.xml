@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Halone Test Kit</string>
+    <string name="tts_locale" translatable="false">en-US</string>
+
+    <string name="start_title">Help bring Halone to your glasses</string>
+    <string name="start_body">This app records what your glasses report while you follow some short spoken steps. It takes about ten minutes. At the end you get one file to send back to the Halone developers.\n\nIt collects: technical details of your phone and glasses, sensor readings while you move your head, the glasses\' factory calibration, and your answers. It does not collect your location, contacts, camera, microphone or files. The glasses\' serial number is removed from the file.\n\nNothing is sent anywhere. You choose whether to share the file at the end.</string>
+    <string name="start_button">Start</string>
+    <string name="share_button">Share the results file</string>
+    <string name="finished_body">All done. The results file is %1$s.\n\nTap the button below and send it the way the developers asked you to: email, Discord or a cloud drive.</string>
+    <string name="cancelled_body">Stopped. Nothing was saved.</string>
+    <string name="step_progress">Step %1$d of %2$d</string>
+
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="done">Done</string>
+    <string name="skip">Skip this</string>
+    <string name="continue_">Continue</string>
+    <string name="stop">Stop</string>
+
+    <string name="intro">Hi! I\'ll guide you through a few short steps. Keep the phone where you can reach it. When I ask a question, answer on the phone\'s screen.</string>
+    <string name="consent_question">Ready to start? You can stop at any time.</string>
+    <string name="plug_in">Plug your glasses into this phone with their cable.</string>
+    <string name="plug_in_question">I can\'t find any glasses yet. Are they plugged in?</string>
+    <string name="plugged_in_yes">Yes, they\'re plugged in</string>
+    <string name="plugged_in_not_yet">Not yet, give me a moment</string>
+    <string name="found_glasses">Found them. Thanks!</string>
+    <string name="found_unknown">I found a device I don\'t recognise. I\'ll record what I can about it.</string>
+
+    <string name="display_waiting">Waiting for the glasses to show a picture…</string>
+    <string name="display_question">Put the glasses on. Can you read big white words on a dark background?</string>
+    <string name="display_mirror">I see the phone\'s screen instead</string>
+    <string name="display_none_question">The phone doesn\'t see the glasses as a screen. What do the glasses show?</string>
+    <string name="display_none_black">Nothing, or black</string>
+    <string name="display_none_phone">The phone\'s screen</string>
+    <string name="display_none_other">Something else</string>
+    <string name="display_tip">If your phone opened a desktop mode, like Samsung DeX, close it. Then we\'ll carry on.</string>
+    <string name="card_hint">You\'re reading this on your glasses. Answer on the phone.</string>
+
+    <string name="modes_intro">Now a few display modes. You\'ll change them with the buttons on the glasses, and I\'ll notice when they change.</string>
+    <string name="modes_3d">Using the glasses\' own menu, switch to 3D mode, sometimes called side by side.</string>
+    <string name="modes_2d">Great. Now switch back to the normal 2D mode.</string>
+    <string name="modes_refresh">If the glasses\' menu lets you pick a refresh rate, such as 60, 90 or 120 hertz, pick a different one now.</string>
+    <string name="modes_refresh_back">Thanks. Now set the refresh rate back to how it was.</string>
+    <string name="modes_changed">Got it.</string>
+    <string name="modes_no_change">No change noticed. Let\'s move on.</string>
+    <string name="modes_no_display">I can\'t see the glasses\' display, so I\'ll skip the display modes.</string>
+
+    <string name="free_text_question">Was anything confusing, or did anything feel wrong? Type it here, or skip.</string>
+    <string name="free_text_skip">Nothing to add</string>
+    <string name="thanks">That\'s everything. Thank you so much for helping!</string>
+
+    <string name="one_menu">Using the buttons on your glasses, open their menu. Set the screen mode to Follow, and turn Stabilizer off. Take your time.</string>
+    <string name="one_menu_cant_find">I can\'t find these</string>
+    <string name="one_sensors_waiting">Connecting to the glasses\' sensors…</string>
+    <string name="one_sensors_retry">I can\'t reach the sensors yet. Let\'s give the glasses a few more seconds.</string>
+    <string name="one_stabilizer_question">Still nothing. In the glasses\' menu, is Stabilizer turned off?</string>
+    <string name="one_stabilizer_off">Yes, it\'s off</string>
+    <string name="one_stabilizer_on">It was on, I\'ve turned it off now</string>
+    <string name="one_stabilizer_unknown">I can\'t find it</string>
+    <string name="one_sensors_ok">Connected to the sensors.</string>
+    <string name="one_sensors_failed">I couldn\'t reach the sensors. That\'s OK, the rest of the test still helps a lot.</string>
+    <string name="one_config_waiting">Reading the glasses\' factory calibration…</string>
+    <string name="one_model_question">Which glasses are these?</string>
+    <string name="model_one_pro">XREAL One Pro</string>
+    <string name="model_one">XREAL One</string>
+    <string name="model_1s">XREAL 1S</string>
+    <string name="model_other">Something else</string>
+    <string name="model_unknown">I\'m not sure</string>
+
+    <string name="motion_intro">Now some head movements. Do each one slowly and comfortably, and only as far as feels easy.</string>
+    <string name="motion_rest">Take the glasses off and lay them on a table, lenses facing up. Don\'t touch them until I speak again.</string>
+    <string name="motion_level">Put the glasses back on. Look straight ahead and keep your head still.</string>
+    <string name="motion_turn_left">Slowly turn your head to the left, then back to the middle.</string>
+    <string name="motion_turn_right">Slowly turn your head to the right, then back to the middle.</string>
+    <string name="motion_look_up">Slowly look up, hold it for two seconds, then look back to the middle.</string>
+    <string name="motion_look_down">Slowly look down, hold it for two seconds, then look back to the middle.</string>
+    <string name="motion_tilt_left">Tilt your head towards your left shoulder, hold it, then come back to the middle.</string>
+    <string name="motion_tilt_right">Tilt your head towards your right shoulder, hold it, then come back to the middle.</string>
+    <string name="motion_free">Last one. Look around the room naturally until I speak again.</string>
+    <string name="motion_retry_still">I noticed some movement. Let\'s do that one again, keeping completely still.</string>
+    <string name="motion_retry_turn">I didn\'t catch much movement. Let\'s try that one again, a little bigger.</string>
+    <string name="motion_good">Good.</string>
+    <string name="axes_repeat">To be sure I understood your movements, let\'s repeat a couple of them.</string>
+    <string name="motion_no_data">The sensors stopped sending data, so I\'ll skip the remaining movements.</string>
+</resources>

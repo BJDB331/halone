@@ -36,6 +36,7 @@ listOf(
     "engine-plugin",
     "core-shell",
     "app",
+    "testkit",
 ).forEach { name ->
     include(":$name")
     project(":$name").projectDir = file("android/$name")
