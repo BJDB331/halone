@@ -79,6 +79,18 @@ data class Optics(
      * consistently have.
      */
     val calibratedFovScale: Float = 1f,
+    /**
+     * How far the compositor spreads a head movement down the frame, as a
+     * fraction of one refresh: 1 for a panel lit top row first across the
+     * whole refresh (XREAL, measured), 0 for one lit all at once or whose scan
+     * is not known.
+     *
+     * Wrong is worse than off. A per-row correction for a scan the panel does
+     * not do stretches and squeezes the image on every nod, which reads as
+     * dropped frames — most of all looking up and down, since that is the
+     * direction the rows run in.
+     */
+    val scanoutCompensation: Float = 1f,
 ) {
     /**
      * Vertical half-angle follows from the diagonal and the aspect:

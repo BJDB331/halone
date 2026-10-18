@@ -345,7 +345,7 @@ class StereoCompositor(
      * sweep the same question either way.
      */
     @Volatile
-    var scanoutCompensation = 1.0f
+    var scanoutCompensation = optics.scanoutCompensation
 
     /**
      * The display's refresh rate, for when the glasses do not report their

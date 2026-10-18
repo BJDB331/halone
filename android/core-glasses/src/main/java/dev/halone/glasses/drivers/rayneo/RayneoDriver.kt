@@ -207,6 +207,11 @@ class RayneoDriver : GlassesDriver {
             // frame time on top that is ~24 ms at 120 Hz. Residual lag is the
             // lesser evil. Measure with the `latency` action and a camera.
             predictionConstantMs = 16f,
+            // [by feel, GT Max] Off. Halone's per-row correction assumes
+            // XREAL's top-to-bottom scan; on a GT Max it made nodding look
+            // like dropped frames. How these micro-OLEDs scan is not known,
+            // and the end-of-frame warp still runs without it.
+            scanoutCompensation = 0f,
             predictionFrametimeMultiplier = 1f,
         )
 
