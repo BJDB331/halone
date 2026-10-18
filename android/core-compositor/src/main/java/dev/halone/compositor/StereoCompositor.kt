@@ -348,6 +348,27 @@ class StereoCompositor(
     var scanoutCompensation = 1.0f
 
     /**
+     * The display's refresh rate, for when the glasses do not report their
+     * timing ([displayClock] is null). It sets the frame time the prediction
+     * horizon counts and the span the scanout correction spreads across.
+     *
+     * Assumed 60 Hz before this existed. At 120 Hz (RayNeo GT glasses in 2D)
+     * that doubled the scanout span, so every head movement was warped across
+     * twice the time the panel actually takes to light — a smear while
+     * looking around — and added a frame of over-prediction on top.
+     */
+    @Volatile
+    var refreshHz: Float = 60f
+        set(value) {
+            field = if (value.isFinite() && value > 1f) value else 60f
+            projectionDirty = true
+        }
+
+    private val frameTimeMs: Float get() = 1000f / refreshHz
+
+    private val scanoutSeconds: Float get() = 1f / refreshHz
+
+    /**
      * Rendered vertical field of view per eye.
      *
      * A spec sheet figure and the projection an eye actually needs are not the
@@ -623,7 +644,7 @@ class StereoCompositor(
         // moves it vertically. Zero when the warp is doing this properly at the
         // end of the frame, or the same rotation is applied twice.
         val warping = reprojection && distortionReady
-        val scanSeconds = if (warping) 0f else SCANOUT_SECONDS
+        val scanSeconds = if (warping) 0f else scanoutSeconds
         val scanYaw = -pose.angularVelocity.y * scanSeconds * scanoutCompensation
         val scanPitch = pose.angularVelocity.x * scanSeconds * scanoutCompensation
 
@@ -1397,7 +1418,7 @@ class StereoCompositor(
         return Reprojection.overfillFor(
             frustum,
             Math.toRadians(reprojectionRateDegreesPerSecond.toDouble()).toFloat(),
-            SCANOUT_SECONDS,
+            scanoutSeconds,
         )
     }
 
@@ -1437,7 +1458,7 @@ class StereoCompositor(
      */
     private fun renderPose(photonDeviceNs: Long?): HeadPose {
         val clock = displayClock
-        if (photonDeviceNs == null || clock == null) return tracker.predictedPose(FRAME_TIME_MS)
+        if (photonDeviceNs == null || clock == null) return tracker.predictedPose(frameTimeMs)
         val latest = tracker.pose
         val midScanoutNs = photonDeviceNs + (clock.periodNs * scanoutCompensation / 2.0).toLong()
         return tracker.poseAfterMs((midScanoutNs - latest.timestampNs) / 1e6f)
@@ -1476,7 +1497,7 @@ class StereoCompositor(
         } else {
             // A reconnected stream can restart its clock, which would otherwise
             // buy an arbitrary amount of freshness and warp the frame to nothing.
-            val horizonMs = tracker.predictionHorizonMs(FRAME_TIME_MS)
+            val horizonMs = tracker.predictionHorizonMs(frameTimeMs)
             val freshenedMs = ((latest.timestampNs - renderPose.timestampNs) / 1_000_000f)
                 .coerceIn(0f, maxOf(horizonMs, 0f))
             firstRowMs = horizonMs - freshenedMs - scanSpanMs
@@ -1511,7 +1532,7 @@ class StereoCompositor(
      * where it will not.
      */
     private fun scanoutSpanMs(clock: DisplayClock?): Float =
-        if (clock != null) (clock.periodNs / 1e6).toFloat() else SCANOUT_SECONDS * 1000f
+        if (clock != null) (clock.periodNs / 1e6).toFloat() else scanoutSeconds * 1000f
 
     private fun angleBetweenDegrees(a: Quaternion, b: Quaternion): Float {
         val cosHalf = Math.abs(a.dot(b)).coerceAtMost(1f)
@@ -1580,7 +1601,6 @@ class StereoCompositor(
 
     companion object {
 
-        private const val FRAME_TIME_MS = 16.6f
         private const val CURSOR_METRES = 0.03f
 
         /** The arrow's picture, which leaves room around the arrow itself, in panel pixels. */
@@ -1609,12 +1629,6 @@ class StereoCompositor(
 
         private const val NEAR_PLANE_M = 0.5f
         private const val FAR_PLANE_M = 200f
-
-        /**
-         * One frame at 60 Hz; the panel is lit progressively over this period.
-         * Only a fallback now — the glasses report the real figure.
-         */
-        private const val SCANOUT_SECONDS = 1f / 60f
 
         /**
          * Beyond this the beacons have stopped and the refresh grid is a guess,

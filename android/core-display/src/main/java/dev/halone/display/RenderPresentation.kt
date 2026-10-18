@@ -26,10 +26,15 @@ class RenderPresentation(
     var surfaceView: GLSurfaceView? = null
         private set
 
+    /** Refresh rate of the mode asked for in the last [show], or the display's own. */
+    var refreshHz: Float = 60f
+        private set
+
     fun show(display: Display, renderer: GLSurfaceView.Renderer) {
         dismiss()
 
         val wide = widestStereoMode(display) ?: fastestMode(display)
+        refreshHz = wide?.refreshRate ?: display.refreshRate
 
         val view = object : GLSurfaceView(context) {}.apply {
             setEGLContextClientVersion(3)
@@ -49,7 +54,7 @@ class RenderPresentation(
             show()
         }
 
-        log("  presentation shown on display ${display.displayId}, requested mode ${wide?.modeId}")
+        log("  presentation shown on display ${display.displayId}, requested mode ${wide?.modeId} at ${"%.0f".format(refreshHz)} Hz")
     }
 
     fun dismiss() {

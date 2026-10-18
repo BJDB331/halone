@@ -58,6 +58,8 @@ class GlassesStereoSession(
             it.calibration = tracker.calibration
             it.displayClock = displayClock
             presentation.show(display, it)
+            // The presentation picks the mode, so it knows the rate.
+            it.refreshHz = presentation.refreshHz
         }
     }
 
