@@ -544,6 +544,28 @@ class HeadTrackerTest {
     }
 
     /**
+     * The mounting is in the glasses' frame, so it must stay corrected after a
+     * turn. Composed on the world side it only held at the starting heading: a
+     * 29° board pitch (RayNeo GT Max) turned into roll as the wearer panned.
+     */
+    @Test
+    fun `imu mounting pitch stays corrected after turning`() {
+        val tilted = optics.copy(imuPitchOffsetDegrees = 29f)
+        val tracker = HeadTracker(tilted, OrientationFilter(accelWeight = 0f))
+        for (yawDegrees in listOf(0f, 45f, 90f, -120f)) {
+            val half = Math.toRadians(yawDegrees / 2.0)
+            val yaw = Quaternion(kotlin.math.cos(half).toFloat(), 0f, kotlin.math.sin(half).toFloat(), 0f)
+            // Head level and turned; the board reads 29° nose-up in its own frame.
+            tracker.onSample(TrackingSample.Oriented(1L, yaw * Quaternion.fromPitchDegrees(29f)))
+
+            val (turned, pitch, roll) = tracker.pose.orientation.toEulerDegrees()
+            assertEquals("pitch at $yawDegrees°", 0f, pitch, 0.5f)
+            assertEquals("roll at $yawDegrees°", 0f, roll, 0.5f)
+            assertEquals("yaw at $yawDegrees°", yawDegrees, turned, 0.5f)
+        }
+    }
+
+    /**
      * The rate the compositor extrapolates along must be the corrected one. The
      * filter subtracts bias before integrating; publishing the raw sample put it
      * straight back into prediction and the scanout correction.
