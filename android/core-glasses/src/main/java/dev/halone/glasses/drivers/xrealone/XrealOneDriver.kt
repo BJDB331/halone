@@ -77,8 +77,9 @@ class XrealOneDriver : GlassesDriver {
         const val VENDOR_ID = 0x3318
 
         /**
-         * Measured on an XREAL 1S, which shares this protocol: the report frame
-         * is x right, y down, z forward. Not yet confirmed on a One or One Pro.
+         * The report frame is x right, y down, z forward. Measured on a 1S, then
+         * confirmed on one One Pro by a test-kit session: look up/down, tilt and
+         * worn gravity all agree, with the IMU pitched ~31° against the head.
          */
         val AXES = AxisConvention(
             xFrom = AxisConvention.Axis.X_POS,

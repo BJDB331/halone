@@ -10,6 +10,7 @@ import dev.halone.glasses.transport.HidTransportProvider
 import dev.halone.glasses.transport.LinkLocalNetworks
 import dev.halone.glasses.transport.SocketTransportProvider
 import dev.halone.glasses.transport.UsbHidTransportProvider
+import dev.halone.glasses.transport.usbnet.UsbNetTransportProvider
 import javax.net.SocketFactory
 
 /**
@@ -40,9 +41,12 @@ class GlassesConnection(
                 registry.probe(identity)?.let { usbDevice to it }
             }
 
+    /** Network devices skip the prompt only when the phone brought their network up itself. */
     fun hasPermission(usbDevice: UsbDevice): Boolean {
-        val probe = registry.probe(UsbHidTransportProvider.identityOf(usbDevice))
-        return probe?.match?.transports?.needsUsbPermission == false || usbManager.hasPermission(usbDevice)
+        val transports = registry.probe(UsbHidTransportProvider.identityOf(usbDevice))?.match?.transports
+        val network = transports?.network
+        val systemLink = network != null && network.hosts.any { linkLocal.networkFor(it) != null }
+        return systemLink || usbManager.hasPermission(usbDevice)
     }
 
     fun requestPermission(usbDevice: UsbDevice, intent: android.app.PendingIntent) =
@@ -67,7 +71,7 @@ class GlassesConnection(
 
     private fun transportsFor(usbDevice: UsbDevice, probe: ProbeResult): Result<HidTransportProvider> {
         val network = probe.match.transports.network
-        if (network != null) {
+        if (network != null && network.hosts.any { linkLocal.networkFor(it) != null }) {
             val transports = SocketTransportProvider(network.hosts) { host ->
                 linkLocal.socketFactoryFor(host) ?: SocketFactory.getDefault()
             }
@@ -77,6 +81,9 @@ class GlassesConnection(
 
         val connection = usbManager.openDevice(usbDevice)
             ?: return Result.failure(IllegalStateException("openDevice returned null — permission not granted?"))
+        if (network != null) {
+            return Result.success(UsbNetTransportProvider(usbDevice, connection, network.hosts).also { provider = it })
+        }
         return Result.success(UsbHidTransportProvider(usbDevice, connection).also { provider = it })
     }
 

@@ -23,7 +23,7 @@ class LinkLocalNetworks(context: Context) {
 
     fun networkFor(host: String): Network? {
         val target = parse(host) ?: return null
-        val linkLocal = candidates().filter { (_, addresses) -> addresses.any { it.isLinkLocalAddress } }
+        val linkLocal = candidates().filter { (_, addresses) -> addresses.any { it is Inet4Address && it.isLinkLocalAddress } }
         return linkLocal.firstOrNull { (_, addresses) -> addresses.any { sameSlash24(it, target) } }?.first
             ?: linkLocal.firstOrNull()?.first
     }

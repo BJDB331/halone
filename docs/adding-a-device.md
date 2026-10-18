@@ -200,7 +200,9 @@ vendor SDK can sit behind it.
 Glasses that bring up a network over USB, like the XREAL One series, declare
 `TransportRequest(network = NetworkRequest(hosts, ports))` instead of interface
 ids. The host then skips USB permission, binds sockets to the glasses' network,
-and `open(port)` hands back a `SocketTransport`. A TCP read returns whatever
+and `open(port)` hands back a `SocketTransport`. Phones that never bring that
+network up get the in-process stack in `transport/usbnet` instead (USB CDC ECM,
+DHCP, ARP, minimal TCP), which does need USB permission. A TCP read returns whatever
 part of the stream has arrived, so the driver does its own framing — see
 `XrealOneFramer`, and test it against a capture split at random points. If your device needs a genuinely different shape —
 control transfers, isochronous streams, an SDK that owns its own threads — open
