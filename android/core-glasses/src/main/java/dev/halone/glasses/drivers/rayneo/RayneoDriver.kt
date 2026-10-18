@@ -148,28 +148,29 @@ class RayneoDriver : GlassesDriver {
         val INTERFACE_CANDIDATES = listOf(0, 5)
 
         /**
-         * Sensor frame, from the GT's measured head mounting: right is sensor
-         * +X, forward is sensor +Y, up is sensor +Z, and gravity at rest reads
-         * on +Z. Into the canonical frame (+X right, +Y up, +Z toward the
-         * wearer):
+         * Sensor frame: **forward is sensor +X, left is +Y, up is +Z**, with
+         * gravity at rest on +Z — the frame the macOS GT project works in
+         * with an identity mounting. Into the canonical frame (+X right, +Y
+         * up, +Z toward the wearer):
          *
-         * - canonical X = sensor +X
+         * - canonical X = sensor −Y (right is minus left)
          * - canonical Y = sensor +Z
-         * - canonical Z = sensor −Y (backward is minus forward)
+         * - canonical Z = sensor −X (backward is minus forward)
          *
-         * An odd permutation with one sign flip, so determinant +1: a proper
-         * rotation, and the gyro transforms with it unchanged.
+         * A cyclic permutation with two sign flips, so determinant +1: a
+         * proper rotation, and the gyro transforms with it unchanged.
          *
-         * **[unverified]** The source calls this mapping approximate, a second
-         * project reports the sensor board pitched about 29° in the frame, and
-         * neither had a GT Max. Run the `axes` development action on GT Max
-         * hardware before trusting it, and set `imuPitchOffsetDegrees` from
-         * what it shows.
+         * **[measured]** on a GT Max, the mapping first used here — right on
+         * sensor +X, forward on +Y, from the Windows project's notes — was a
+         * quarter turn out: nodding rolled the scene and the horizon sat
+         * tilted. Forward and left are the two horizontal axes swapped back.
+         * The signs of those two are still to be confirmed (looking up should
+         * move the scene down), as is the board's reported ~29° pitch.
          */
         val AXES = AxisConvention(
-            xFrom = AxisConvention.Axis.X_POS,
+            xFrom = AxisConvention.Axis.Y_NEG,
             yFrom = AxisConvention.Axis.Z_POS,
-            zFrom = AxisConvention.Axis.Y_NEG,
+            zFrom = AxisConvention.Axis.X_NEG,
         )
 
         /**

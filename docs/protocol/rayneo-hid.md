@@ -106,13 +106,14 @@ about 39 °C. The first ~4 s after stream-on are reported as contaminated.
 
 ### Axes
 
-Sensor frame on the GT, from a measured head-mounting calibration: **right +X,
-forward +Y, up +Z**, with gravity at rest on +Z. In Halone's canonical frame
-that is `(x, y, z) → (x, z, −y)` — see `RayneoDriver.AXES`.
+**Forward +X, left +Y, up +Z**, with gravity at rest on +Z — the frame the
+macOS project uses with an identity mounting. In Halone's canonical frame that
+is `(x, y, z) → (−y, z, −x)`; see `RayneoDriver.AXES`.
 
-The source calls this approximate, and the macOS project reports the sensor
-pitched about 29° in the frame. **[unverified]** on any GT Max: run the `axes`
-development action and set `imuPitchOffsetDegrees` from what it shows.
+**[measured]** on a GT Max: the mapping in the Windows project's notes (right
++X, forward +Y) is a quarter turn out — nodding rolled the scene and the
+horizon sat tilted. The signs of the two horizontal axes, and the ~29° board
+pitch the macOS project reports, are still to be confirmed.
 
 ### Magnetometer
 
