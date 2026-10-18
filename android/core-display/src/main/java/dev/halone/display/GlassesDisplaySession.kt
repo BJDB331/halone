@@ -26,18 +26,13 @@ import kotlin.coroutines.resume
 class GlassesDisplaySession(
     context: Context,
     private val log: (String) -> Unit,
-    /**
-     * Told `true` while waiting for the wearer to switch the glasses to 3D
-     * themselves, and `false` once that wait is over, so the phone can say so.
-     */
-    private val onAwaitingWearer: (Boolean) -> Unit = {},
 ) {
     private val displayManager =
         context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
 
     /** Switches the glasses to stereo, waiting out the display churn it causes. */
     suspend fun enterStereo(device: GlassesDevice, mode: DisplayMode? = null): Display? {
-        val control = device.display ?: return awaitWearerStereo(device)
+        val control = device.display ?: return currentGlassesDisplay(device)
 
         val stereo = mode ?: control.preferredStereoMode()
         if (stereo == null) {
@@ -80,27 +75,23 @@ class GlassesDisplaySession(
     }
 
     /**
-     * Stereo for glasses the host cannot command (RayNeo GT series): the
-     * wearer turns on 3D with the glasses' own controls, and all we see is the
-     * display re-advertising itself with a side-by-side mode. So: use it if it
-     * is already there, otherwise say what to do and watch for it.
+     * For glasses the host cannot switch (RayNeo GT series): the wearer
+     * chooses 2D or 3D with the glasses' own controls, so use the display in
+     * whichever mode it is. The compositor draws side by side on a 3840x1080
+     * mode and a single image on a 1920x1080 one, and follows a switch made
+     * while it runs.
      */
-    private suspend fun awaitWearerStereo(device: GlassesDevice): Display? {
-        findGlassesDisplay(device)?.takeIf { it.hasSideBySideMode() }?.let { display ->
-            log("  the glasses are already side-by-side on display ${display.displayId}")
-            return display
+    private fun currentGlassesDisplay(device: GlassesDevice): Display? {
+        val display = findGlassesDisplay(device)
+        if (display == null) {
+            log("  no glasses display found")
+            return null
         }
-        log("  these glasses switch to 3D from their own controls; " +
-            "waiting up to ${WEARER_SWITCH_MS / 1000} s for side-by-side")
-        onAwaitingWearer(true)
-        try {
-            val display = awaitDisplay(WEARER_SWITCH_MS) { it.hasSideBySideMode() }
-            if (display == null) log("  the glasses did not switch to side-by-side")
-            else log("  display ${display.displayId} \"${display.name}\" is side-by-side")
-            return display
-        } finally {
-            onAwaitingWearer(false)
-        }
+        log(
+            "  using display ${display.displayId} \"${display.name}\" as the glasses have it: " +
+                if (display.hasSideBySideMode()) "3D (side by side)" else "2D (one image for both eyes)"
+        )
+        return display
     }
 
     fun findGlassesDisplay(device: GlassesDevice): Display? {
@@ -168,8 +159,5 @@ class GlassesDisplaySession(
 
     private companion object {
         const val DISPLAY_SETTLE_MS = 4_000L
-
-        /** Long enough to find a button on glasses you are wearing. */
-        const val WEARER_SWITCH_MS = 45_000L
     }
 }

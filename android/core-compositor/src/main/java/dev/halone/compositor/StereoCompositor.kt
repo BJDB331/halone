@@ -498,6 +498,20 @@ class StereoCompositor(
 
     private var frameWidth = 0
     private var frameHeight = 0
+
+    /**
+     * True when the surface is not two eyes side by side but one image the
+     * glasses show to both — a 2D mode, such as RayNeo glasses offer without
+     * a host command for 3D. One centred eye is drawn across the whole frame:
+     * no depth, but no squashed pair of half-images in each eye either, and
+     * these modes often run faster than the side-by-side one.
+     */
+    private var mono = false
+
+    /** Width of what one rendered eye covers: half the frame, or all of it in [mono]. */
+    private val eyeWidth: Int get() = if (mono) frameWidth else frameWidth / 2
+
+    private val eyeCount: Int get() = if (mono) 1 else 2
     private var clipPerRadianX = 0f
     private var clipPerRadianY = 0f
 
@@ -569,9 +583,13 @@ class StereoCompositor(
         presentTimingAvailable = FrameTimestamps.enable()
         frameWidth = width
         frameHeight = height
+        mono = width < 2 * height
         projectionDirty = true
         rebuildProjection()
-        log("  compositor: frame ${width}x$height, per-eye ${width / 2}x$height")
+        log(
+            if (mono) "  compositor: frame ${width}x$height, mono (one image for both eyes)"
+            else "  compositor: frame ${width}x$height, per-eye ${width / 2}x$height"
+        )
     }
 
     override fun onDrawFrame(gl: GL10?) {
@@ -609,7 +627,7 @@ class StereoCompositor(
         val scanYaw = -pose.angularVelocity.y * scanSeconds * scanoutCompensation
         val scanPitch = pose.angularVelocity.x * scanSeconds * scanoutCompensation
 
-        val halfWidth = frameWidth / 2
+        val halfWidth = eyeWidth
         val panels = scene.panels
 
         val overlays = listOfNotNull(scene.dock, scene.launcher, scene.popup)
@@ -622,7 +640,7 @@ class StereoCompositor(
         titleBars.forget(panels.mapTo(HashSet()) { it.id }).forEach { abandonedTextures += it }
         val stacked = scene.drawOrder()
 
-        for (eye in 0 until 2) {
+        for (eye in 0 until eyeCount) {
             if (distortionReady) {
                 // Everything below now draws into an offscreen image that is
                 // slightly wider than the eye, and is warped onto the display
@@ -671,7 +689,7 @@ class StereoCompositor(
             // there is, and rendering the second eye is more of the delay it
             // exists to absorb.
             updateReprojection(pose, photon, warping)
-            for (eye in 0 until 2) {
+            for (eye in 0 until eyeCount) {
                 distortion[eye].drawTo(eye * halfWidth, 0, halfWidth, frameHeight)
             }
         }
@@ -1260,8 +1278,8 @@ class StereoCompositor(
 
     private fun rebuildProjection() {
         if (frameWidth == 0 || frameHeight == 0) return
-        // Per eye the frame is half as wide.
-        val eyeAspect = (frameWidth / 2f) / frameHeight
+        // Per eye the frame is half as wide, unless one image serves both.
+        val eyeAspect = eyeWidth.toFloat() / frameHeight
 
         rebuildDistortion()
 
@@ -1347,7 +1365,6 @@ class StereoCompositor(
         }
         overfill = maxOf(lensNeeded, reprojectionOverfill())
 
-        val eyeWidth = frameWidth / 2
         val textureWidth = (eyeWidth * (1f + 2f * overfill)).toInt()
         val textureHeight = (frameHeight * (1f + 2f * overfill)).toInt()
 
@@ -1375,7 +1392,7 @@ class StereoCompositor(
      */
     private fun reprojectionOverfill(): Float {
         if (!reprojection) return 0f
-        val eyeAspect = (frameWidth / 2f) / frameHeight
+        val eyeAspect = eyeWidth.toFloat() / frameHeight
         val frustum = frustumFor(Eye.LEFT, eyeAspect).scaledBy(fovScale)
         return Reprojection.overfillFor(
             frustum,
@@ -1529,7 +1546,8 @@ class StereoCompositor(
 
         if (left == null || right == null) {
             for (index in 0 until 2) {
-                val sign = if (index == 0) -1f else 1f
+                // In mono the one image is seen from between the eyes.
+                val sign = if (mono) 0f else if (index == 0) -1f else 1f
                 Matrix.setIdentityM(eyePose[index], 0)
                 Matrix.translateM(eyePose[index], 0, sign * ipdMetres / 2f, 0f, 0f)
                 eyeRotationQuaternion[index] = Quaternion.IDENTITY
@@ -1550,6 +1568,8 @@ class StereoCompositor(
             Matrix.translateM(eyePose[index], 0, offset.x, offset.y, offset.z)
             Matrix.multiplyMM(eyePose[index], 0, eyePose[index].copyOf(), 0, eyeRotation, 0)
         }
+        // In mono the one image is seen from between the eyes.
+        if (mono) for (i in 12..14) eyePose[0][i] = 0f
     }
 
     /** Forward in the canonical frame is -Z: the negated third column. */

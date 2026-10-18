@@ -193,7 +193,6 @@ class MainActivity : AppCompatActivity() {
         val model = connection.device?.info?.displayName ?: found?.second?.match?.info?.displayName
         val status = when {
             shellSession != null -> GlassesStatus.RUNNING
-            awaitingWearer3d -> GlassesStatus.SWITCH_TO_3D
             starting != null -> GlassesStatus.STARTING
             found == null -> GlassesStatus.DISCONNECTED
             noVideoOutput() -> GlassesStatus.NO_VIDEO_OUTPUT
@@ -207,9 +206,6 @@ class MainActivity : AppCompatActivity() {
 
     /** When the glasses' USB interfaces were first seen, to give their display time to appear. */
     private var glassesFoundAt: Long? = null
-
-    /** True while glasses that choose their own mode wait for the wearer to turn on 3D. */
-    private var awaitingWearer3d = false
 
     /**
      * The glasses are on USB but no display of theirs came up: the phone's port
@@ -1772,16 +1768,7 @@ class MainActivity : AppCompatActivity() {
                 ?: run { logLine("  $key is not a mode this device lists"); return null }
         }
 
-        val session = stereoSession ?: GlassesStereoSession(
-            this,
-            log = { logOnMain(it) },
-            onAwaitingWearer = { waiting ->
-                runOnUiThread {
-                    awaitingWearer3d = waiting
-                    refreshHome()
-                }
-            },
-        )
+        val session = stereoSession ?: GlassesStereoSession(this) { logOnMain(it) }
         stereoSession = session
 
         return lifecycleScope.launch {
@@ -2394,8 +2381,7 @@ class MainActivity : AppCompatActivity() {
         const val CLICK_SLOP_DEGREES = 1f
         const val CONNECT_TIMEOUT_MS = 60_000L
         const val LINK_RETURN_TIMEOUT_MS = 20_000L
-        /** Covers the wait for a wearer to switch their glasses to 3D, which is longer than any mode switch. */
-        const val STEREO_TIMEOUT_MS = 60_000L
+        const val STEREO_TIMEOUT_MS = 20_000L
         const val TAP_RECORD_SECONDS = 240
         const val TAP_AIM_LEAD_MS = 30L
         const val HIT_HISTORY = 64

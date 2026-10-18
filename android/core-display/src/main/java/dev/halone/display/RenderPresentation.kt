@@ -29,7 +29,7 @@ class RenderPresentation(
     fun show(display: Display, renderer: GLSurfaceView.Renderer) {
         dismiss()
 
-        val wide = widestStereoMode(display)
+        val wide = widestStereoMode(display) ?: fastestMode(display)
 
         val view = object : GLSurfaceView(context) {}.apply {
             setEGLContextClientVersion(3)
@@ -59,6 +59,18 @@ class RenderPresentation(
     }
 
     private companion object {
+        /**
+         * No side-by-side mode means the glasses are in 2D: take the fastest
+         * refresh at the current resolution, which on RayNeo GT glasses is
+         * 120 Hz against the 60 the default mode may be.
+         */
+        fun fastestMode(display: Display): Display.Mode? {
+            val current = display.mode
+            return display.supportedModes
+                .filter { it.physicalWidth == current.physicalWidth && it.physicalHeight == current.physicalHeight }
+                .maxByOrNull { it.refreshRate }
+        }
+
         /** Widest mode shaped like two 16:9 halves glued together. */
         fun widestStereoMode(display: Display): Display.Mode? =
             display.supportedModes

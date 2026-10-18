@@ -28,10 +28,8 @@ import dev.halone.glasses.fusion.HeadTracker
 class GlassesStereoSession(
     private val context: Context,
     private val log: (String) -> Unit,
-    /** See [GlassesDisplaySession]: true while the wearer has to switch the glasses to 3D. */
-    onAwaitingWearer: (Boolean) -> Unit = {},
 ) {
-    private val displays = GlassesDisplaySession(context, log, onAwaitingWearer)
+    private val displays = GlassesDisplaySession(context, log)
     private val presentation = RenderPresentation(context, log)
 
     val scene = Scene()

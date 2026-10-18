@@ -164,8 +164,8 @@ class RayneoDriver : GlassesDriver {
          * sensor +X, forward on +Y, from the Windows project's notes — was a
          * quarter turn out: nodding rolled the scene and the horizon sat
          * tilted. Forward and left are the two horizontal axes swapped back.
-         * The signs of those two are still to be confirmed (looking up should
-         * move the scene down), as is the board's reported ~29° pitch.
+         * With it, nods and tilts stay world-locked on a GT Max; the board's
+         * pitch in the frame is corrected through `imuPitchOffsetDegrees`.
          */
         val AXES = AxisConvention(
             xFrom = AxisConvention.Axis.Y_NEG,
@@ -195,6 +195,11 @@ class RayneoDriver : GlassesDriver {
             // Measured on the GT, not the Max: 21.875 ticks of 100 µs per
             // sample, not the 476 Hz of earlier notes.
             imuRateHz = 457,
+            // [measured, roughly] On a GT Max, with no correction, a level
+            // gaze left the scene well below: the board sits nose-up in the
+            // frame, by the ~29° the macOS GT project reports. Fine-tune by
+            // eye: content high means lower this, content low means raise it.
+            imuPitchOffsetDegrees = 29f,
             // [unverified] A placeholder, not a measurement: about half
             // XREAL's 85 ms, on the principle recorded there that residual lag
             // is far less objectionable than overshoot. Measure with the

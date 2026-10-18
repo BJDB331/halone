@@ -22,9 +22,6 @@ enum class GlassesStatus(val title: String, val dimmed: Boolean) {
     LINK_OFF("Network Connection Off", true),
     READY("Glasses Ready", false),
     STARTING("Starting…", false),
-
-    /** Glasses that choose their own 3D mode, waiting for the wearer to choose it. */
-    SWITCH_TO_3D("Switch the Glasses to 3D", false),
     RUNNING("Environment Running", false),
 }
 
@@ -190,10 +187,6 @@ class HomeScreen(
             GlassesStatus.NO_VIDEO_OUTPUT -> "The glasses are connected, but this phone's USB-C port does not send video " +
                 "(DisplayPort Alt Mode), so it cannot drive them. Halone needs a phone that can show its screen on a USB-C display."
             GlassesStatus.LINK_OFF -> listOfNotNull(model, help).joinToString("\n")
-            GlassesStatus.SWITCH_TO_3D -> listOfNotNull(
-                model,
-                "Turn on 3D (side-by-side) with the glasses' own controls. The environment starts as soon as they switch.",
-            ).joinToString("\n")
             else -> model.orEmpty()
         }
         detail.text = listOfNotNull(text.takeIf { it.isNotEmpty() }, notice).joinToString("\n\n")
@@ -204,7 +197,6 @@ class HomeScreen(
             GlassesStatus.LINK_OFF -> "Turn It On" to true
             GlassesStatus.READY -> "Start Environment" to true
             GlassesStatus.STARTING -> "Starting…" to false
-            GlassesStatus.SWITCH_TO_3D -> "Waiting for 3D…" to false
             GlassesStatus.RUNNING -> "Stop Environment" to true
         }
         primary.text = label
