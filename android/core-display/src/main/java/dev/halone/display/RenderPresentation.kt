@@ -49,7 +49,17 @@ class RenderPresentation(
             // rate is what tells it a 60 Hz mode would drop frames.
             holder.addCallback(object : SurfaceHolder.Callback {
                 override fun surfaceCreated(holder: SurfaceHolder) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    // ALWAYS, not the default only-if-seamless: on a GT Max over
+                    // USB-C the display offered 60 and 120 Hz yet stayed at 60,
+                    // and a switch from 60 to 120 on an external link is not
+                    // seamless, so a seamless-only request is never acted on.
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        runCatching {
+                            holder.surface.setFrameRate(
+                                rate, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE, Surface.CHANGE_FRAME_RATE_ALWAYS,
+                            )
+                        }
+                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                         runCatching { holder.surface.setFrameRate(rate, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE) }
                     }
                 }
@@ -71,6 +81,20 @@ class RenderPresentation(
             }
             setContentView(view)
             show()
+        }.also { shown ->
+            // And again once the window exists: a request made before the
+            // window is attached has been seen not to take on external
+            // displays, and asking twice costs nothing.
+            wide?.let { mode ->
+                view.postDelayed({
+                    shown.window?.let { w ->
+                        w.attributes = w.attributes.apply {
+                            preferredDisplayModeId = mode.modeId
+                            preferredRefreshRate = mode.refreshRate
+                        }
+                    }
+                }, REAPPLY_MODE_MS)
+            }
         }
 
         log("  presentation shown on display ${display.displayId}, requested mode ${wide?.modeId} at ${"%.0f".format(refreshHz)} Hz")
@@ -83,6 +107,8 @@ class RenderPresentation(
     }
 
     private companion object {
+        const val REAPPLY_MODE_MS = 500L
+
         /**
          * No side-by-side mode means the glasses are in 2D: take the fastest
          * refresh at the current resolution, which on RayNeo GT glasses is

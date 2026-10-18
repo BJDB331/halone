@@ -1437,9 +1437,22 @@ class MainActivity : AppCompatActivity() {
                         .filter { it.physicalWidth == mode.physicalWidth && it.physicalHeight == mode.physicalHeight }
                         .map { it.refreshRate.roundToInt() }
                         .distinct().sorted().joinToString("/")
+                    // The user's frame-rate matching preference decides whether
+                    // a non-seamless switch, which 60 -> 120 on USB-C is, is
+                    // allowed at all; worth seeing beside the mode.
+                    val switching = if (android.os.Build.VERSION.SDK_INT >= 31) {
+                        when (getSystemService(android.hardware.display.DisplayManager::class.java).matchContentFrameRateUserPreference) {
+                            android.hardware.display.DisplayManager.MATCH_CONTENT_FRAMERATE_NEVER -> "never"
+                            android.hardware.display.DisplayManager.MATCH_CONTENT_FRAMERATE_SEAMLESSS_ONLY -> "seamless only"
+                            android.hardware.display.DisplayManager.MATCH_CONTENT_FRAMERATE_ALWAYS -> "always"
+                            else -> "unknown"
+                        }
+                    } else {
+                        "n/a"
+                    }
                     pointerPad?.setStats(
                         "Glasses ${mode.physicalWidth}×${mode.physicalHeight} @ ${mode.refreshRate.roundToInt()} Hz " +
-                            "(offers $offered) · drawing ${fps?.roundToInt() ?: "–"} fps"
+                            "(offers $offered, switching: $switching) · drawing ${fps?.roundToInt() ?: "–"} fps"
                     )
                 }
                 delay(1_000)
