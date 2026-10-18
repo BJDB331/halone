@@ -195,11 +195,11 @@ class RayneoDriver : GlassesDriver {
             // Measured on the GT, not the Max: 21.875 ticks of 100 µs per
             // sample, not the 476 Hz of earlier notes.
             imuRateHz = 457,
-            // [measured, roughly] On a GT Max, with no correction, a level
-            // gaze left the scene well below: the board sits nose-up in the
-            // frame, by the ~29° the macOS GT project reports. Fine-tune by
-            // eye: content high means lower this, content low means raise it.
-            imuPitchOffsetDegrees = 29f,
+            // [measured, by eye] The board sits nose-up in the frame. The
+            // macOS GT project reports ~29°; on a GT Max, 29° still left the
+            // scene about 15° low at a level gaze, so 44°. Fine-tune by eye:
+            // content high means lower this, content low means raise it.
+            imuPitchOffsetDegrees = 44f,
             // [unverified] A placeholder, not a measurement: about half
             // XREAL's 85 ms, on the principle recorded there that residual lag
             // is far less objectionable than overshoot. Measure with the
