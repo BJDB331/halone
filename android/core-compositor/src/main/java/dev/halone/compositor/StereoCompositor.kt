@@ -408,7 +408,18 @@ class StereoCompositor(
      */
     var showChrome = true
 
-    /** Off by default: panels should look nailed to the world, not follow you. */
+    /**
+     * Off by default: panels should look nailed to the world, not follow you.
+     *
+     * Also what glasses that world-lock the image themselves need (RayNeo's
+     * on-board "pinned" mode): the scene is drawn fixed to the face and the
+     * glasses move the whole image. Everything that would turn the scene with
+     * the head — the view, the late warp, the scanout shear, following — then
+     * stands still, or the head's motion is compensated twice. The gaze still
+     * follows the head, since that is where the wearer is looking within the
+     * image the glasses have moved.
+     */
+    @Volatile
     var lockToHead = false
 
     /**
@@ -634,7 +645,7 @@ class StereoCompositor(
         lastAim = aim
         scene.updateGrab(aim)
         scene.updateResize(aim)
-        advanceFrameClock(pose.orientation)
+        advanceFrameClock(if (lockToHead) Quaternion.IDENTITY else pose.orientation)
 
         quaternionToMatrix(if (lockToHead) Quaternion.IDENTITY else pose.orientation, headMatrix)
         lastHit = scene.hitTest(aim)
@@ -643,8 +654,8 @@ class StereoCompositor(
         // Yaw about canonical +Y moves content horizontally; pitch about +X
         // moves it vertically. Zero when the warp is doing this properly at the
         // end of the frame, or the same rotation is applied twice.
-        val warping = reprojection && distortionReady
-        val scanSeconds = if (warping) 0f else scanoutSeconds
+        val warping = reprojection && distortionReady && !lockToHead
+        val scanSeconds = if (warping || lockToHead) 0f else scanoutSeconds
         val scanYaw = -pose.angularVelocity.y * scanSeconds * scanoutCompensation
         val scanPitch = pose.angularVelocity.x * scanSeconds * scanoutCompensation
 

@@ -172,6 +172,44 @@ class RayneoSessionTest {
     }
 
     @Test
+    fun `onboard pinning hands world-locking to the glasses and survives the mode button`() {
+        val glasses = FakeRayneoGlasses()
+        val device = connect(0 to glasses).getOrThrow()
+        val pressed = CountDownLatch(1)
+        device.addEventListener { if (it is DeviceEvent.ButtonPressed) pressed.countDown() }
+
+        device.use {
+            device.tracking.start { }
+            val pinning = device.onboardPinning!!
+            assertFalse(pinning.enabled)
+
+            pinning.setEnabled(true).getOrThrow()
+            assertTrue(pinning.enabled)
+            val pinned = RayneoProtocol.CMD_ANCHOR_MODE to RayneoProtocol.AnchorMode.PINNED.value
+            assertEquals(pinned, glasses.commands().last())
+
+            // The button must now restore pinned, not follow.
+            val before = glasses.commands().size
+            glasses.pressModeButton()
+            assertTrue(pressed.await(2, TimeUnit.SECONDS))
+            Thread.sleep(200)
+            // Once: the ack to our own reassertion is not another press.
+            assertEquals(listOf(pinned), glasses.commands().drop(before))
+
+            // Recentring leaves pinned and comes back.
+            val mark = glasses.commands().size
+            pinning.recentre().getOrThrow()
+            assertEquals(
+                listOf(RayneoProtocol.CMD_ANCHOR_MODE to RayneoProtocol.AnchorMode.FOLLOW.value, pinned),
+                glasses.commands().drop(mark),
+            )
+
+            pinning.setEnabled(false).getOrThrow()
+            assertFalse(pinning.enabled)
+        }
+    }
+
+    @Test
     fun `brightness reads from device info and refuses levels outside its range`() {
         val glasses = FakeRayneoGlasses()
         connect(0 to glasses).getOrThrow().use { device ->

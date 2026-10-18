@@ -404,6 +404,8 @@ class MainActivity : AppCompatActivity() {
     private val padActions = object : PointerPad.Actions {
         override fun recenterView() = this@MainActivity.recenterView()
 
+        override fun toggleGlassesPin() = this@MainActivity.toggleGlassesPin()
+
         override fun recenterPointer() = runGesture("recenter-cursor", "PAD")
 
         override fun screenshot() {
@@ -1336,7 +1338,32 @@ class MainActivity : AppCompatActivity() {
     private fun showPad() {
         startHitHistory()
         if (pointerPad == null) pointerPad = PointerPad(this, padGestures, padActions).also { it.show() }
+        val pinning = connection.device?.onboardPinning
+        pointerPad?.setGlassesPin(available = pinning != null, pinned = pinning?.enabled == true)
         startPadStats()
+    }
+
+    /**
+     * Hands world-locking to the glasses (RayNeo's own "pinned" mode) or takes
+     * it back. Pinned, the scene is drawn fixed to the face and the glasses
+     * move it, which is as smooth as their own chip; Halone's tracking still
+     * aims the gaze pointer.
+     */
+    private fun toggleGlassesPin() {
+        val pinning = connection.device?.onboardPinning ?: return
+        val compositor = stereoSession?.compositor
+        val wanted = !pinning.enabled
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) { pinning.setEnabled(wanted) }
+            result.onFailure { logLine("  glasses pinned mode: ${it.message}") }
+            val on = pinning.enabled
+            compositor?.lockToHead = on
+            // Start both from straight ahead, so the drawn scene and the
+            // glasses' anchor agree on where forward is.
+            if (result.isSuccess) recenterView()
+            pointerPad?.setGlassesPin(available = true, pinned = on)
+            logLine("  glasses pinned mode ${if (on) "on" else "off"}")
+        }
     }
 
     private var padStatsJob: kotlinx.coroutines.Job? = null
@@ -1819,6 +1846,8 @@ class MainActivity : AppCompatActivity() {
             }
 
             session.show(display, head, device.optics, displayClock)
+            // A compositor built while the glasses pin the image must draw head-locked.
+            session.compositor?.lockToHead = device.onboardPinning?.enabled == true
 
             // Whatever the wearer happens to be facing becomes forward. This
             // also papers over the unverified IMU axis convention: the constant
@@ -1928,6 +1957,13 @@ class MainActivity : AppCompatActivity() {
     private fun recenterView() {
         val head = tracker ?: run { logLine("  no tracker"); return }
         recentreHead(head)
+        // In the glasses' own pinned mode their anchor has to move too, or the
+        // image they hold and the scene drawn into it point different ways.
+        connection.device?.onboardPinning?.takeIf { it.enabled }?.let { pinning ->
+            lifecycleScope.launch(Dispatchers.IO) {
+                pinning.recentre().onFailure { logOnMain("  glasses recentre: ${it.message}") }
+            }
+        }
         // Every panel's own heading has to come back too, or smooth follow
         // leaves them wherever they had wandered to and recentring appears to do
         // nothing.

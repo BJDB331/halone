@@ -7,6 +7,7 @@ import dev.halone.glasses.api.DeviceEventListener
 import dev.halone.glasses.api.DeviceInfo
 import dev.halone.glasses.api.DisplayControl
 import dev.halone.glasses.api.GlassesDevice
+import dev.halone.glasses.api.OnboardPinning
 import dev.halone.glasses.api.Optics
 import dev.halone.glasses.api.TrackingSample
 import dev.halone.glasses.api.TrackingSink
@@ -55,6 +56,12 @@ internal class RayneoSession(
 
     override val brightness: BrightnessControl = RayneoBrightness(initialBrightness)
 
+    /** What the glasses should be in while tracking: follow, or pinned when the wearer asked. */
+    @Volatile
+    private var sessionAnchor = AnchorMode.FOLLOW
+
+    override val onboardPinning: OnboardPinning = RayneoPinning()
+
     init {
         channel.start()
     }
@@ -87,7 +94,7 @@ internal class RayneoSession(
     private fun onReport(report: RayneoReport) {
         when (report) {
             is RayneoReport.Imu -> sink?.onSample(sample(report))
-            is RayneoReport.Ack -> if (report.opcode == RayneoProtocol.CMD_ANCHOR_MODE) onModeButton()
+            is RayneoReport.Ack -> if (report.opcode == RayneoProtocol.CMD_ANCHOR_MODE) onAnchorAck()
             is RayneoReport.Unrecognised -> Unit
         }
     }
@@ -119,9 +126,25 @@ internal class RayneoSession(
      * [AnchorMode.FOLLOW]. Put them straight back, or the image would be
      * stabilised twice. Fire-and-forget: this is the reader thread.
      */
+    /**
+     * Anchor-mode acknowledgements we caused ourselves without waiting for
+     * them. The button's ack and ours are byte-for-byte the same, so without
+     * this count the ack to a reassertion read as another press — and was
+     * reasserted again, forever, flooding the endpoint.
+     */
+    private val unawaitedAnchorAcks = java.util.concurrent.atomic.AtomicInteger(0)
+
+    private fun onAnchorAck() {
+        if (unawaitedAnchorAcks.getAndUpdate { if (it > 0) it - 1 else 0 } > 0) return
+        onModeButton()
+    }
+
     private fun onModeButton() {
         emit(DeviceEvent.ButtonPressed(DeviceEvent.Button.UNKNOWN))
-        if (sink != null) channel.send(RayneoProtocol.CMD_ANCHOR_MODE, AnchorMode.FOLLOW.value)
+        if (sink != null) {
+            unawaitedAnchorAcks.incrementAndGet()
+            if (!channel.send(RayneoProtocol.CMD_ANCHOR_MODE, sessionAnchor.value)) unawaitedAnchorAcks.decrementAndGet()
+        }
     }
 
     private fun onLost(reason: String) {
@@ -140,7 +163,7 @@ internal class RayneoSession(
             this@RayneoSession.sink = sink
             // Halone world-locks the scene itself, so the glasses' own
             // stabilisation has to be off while it does.
-            channel.request(RayneoProtocol.CMD_ANCHOR_MODE, AnchorMode.FOLLOW.value)
+            channel.request(RayneoProtocol.CMD_ANCHOR_MODE, sessionAnchor.value)
             channel.request(RayneoProtocol.CMD_STREAM_ON)
             channel.expectTraffic = true
         }
@@ -154,6 +177,36 @@ internal class RayneoSession(
             // The mode cannot be read back, so there is nothing exact to
             // restore. Pinned is what the earlier GT desktop app hands back.
             runCatching { channel.request(RayneoProtocol.CMD_ANCHOR_MODE, RESTORED_ANCHOR.value) }
+        }
+    }
+
+    /**
+     * The glasses' own "pinned" mode, offered to the host. Tracking keeps
+     * running either way — the host still aims its gaze pointer with it.
+     */
+    private inner class RayneoPinning : OnboardPinning {
+        override val enabled: Boolean get() = sessionAnchor == AnchorMode.PINNED
+
+        override fun setEnabled(enabled: Boolean): Result<Unit> {
+            val mode = if (enabled) AnchorMode.PINNED else AnchorMode.FOLLOW
+            channel.request(RayneoProtocol.CMD_ANCHOR_MODE, mode.value)
+                ?: return Result.failure(IllegalStateException("no acknowledgement for anchor mode $mode"))
+            sessionAnchor = mode
+            return Result.success(Unit)
+        }
+
+        /**
+         * Pinned-to-pinned does nothing on this firmware; leaving and coming
+         * back is what re-anchors it, and the glasses want a moment between.
+         */
+        override fun recentre(): Result<Unit> {
+            if (!enabled) return Result.success(Unit)
+            channel.request(RayneoProtocol.CMD_ANCHOR_MODE, AnchorMode.FOLLOW.value)
+                ?: return Result.failure(IllegalStateException("no acknowledgement for follow"))
+            Thread.sleep(RECENTRE_GAP_MS)
+            channel.request(RayneoProtocol.CMD_ANCHOR_MODE, AnchorMode.PINNED.value)
+                ?: return Result.failure(IllegalStateException("no acknowledgement for pinned"))
+            return Result.success(Unit)
         }
     }
 
@@ -193,5 +246,8 @@ internal class RayneoSession(
     private companion object {
         val DEG_TO_RAD = (Math.PI / 180.0).toFloat()
         val RESTORED_ANCHOR = AnchorMode.PINNED
+
+        /** Between leaving pinned and re-entering it, as measured on the GT. */
+        const val RECENTRE_GAP_MS = 300L
     }
 }
