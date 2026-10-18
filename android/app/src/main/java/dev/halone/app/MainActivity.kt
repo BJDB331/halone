@@ -193,6 +193,7 @@ class MainActivity : AppCompatActivity() {
         val model = connection.device?.info?.displayName ?: found?.second?.match?.info?.displayName
         val status = when {
             shellSession != null -> GlassesStatus.RUNNING
+            awaitingWearer3d -> GlassesStatus.SWITCH_TO_3D
             starting != null -> GlassesStatus.STARTING
             found == null -> GlassesStatus.DISCONNECTED
             noVideoOutput() -> GlassesStatus.NO_VIDEO_OUTPUT
@@ -206,6 +207,9 @@ class MainActivity : AppCompatActivity() {
 
     /** When the glasses' USB interfaces were first seen, to give their display time to appear. */
     private var glassesFoundAt: Long? = null
+
+    /** True while glasses that choose their own mode wait for the wearer to turn on 3D. */
+    private var awaitingWearer3d = false
 
     /**
      * The glasses are on USB but no display of theirs came up: the phone's port
@@ -708,8 +712,14 @@ class MainActivity : AppCompatActivity() {
                 }
                 if (stereoSession?.compositor == null) {
                     logLine("▶ entering stereo")
-                    enterStereo()
-                    if (!waitUntil(STEREO_TIMEOUT_MS) { stereoSession?.compositor != null }) {
+                    val attempt = enterStereo()
+                    // Stops early when the attempt gives up, rather than
+                    // sitting out the whole timeout after a failure it has
+                    // already logged.
+                    waitUntil(STEREO_TIMEOUT_MS) {
+                        stereoSession?.compositor != null || attempt?.isActive != true
+                    }
+                    if (stereoSession?.compositor == null) {
                         logLine("  stereo did not start")
                         return@launch
                     }
@@ -1754,18 +1764,27 @@ class MainActivity : AppCompatActivity() {
      * The first wearable milestone: a live web panel sitting in world space,
      * rendered once per eye, with the glasses' own IMU driving the camera.
      */
-    private fun enterStereo(modeKey: String? = null) {
-        val device = requireDevice() ?: return
-        val head = tracker ?: run { logLine("no head tracker — run 'connect' first"); return }
+    private fun enterStereo(modeKey: String? = null): Job? {
+        val device = requireDevice() ?: return null
+        val head = tracker ?: run { logLine("no head tracker — run 'connect' first"); return null }
         val mode = modeKey?.let { key ->
             device.display?.supportedModes?.firstOrNull { it.key == key }
-                ?: run { logLine("  $key is not a mode this device lists"); return }
+                ?: run { logLine("  $key is not a mode this device lists"); return null }
         }
 
-        val session = stereoSession ?: GlassesStereoSession(this) { logOnMain(it) }
+        val session = stereoSession ?: GlassesStereoSession(
+            this,
+            log = { logOnMain(it) },
+            onAwaitingWearer = { waiting ->
+                runOnUiThread {
+                    awaitingWearer3d = waiting
+                    refreshHome()
+                }
+            },
+        )
         stereoSession = session
 
-        lifecycleScope.launch {
+        return lifecycleScope.launch {
             val display = session.enterStereo(device, mode)
             if (display == null) {
                 logLine("  could not enter stereo")
@@ -2375,7 +2394,8 @@ class MainActivity : AppCompatActivity() {
         const val CLICK_SLOP_DEGREES = 1f
         const val CONNECT_TIMEOUT_MS = 60_000L
         const val LINK_RETURN_TIMEOUT_MS = 20_000L
-        const val STEREO_TIMEOUT_MS = 20_000L
+        /** Covers the wait for a wearer to switch their glasses to 3D, which is longer than any mode switch. */
+        const val STEREO_TIMEOUT_MS = 60_000L
         const val TAP_RECORD_SECONDS = 240
         const val TAP_AIM_LEAD_MS = 30L
         const val HIT_HISTORY = 64

@@ -44,6 +44,8 @@ worth reading before changing any of it.
 | XREAL Air 2 | expected | expected | expected | same protocol, untested |
 | XREAL Air 2 Ultra | expected | expected | expected | different interfaces, untested |
 | XREAL One Pro, One | 1 kHz raw IMU over USB networking, axes from a 1S | full SBS 3840x1080 | expected | written from [published notes](docs/protocol/xreal-one.md), untested |
+| RayNeo GT Max | raw IMU, ~457 Hz | 3840x1080 SBS, switched on the glasses | yes | **new, untested on hardware** |
+| RayNeo GT | raw IMU, ~457 Hz | 3840x1080 SBS, switched on the glasses | yes | same protocol, untested |
 
 Glasses we don't own are welcome — the driver layer is designed so support can
 be written and tested against recorded packet captures with no hardware.

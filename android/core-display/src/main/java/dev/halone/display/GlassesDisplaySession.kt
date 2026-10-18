@@ -26,17 +26,18 @@ import kotlin.coroutines.resume
 class GlassesDisplaySession(
     context: Context,
     private val log: (String) -> Unit,
+    /**
+     * Told `true` while waiting for the wearer to switch the glasses to 3D
+     * themselves, and `false` once that wait is over, so the phone can say so.
+     */
+    private val onAwaitingWearer: (Boolean) -> Unit = {},
 ) {
     private val displayManager =
         context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
 
     /** Switches the glasses to stereo, waiting out the display churn it causes. */
     suspend fun enterStereo(device: GlassesDevice, mode: DisplayMode? = null): Display? {
-        val control = device.display
-        if (control == null) {
-            log("  this device has no display control; cannot switch to stereo")
-            return null
-        }
+        val control = device.display ?: return awaitWearerStereo(device)
 
         val stereo = mode ?: control.preferredStereoMode()
         if (stereo == null) {
@@ -70,9 +71,36 @@ class GlassesDisplaySession(
 
     /** Returns the glasses to a mono mode so the phone is usable again. */
     fun leaveStereo(device: GlassesDevice) {
-        val control = device.display ?: return
+        val control = device.display ?: run {
+            log("  the glasses choose their own mode; switch them back to 2D with their controls")
+            return
+        }
         val mono = control.preferredMonoMode() ?: return
         log("  restoring $mono: ${control.setMode(mono)}")
+    }
+
+    /**
+     * Stereo for glasses the host cannot command (RayNeo GT series): the
+     * wearer turns on 3D with the glasses' own controls, and all we see is the
+     * display re-advertising itself with a side-by-side mode. So: use it if it
+     * is already there, otherwise say what to do and watch for it.
+     */
+    private suspend fun awaitWearerStereo(device: GlassesDevice): Display? {
+        findGlassesDisplay(device)?.takeIf { it.hasSideBySideMode() }?.let { display ->
+            log("  the glasses are already side-by-side on display ${display.displayId}")
+            return display
+        }
+        log("  these glasses switch to 3D from their own controls; " +
+            "waiting up to ${WEARER_SWITCH_MS / 1000} s for side-by-side")
+        onAwaitingWearer(true)
+        try {
+            val display = awaitDisplay(WEARER_SWITCH_MS) { it.hasSideBySideMode() }
+            if (display == null) log("  the glasses did not switch to side-by-side")
+            else log("  display ${display.displayId} \"${display.name}\" is side-by-side")
+            return display
+        } finally {
+            onAwaitingWearer(false)
+        }
     }
 
     fun findGlassesDisplay(device: GlassesDevice): Display? {
@@ -88,15 +116,24 @@ class GlassesDisplaySession(
      * race with the removal of the display we were just using.
      */
     private suspend fun awaitNewPresentationDisplay(previousId: Int?): Display? =
+        awaitDisplay(DISPLAY_SETTLE_MS) { it.displayId != previousId }
+
+    /**
+     * Waits up to [timeoutMs] for a presentation display, added or changed,
+     * that [accept] takes; at the timeout, settles for any current one it
+     * takes, since the display may have arrived before the listener existed.
+     */
+    private suspend fun awaitDisplay(timeoutMs: Long, accept: (Display) -> Boolean): Display? =
         suspendCancellableCoroutine { continuation ->
             val handler = Handler(Looper.getMainLooper())
             var settled = false
 
             val listener = object : DisplayManager.DisplayListener {
                 private fun consider(displayId: Int, reason: String) {
-                    if (settled || displayId == previousId) return
+                    if (settled) return
                     val display = displayManager.getDisplay(displayId) ?: return
                     if (display.flags and Display.FLAG_PRESENTATION == 0) return
+                    if (!accept(display)) return
                     settled = true
                     displayManager.unregisterDisplayListener(this)
                     log("  display $displayId $reason")
@@ -117,16 +154,22 @@ class GlassesDisplaySession(
                 if (settled) return@postDelayed
                 settled = true
                 displayManager.unregisterDisplayListener(listener)
-                // The glasses may have re-appeared before the listener existed.
                 continuation.resume(
                     displayManager
                         .getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION)
-                        .firstOrNull { it.displayId != previousId }
+                        .firstOrNull(accept)
                 )
-            }, DISPLAY_SETTLE_MS)
+            }, timeoutMs)
         }
+
+    /** Shaped like two 16:9 halves glued together — the test `RenderPresentation` picks modes by. */
+    private fun Display.hasSideBySideMode(): Boolean =
+        supportedModes.any { it.physicalWidth >= 2 * it.physicalHeight }
 
     private companion object {
         const val DISPLAY_SETTLE_MS = 4_000L
+
+        /** Long enough to find a button on glasses you are wearing. */
+        const val WEARER_SWITCH_MS = 45_000L
     }
 }
