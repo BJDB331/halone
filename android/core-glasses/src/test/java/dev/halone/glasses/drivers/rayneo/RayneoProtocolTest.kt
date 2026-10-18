@@ -75,10 +75,10 @@ class RayneoProtocolTest {
     @Test
     fun `anchor modes are numbered per board`() {
         val p = RayneoProtocol
-        assertEquals(0, p.anchorValue(p.AnchorMode.FOLLOW, p.BOARD_GT))
-        assertEquals(1, p.anchorValue(p.AnchorMode.PINNED, p.BOARD_GT))
-        assertEquals(0, p.anchorValue(p.AnchorMode.FOLLOW, p.BOARD_GT_MAX))
-        assertEquals(2, p.anchorValue(p.AnchorMode.PINNED, p.BOARD_GT_MAX))
+        assertEquals(0, p.anchorValue(RayneoProtocol.AnchorMode.FOLLOW, p.BOARD_GT))
+        assertEquals(1, p.anchorValue(RayneoProtocol.AnchorMode.PINNED, p.BOARD_GT))
+        assertEquals(0, p.anchorValue(RayneoProtocol.AnchorMode.FOLLOW, p.BOARD_GT_MAX))
+        assertEquals(2, p.anchorValue(RayneoProtocol.AnchorMode.PINNED, p.BOARD_GT_MAX))
     }
 
     @Test
