@@ -116,19 +116,19 @@ internal object RayneoProtocol {
     enum class AnchorMode { FOLLOW, PINNED, STEADY }
 
     /**
-     * The command byte for [mode] on [board]: the two boards number pinned and
-     * steady differently.
+     * The command byte for [mode] on [board].
      *
-     * - GT, measured by the macOS project: 0 follow, 1 pinned, 2 steady.
-     * - GT Max **[measured, by eye]**: 1 is not pinned — a wearer saw it act
-     *   like steady — so pinned and steady are taken as swapped, 2 pinned.
-     *   0 is follow on both: Halone's own world-locking is right on a GT Max,
-     *   which it would not be if 0 stabilised the image as well.
+     * Follow is 0 on both boards: Halone's own world-locking is right on a GT
+     * Max, which it would not be if 0 stabilised the image too. Pinned and
+     * steady are 1 and 2 as measured on the GT; on a GT Max neither 1 nor 2
+     * was seen to give pinned, so the driver never sends them — the wearer
+     * picks those modes with the glasses' own button.
      */
+    @Suppress("UNUSED_PARAMETER")
     fun anchorValue(mode: AnchorMode, board: Int): Int = when (mode) {
         AnchorMode.FOLLOW -> 0
-        AnchorMode.PINNED -> if (board == BOARD_GT) 1 else 2
-        AnchorMode.STEADY -> if (board == BOARD_GT) 2 else 1
+        AnchorMode.PINNED -> 1
+        AnchorMode.STEADY -> 2
     }
 
     /**

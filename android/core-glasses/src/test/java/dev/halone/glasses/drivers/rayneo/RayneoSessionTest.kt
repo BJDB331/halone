@@ -130,12 +130,9 @@ class RayneoSessionTest {
         val streamOn = sent.indexOf(RayneoProtocol.CMD_STREAM_ON to 0)
         assertTrue("follow must be set before streaming: $sent", follow in 0 until streamOn)
         assertEquals(
-            "the stop should end the stream and return the glasses to pinned",
-            listOf(
-                RayneoProtocol.CMD_STREAM_OFF to 0,
-                RayneoProtocol.CMD_ANCHOR_MODE to RayneoProtocol.anchorValue(RayneoProtocol.AnchorMode.PINNED, RayneoProtocol.BOARD_GT_MAX),
-            ),
-            sent.takeLast(2),
+            "the stop should end the stream and leave the glasses in follow",
+            RayneoProtocol.CMD_STREAM_OFF to 0,
+            sent.last(),
         )
 
         // A yaw about sensor +Z is a yaw about canonical +Y, in rad/s.
@@ -152,60 +149,42 @@ class RayneoSessionTest {
     }
 
     @Test
-    fun `the mode button is reported, and follow is reasserted while tracking`() {
+    fun `the mode button hands stabilisation to the glasses, once, without commands`() {
         val glasses = FakeRayneoGlasses()
         val device = connect(0 to glasses).getOrThrow()
-        val pressed = CountDownLatch(1)
-        device.addEventListener { if (it is DeviceEvent.ButtonPressed) pressed.countDown() }
+        val handedOver = CountDownLatch(1)
+        var changes = 0
+        device.addEventListener {
+            if (it is DeviceEvent.OnboardPinningChanged && it.enabled) { changes++; handedOver.countDown() }
+        }
 
         device.use {
             device.tracking.start { }
+            assertFalse(device.onboardPinning!!.enabled)
             val before = glasses.commands().size
             glasses.pressModeButton()
-            assertTrue(pressed.await(2, TimeUnit.SECONDS))
-            Thread.sleep(50)
-            assertEquals(
-                RayneoProtocol.CMD_ANCHOR_MODE to RayneoProtocol.anchorValue(RayneoProtocol.AnchorMode.FOLLOW, RayneoProtocol.BOARD_GT_MAX),
-                glasses.commands().drop(before).first(),
-            )
+            assertTrue(handedOver.await(2, TimeUnit.SECONDS))
+            glasses.pressModeButton()
+            Thread.sleep(200)
+
+            assertTrue(device.onboardPinning!!.enabled)
+            assertEquals("one hand-over, however many presses", 1, changes)
+            assertEquals("the wearer's mode is left alone", emptyList<Pair<Int, Int>>(), glasses.commands().drop(before))
         }
     }
 
     @Test
-    fun `onboard pinning hands world-locking to the glasses and survives the mode button`() {
+    fun `the host takes stabilisation back by returning the glasses to follow`() {
         val glasses = FakeRayneoGlasses()
-        val device = connect(0 to glasses).getOrThrow()
-        val pressed = CountDownLatch(1)
-        device.addEventListener { if (it is DeviceEvent.ButtonPressed) pressed.countDown() }
-
-        device.use {
+        connect(0 to glasses).getOrThrow().use { device ->
             device.tracking.start { }
-            val pinning = device.onboardPinning!!
-            assertFalse(pinning.enabled)
-
-            pinning.setEnabled(true).getOrThrow()
-            assertTrue(pinning.enabled)
-            val pinned = RayneoProtocol.CMD_ANCHOR_MODE to RayneoProtocol.anchorValue(RayneoProtocol.AnchorMode.PINNED, RayneoProtocol.BOARD_GT_MAX)
-            assertEquals(pinned, glasses.commands().last())
-
-            // The button must now restore pinned, not follow.
-            val before = glasses.commands().size
             glasses.pressModeButton()
-            assertTrue(pressed.await(2, TimeUnit.SECONDS))
             Thread.sleep(200)
-            // Once: the ack to our own reassertion is not another press.
-            assertEquals(listOf(pinned), glasses.commands().drop(before))
+            assertTrue(device.onboardPinning!!.enabled)
 
-            // Recentring leaves pinned and comes back.
-            val mark = glasses.commands().size
-            pinning.recentre().getOrThrow()
-            assertEquals(
-                listOf(RayneoProtocol.CMD_ANCHOR_MODE to RayneoProtocol.anchorValue(RayneoProtocol.AnchorMode.FOLLOW, RayneoProtocol.BOARD_GT_MAX), pinned),
-                glasses.commands().drop(mark),
-            )
-
-            pinning.setEnabled(false).getOrThrow()
-            assertFalse(pinning.enabled)
+            device.onboardPinning!!.setEnabled(false).getOrThrow()
+            assertFalse(device.onboardPinning!!.enabled)
+            assertEquals(RayneoProtocol.CMD_ANCHOR_MODE to 0, glasses.commands().last())
         }
     }
 

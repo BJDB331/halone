@@ -404,8 +404,6 @@ class MainActivity : AppCompatActivity() {
     private val padActions = object : PointerPad.Actions {
         override fun recenterView() = this@MainActivity.recenterView()
 
-        override fun toggleGlassesPin() = this@MainActivity.toggleGlassesPin()
-
         override fun recenterPointer() = runGesture("recenter-cursor", "PAD")
 
         override fun screenshot() {
@@ -709,6 +707,11 @@ class MainActivity : AppCompatActivity() {
                         return@launch
                     }
                 }
+                // Every start begins with Halone holding the scene; the
+                // glasses' own button hands it over again.
+                connection.device?.onboardPinning?.takeIf { it.enabled }?.let { pinning ->
+                    withContext(Dispatchers.IO) { pinning.setEnabled(false) }
+                }
                 if (stereoSession?.compositor == null) {
                     logLine("▶ entering stereo")
                     val attempt = enterStereo()
@@ -782,6 +785,13 @@ class MainActivity : AppCompatActivity() {
                         device.addEventListener { event ->
                             logOnMain("  event: $event")
                             if (event is DeviceEvent.Disconnected) runOnUiThread { glassesGone() }
+                            // The wearer handed world-locking to the glasses with their
+                            // own button (or it came back): draw head-locked while
+                            // they hold the image, so it is not stabilised twice.
+                            if (event is DeviceEvent.OnboardPinningChanged) runOnUiThread {
+                                stereoSession?.compositor?.lockToHead = event.enabled
+                                if (event.enabled) recenterView()
+                            }
                         }
                         // It pauses the sensor stream, so it happens once here
                         // rather than lazily later.
@@ -1338,32 +1348,7 @@ class MainActivity : AppCompatActivity() {
     private fun showPad() {
         startHitHistory()
         if (pointerPad == null) pointerPad = PointerPad(this, padGestures, padActions).also { it.show() }
-        val pinning = connection.device?.onboardPinning
-        pointerPad?.setGlassesPin(available = pinning != null, pinned = pinning?.enabled == true)
         startPadStats()
-    }
-
-    /**
-     * Hands world-locking to the glasses (RayNeo's own "pinned" mode) or takes
-     * it back. Pinned, the scene is drawn fixed to the face and the glasses
-     * move it, which is as smooth as their own chip; Halone's tracking still
-     * aims the gaze pointer.
-     */
-    private fun toggleGlassesPin() {
-        val pinning = connection.device?.onboardPinning ?: return
-        val compositor = stereoSession?.compositor
-        val wanted = !pinning.enabled
-        lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) { pinning.setEnabled(wanted) }
-            result.onFailure { logLine("  glasses pinned mode: ${it.message}") }
-            val on = pinning.enabled
-            compositor?.lockToHead = on
-            // Start both from straight ahead, so the drawn scene and the
-            // glasses' anchor agree on where forward is.
-            if (result.isSuccess) recenterView()
-            pointerPad?.setGlassesPin(available = true, pinned = on)
-            logLine("  glasses pinned mode ${if (on) "on" else "off"}")
-        }
     }
 
     private var padStatsJob: kotlinx.coroutines.Job? = null
@@ -1957,13 +1942,6 @@ class MainActivity : AppCompatActivity() {
     private fun recenterView() {
         val head = tracker ?: run { logLine("  no tracker"); return }
         recentreHead(head)
-        // In the glasses' own pinned mode their anchor has to move too, or the
-        // image they hold and the scene drawn into it point different ways.
-        connection.device?.onboardPinning?.takeIf { it.enabled }?.let { pinning ->
-            lifecycleScope.launch(Dispatchers.IO) {
-                pinning.recentre().onFailure { logOnMain("  glasses recentre: ${it.message}") }
-            }
-        }
         // Every panel's own heading has to come back too, or smooth follow
         // leaves them wherever they had wandered to and recentring appears to do
         // nothing.

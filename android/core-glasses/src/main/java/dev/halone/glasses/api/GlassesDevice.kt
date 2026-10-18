@@ -80,13 +80,13 @@ interface DisplayControl {
  * latency, so the host must draw the scene head-locked. One screen's worth of
  * scene, and no reprojection of Halone's own — but nothing between the
  * sensor and the panel but the glasses' own chip.
+ *
+ * Changes made on the glasses themselves arrive as
+ * [DeviceEvent.OnboardPinningChanged].
  */
 interface OnboardPinning {
     val enabled: Boolean
     fun setEnabled(enabled: Boolean): Result<Unit>
-
-    /** Re-anchors the pinned image straight ahead. */
-    fun recentre(): Result<Unit>
 }
 
 interface BrightnessControl {

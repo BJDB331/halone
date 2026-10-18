@@ -40,7 +40,6 @@ class PointerPad(
         fun toggleRecording()
         fun nextPointerMode()
         fun toggleFollow()
-        fun toggleGlassesPin()
     }
 
     private var view: View? = null
@@ -57,9 +56,6 @@ class PointerPad(
     private var record: TextView? = null
     private var switchMode: View? = null
     private var follow: TextView? = null
-    private var glassesPin: TextView? = null
-    private var pinAvailable = false
-    private var pinned = false
     private var stats: TextView? = null
 
     /** When set, the pad is a touchpad and every touch goes here instead. */
@@ -90,7 +86,6 @@ class PointerPad(
                 record = button("radio_button_checked", "Record") { actions.toggleRecording() }.also { addView(it) }
                 switchMode = button("swap_horiz", "Switch pointer mode") { actions.nextPointerMode() }.also { addView(it) }
                 follow = button("moving", "World lock or follow") { actions.toggleFollow() }.also { addView(it) }
-                glassesPin = button("eyeglasses", "Glasses pinned mode") { actions.toggleGlassesPin() }.also { addView(it) }
             }
 
             val pad = object : FrameLayout(activity) {
@@ -178,13 +173,6 @@ class PointerPad(
         stats?.text = text
     }
 
-    /** Whether the glasses can pin the image themselves, and whether they are. */
-    fun setGlassesPin(available: Boolean, pinned: Boolean) = activity.runOnUiThread {
-        pinAvailable = available
-        this.pinned = pinned
-        refresh()
-    }
-
     fun setFollowing(following: Boolean) = activity.runOnUiThread {
         this.following = following
         refresh()
@@ -207,10 +195,6 @@ class PointerPad(
         record?.contentDescription = if (recording) "Stop recording" else "Record"
         follow?.text = if (following) "moving" else "keep"
         follow?.contentDescription = if (following) "Following: tap to lock windows in place" else "World-locked: tap to have windows follow"
-        glassesPin?.visibility = if (pinAvailable) View.VISIBLE else View.GONE
-        glassesPin?.setTextColor(if (pinned) PINNED else Color.WHITE)
-        glassesPin?.contentDescription =
-            if (pinned) "Glasses pinned mode on: tap for Halone's tracking" else "Tap to let the glasses pin the image themselves"
     }
 
     private fun button(symbol: String, description: String, onClick: () -> Unit): TextView =
@@ -281,6 +265,5 @@ class PointerPad(
         val PRESSED = Color.argb(0x30, 0x5c, 0xc8, 0xff)
         val BUTTON = Color.argb(0x26, 0xff, 0xff, 0xff)
         val RECORDING = Color.rgb(0xff, 0x6b, 0x6b)
-        val PINNED = Color.rgb(0x5c, 0xc8, 0xff)
     }
 }

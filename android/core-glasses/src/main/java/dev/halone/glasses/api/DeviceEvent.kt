@@ -14,6 +14,12 @@ sealed interface DeviceEvent {
 
     data class ScreenPower(val on: Boolean) : DeviceEvent
 
+    /**
+     * The glasses took over world-locking, or gave it back — see
+     * [OnboardPinning]. The host must draw head-locked while [enabled].
+     */
+    data class OnboardPinningChanged(val enabled: Boolean) : DeviceEvent
+
     /** The device went away — unplugged, slept, or stopped responding. */
     data class Disconnected(val reason: String) : DeviceEvent
 
