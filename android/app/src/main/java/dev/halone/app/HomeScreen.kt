@@ -33,6 +33,9 @@ class HomeScreen(
     context: Context,
     private val onPrimary: (GlassesStatus) -> Unit,
     onSettings: () -> Unit,
+    onShareReport: () -> Unit,
+    onDismissReport: () -> Unit,
+    onShareLog: () -> Unit,
 ) {
     private val density = context.resources.displayMetrics.density
     private var status = GlassesStatus.DISCONNECTED
@@ -52,6 +55,17 @@ class HomeScreen(
         gravity = Gravity.CENTER
     }
 
+    /** A second, smaller action under the detail, for a fix the detail suggests. */
+    private val secondary = TextView(context).apply {
+        textSize = 16f
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        setTextColor(ACCENT)
+        gravity = Gravity.CENTER
+        isClickable = true
+        isFocusable = true
+        visibility = View.GONE
+    }
+
     private val primary = TextView(context).apply {
         textSize = 20f
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
@@ -69,6 +83,57 @@ class HomeScreen(
         setOnClickListener { onSettings() }
     }
 
+    /** Shown after a crash, until shared or dismissed. */
+    private val crashRow = LinearLayout(context).apply {
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER_HORIZONTAL
+        visibility = View.GONE
+        addView(TextView(context).apply {
+            text = "Halone stopped unexpectedly last time."
+            textSize = 15f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+        })
+        addView(LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            addView(link(context, "Share Report", onShareReport))
+            addView(link(context, "Dismiss", onDismissReport))
+        })
+    }
+
+    private fun link(context: Context, label: String, onClick: () -> Unit) = TextView(context).apply {
+        text = label
+        textSize = 16f
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        setTextColor(ACCENT)
+        setPadding(dp(16), dp(10), dp(16), dp(10))
+        isClickable = true
+        isFocusable = true
+        setOnClickListener { onClick() }
+    }
+
+    fun showCrashReport(visible: Boolean) {
+        crashRow.visibility = if (visible) View.VISIBLE else View.GONE
+        refreshLogShare()
+    }
+
+    /** Only while crash reports are on, and out of the way of a pending report. */
+    private val logShare = link(context, "Share Log", onShareLog).apply {
+        textSize = 13f
+        visibility = View.GONE
+    }
+    private var logShareWanted = false
+
+    fun showLogShare(visible: Boolean) {
+        logShareWanted = visible
+        refreshLogShare()
+    }
+
+    private fun refreshLogShare() {
+        logShare.visibility = if (logShareWanted && crashRow.visibility != View.VISIBLE) View.VISIBLE else View.GONE
+    }
+
     val view: View = FrameLayout(context).apply {
         setBackgroundColor(Color.BLACK)
         val column = LinearLayout(context).apply {
@@ -77,6 +142,7 @@ class HomeScreen(
             addView(icon, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
             addView(title, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(20) })
             addView(detail, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
+            addView(secondary, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(4) })
         }
         addView(column, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER).apply {
             leftMargin = dp(24)
@@ -84,7 +150,9 @@ class HomeScreen(
             bottomMargin = dp(80)
         })
         addView(settings, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.TOP or Gravity.END))
+        addView(logShare, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.START))
         addView(primary, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, dp(64), Gravity.BOTTOM))
+        addView(crashRow, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
         val version = TextView(context).apply {
             text = "Halone ${BuildConfig.VERSION_NAME}"
             textSize = 12f
@@ -98,12 +166,21 @@ class HomeScreen(
                 topMargin = bars.top + dp(12)
                 rightMargin = bars.right + dp(12)
             }
+            (logShare.layoutParams as FrameLayout.LayoutParams).apply {
+                topMargin = bars.top + dp(16)
+                leftMargin = bars.left + dp(12)
+            }
             (primary.layoutParams as FrameLayout.LayoutParams).apply {
                 leftMargin = bars.left + dp(24)
                 rightMargin = bars.right + dp(24)
                 bottomMargin = bars.bottom + dp(48)
             }
             (version.layoutParams as FrameLayout.LayoutParams).bottomMargin = bars.bottom + dp(16)
+            (crashRow.layoutParams as FrameLayout.LayoutParams).apply {
+                leftMargin = bars.left + dp(24)
+                rightMargin = bars.right + dp(24)
+                bottomMargin = bars.bottom + dp(48 + 64 + 12)
+            }
             requestLayout()
             insets
         }
@@ -113,7 +190,17 @@ class HomeScreen(
      * [help] is the device's own explanation for [GlassesStatus.LINK_OFF];
      * [notice] is a hint about what just went wrong, shown under the detail.
      */
-    fun render(status: GlassesStatus, model: String?, help: String? = null, notice: String? = null) {
+    fun render(
+        status: GlassesStatus,
+        model: String?,
+        help: String? = null,
+        notice: String? = null,
+        action: Pair<String, () -> Unit>? = null,
+    ) {
+        secondary.visibility = if (action != null) View.VISIBLE else View.GONE
+        secondary.text = action?.first
+        secondary.setPadding(dp(16), dp(10), dp(16), dp(10))
+        secondary.setOnClickListener { action?.second?.invoke() }
         this.status = status
         icon.alpha = if (status.dimmed) 0.3f else 1f
         title.text = status.title

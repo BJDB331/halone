@@ -58,7 +58,9 @@ class XrSessionService : Service() {
         }
         if (projecting) projectionReady?.invoke()
         projectionReady = null
-        return START_STICKY
+        // Not sticky: a session can't resume in a process that died, and a
+        // restarted service would only post "Glasses connected" over nothing.
+        return START_NOT_STICKY
     }
 
     companion object {

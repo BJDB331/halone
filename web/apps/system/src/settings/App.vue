@@ -442,6 +442,23 @@ const allSections: Section[] = [
     ],
   },
   {
+    id: 'privacy',
+    title: 'Privacy',
+    icon: 'lock',
+    groups: [
+      {
+        items: [
+          {
+            kind: 'toggle',
+            key: 'diagnostics.crashReports',
+            label: 'Crash reports',
+            help: 'Keeps Halone\'s own log on this phone, and after a crash offers to let you share a report: the app version, phone model, Android version, the error and that log, with web addresses and file names removed. Nothing is sent unless you share it, and turning this off deletes the log.',
+          },
+        ],
+      },
+    ],
+  },
+  {
     id: 'system',
     title: 'System',
     icon: 'memory',

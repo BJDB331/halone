@@ -91,7 +91,14 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        home = HomeScreen(this, onPrimary = ::onPrimary, onSettings = ::openSettings)
+        home = HomeScreen(
+            this,
+            onPrimary = ::onPrimary,
+            onSettings = ::openSettings,
+            onShareReport = ::shareCrashReport,
+            onDismissReport = ::dismissCrashReport,
+            onShareLog = ::shareLog,
+        )
         setContentView(home.view)
         registerDevActions()
         // A foreground service keeps the process running; this keeps the phone
@@ -152,7 +159,23 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        lifecycle("resumed")
+        home.showCrashReport(CrashReports.pending(this) != null)
+        home.showLogShare(CrashReports.enabled)
         refreshHome()
+    }
+
+    override fun onPause() {
+        lifecycle("paused")
+        super.onPause()
+    }
+
+    /**
+     * Where the activity is when it comes and goes: a window that leaves the
+     * phone for the glasses' display looks like a force close from the phone.
+     */
+    private fun lifecycle(event: String) {
+        logLine("activity $event on display ${display?.displayId}" + if (isFinishing) " (finishing)" else "")
     }
 
     /** Glasses plugged in or pulled out; the system delivers both while the app is running. */
@@ -206,16 +229,67 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val displayListener = object : android.hardware.display.DisplayManager.DisplayListener {
-        override fun onDisplayAdded(displayId: Int) = refreshHome()
-        override fun onDisplayRemoved(displayId: Int) = refreshHome()
-        override fun onDisplayChanged(displayId: Int) = Unit
+        override fun onDisplayAdded(displayId: Int) {
+            logLine("display $displayId added: ${describeDisplay(displayId)}")
+            refreshHome()
+        }
+
+        override fun onDisplayRemoved(displayId: Int) {
+            logLine("display $displayId removed")
+            refreshHome()
+        }
+
+        override fun onDisplayChanged(displayId: Int) {
+            if (displayId != android.view.Display.DEFAULT_DISPLAY) logLine("display $displayId changed: ${describeDisplay(displayId)}")
+        }
+    }
+
+    private fun describeDisplay(displayId: Int): String {
+        val display = getSystemService(android.hardware.display.DisplayManager::class.java).getDisplay(displayId) ?: return "gone"
+        val mode = display.mode
+        return "\"${display.name}\" ${mode.physicalWidth}x${mode.physicalHeight}@${"%.0f".format(mode.refreshRate)}"
     }
 
     private fun refreshHome() {
         if (!::home.isInitialized) return
         val (status, model) = glassesStatus()
         val setup = connection.findSupported()?.second?.match?.setup
-        home.render(status, model, help = setup?.linkOffHelp, notice = homeNotice)
+        val offerLink = setup != null && connectFailedAt > 0 && status != GlassesStatus.LINK_OFF && tracker == null
+        home.render(
+            status,
+            model,
+            help = setup?.linkOffHelp,
+            notice = homeNotice,
+            action = if (offerLink) "Turn on TCP/IP" to ::turnOnLink else null,
+        )
+    }
+
+    private fun shareCrashReport() {
+        val report = CrashReports.reportFile(this).takeIf { it.exists() } ?: return
+        val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.files", report)
+        val send = Intent(Intent.ACTION_SEND)
+            .setType("text/plain")
+            .putExtra(Intent.EXTRA_STREAM, uri)
+            .putExtra(Intent.EXTRA_SUBJECT, "Halone crash report")
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        startActivity(Intent.createChooser(send, "Share crash report"))
+    }
+
+    /** Halone's log right now, for when it misbehaves without crashing. */
+    private fun shareLog() {
+        val log = CrashReports.snapshot(this) ?: return
+        val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.files", log)
+        val send = Intent(Intent.ACTION_SEND)
+            .setType("text/plain")
+            .putExtra(Intent.EXTRA_STREAM, uri)
+            .putExtra(Intent.EXTRA_SUBJECT, "Halone log")
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        startActivity(Intent.createChooser(send, "Share Halone's log"))
+    }
+
+    private fun dismissCrashReport() {
+        CrashReports.clear(this)
+        home.showCrashReport(false)
     }
 
     /** Why the last attempt at something failed, for the home screen; cleared once things work. */
@@ -282,16 +356,28 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             logLine("▶ turning the glasses' network connection on")
             val result = withContext(Dispatchers.IO) { connection.enableLink(usbDevice, probe) }
-            homeNotice = result.fold(
-                onSuccess = {
-                    logLine("  done; the glasses will reconnect")
-                    "Turning it on. The glasses will disconnect and reconnect by themselves."
-                },
-                onFailure = {
-                    logLine("  could not: ${it.message}")
-                    "Couldn't turn it on: ${it.message}"
-                },
-            )
+            result.onFailure {
+                logLine("  could not: ${it.message}")
+                homeNotice = "Couldn't turn it on: ${it.message}"
+                refreshHome()
+                return@launch
+            }
+            logLine("  done; waiting for the glasses to reconnect")
+            homeNotice = "Turning it on. The glasses will disconnect and reconnect by themselves."
+            connectFailedAt = 0L
+            refreshHome()
+            val back = waitUntil(LINK_RETURN_TIMEOUT_MS) {
+                val found = connection.findSupported()
+                found != null && !connection.linkMissing(found.first, found.second)
+            }
+            homeNotice = if (back) {
+                logLine("  the glasses are back with their network on")
+                null
+            } else {
+                logLine("  the glasses did not come back with their network on")
+                "The glasses didn't come back with their network on. Unplug them and plug them back in. " +
+                    "If that doesn't help, turn on TCP/IP in their own menu."
+            }
             refreshHome()
         }
     }
@@ -324,6 +410,8 @@ class MainActivity : AppCompatActivity() {
         settingsBack.isEnabled = false
         phoneShell?.close()
         phoneShell = null
+        home.showCrashReport(CrashReports.pending(this) != null)
+        home.showLogShare(CrashReports.enabled)
     }
 
     private val settingsBack = object : OnBackPressedCallback(false) {
@@ -419,6 +507,7 @@ class MainActivity : AppCompatActivity() {
             logLine("  input log ${if (on) "on" else "off"}")
         }
         action("settings") { openSettings() }
+        action("crashtest") { window.decorView.post { throw IllegalStateException("crash test from the dev action") } }
         logLine("dev actions: ${actions.keys.joinToString(", ")}")
     }
 
@@ -470,10 +559,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+        lifecycle("started")
         if (android.os.Build.VERSION.SDK_INT >= 34) screenCaptured?.let { registerScreenCaptureCallback(mainExecutor, it) }
     }
 
     override fun onStop() {
+        lifecycle("stopped")
         super.onStop()
         if (android.os.Build.VERSION.SDK_INT >= 34) screenCaptured?.let { unregisterScreenCaptureCallback(it) }
     }
@@ -549,6 +640,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        lifecycle("destroyed" + if (isChangingConfigurations) " for a configuration change" else "")
         super.onDestroy()
         XrSessionService.onTaskRemoved = null
         releaseGlasses()
@@ -628,8 +720,9 @@ class MainActivity : AppCompatActivity() {
                 refreshHome()
                 if (tracker == null) {
                     logLine("▶ connecting the glasses")
+                    val since = android.os.SystemClock.uptimeMillis()
                     requestPermissionAndConnect()
-                    if (!waitUntil(CONNECT_TIMEOUT_MS) { tracker != null }) {
+                    if (!waitUntil(CONNECT_TIMEOUT_MS) { tracker != null || connectFailedAt >= since }) {
                         logLine("  the glasses did not connect: are they plugged in, and was USB access allowed?")
                         return@launch
                     }
@@ -684,6 +777,10 @@ class MainActivity : AppCompatActivity() {
 
     private var connecting: Job? = null
 
+    /** When the last connect attempt failed, so a start waiting on it can give up at once. */
+    @Volatile
+    private var connectFailedAt = 0L
+
     /**
      * Off the main thread: a network device opens sockets, which Android
      * refuses there outright, and reading its calibration can take seconds.
@@ -708,6 +805,7 @@ class MainActivity : AppCompatActivity() {
                     .onFailure {
                         logLine("Connect failed: ${it.message}")
                         homeNotice = "Couldn't connect: ${it.message}"
+                        connectFailedAt = android.os.SystemClock.uptimeMillis()
                     }
             } finally {
                 connecting = null
@@ -2273,6 +2371,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun logLine(message: String) {
         android.util.Log.i(LOG_TAG, message)
+        CrashReports.log(message)
     }
 
     private companion object {
@@ -2296,6 +2395,7 @@ class MainActivity : AppCompatActivity() {
         /** Less pointer travel than this between press and release on a title bar is a click. */
         const val CLICK_SLOP_DEGREES = 1f
         const val CONNECT_TIMEOUT_MS = 60_000L
+        const val LINK_RETURN_TIMEOUT_MS = 20_000L
         const val STEREO_TIMEOUT_MS = 20_000L
         const val TAP_RECORD_SECONDS = 240
         const val TAP_AIM_LEAD_MS = 30L
