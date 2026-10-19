@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, type Ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import type { SettingKey, Settings } from '@halone/sdk'
 import Dropdown from '../shared/Dropdown.vue'
 import Icon from '../shared/Icon.vue'
@@ -10,27 +10,14 @@ import PluginsPanel from './PluginsPanel.vue'
 import AboutPanel from './AboutPanel.vue'
 import { onPhone, onRoute, useHost, useSettings } from '../shared/host'
 
-/**
- * Settings the published SDK does not list yet: tracking tuning, which the
- * Android host reads and validates against the same schema.
- */
-type LocalKey =
-  | 'windows.shapeButton'
-  | 'windows.reclaimPhone'
-  | 'developer.displayStats'
-  | 'tracking.custom'
-  | 'tracking.predictionMs'
-  | 'tracking.steadinessDegrees'
-  | 'tracking.framePacing'
-type Key = SettingKey | LocalKey
 
 type Rule = { type: 'boolean' } | { type: 'number'; min: number; max: number } | { type: 'enum'; values: string[] }
 
 type Item =
-  | { kind: 'toggle'; key: Key; label: string; help: string }
-  | { kind: 'slider'; key: Key; label: string; help: string; step: number; format: (v: number) => string }
-  | { kind: 'choice'; key: Key; label: string; help: string; labels: Record<string, string>; style: 'segmented' | 'dropdown' }
-  | { kind: 'action'; key: string; label: string; help: string; button: string; run: () => Promise<unknown>; enabledBy?: Key }
+  | { kind: 'toggle'; key: SettingKey; label: string; help: string }
+  | { kind: 'slider'; key: SettingKey; label: string; help: string; step: number; format: (v: number) => string }
+  | { kind: 'choice'; key: SettingKey; label: string; help: string; labels: Record<string, string>; style: 'segmented' | 'dropdown' }
+  | { kind: 'action'; key: string; label: string; help: string; button: string; run: () => Promise<unknown>; enabledBy?: SettingKey }
 
 interface Group {
   title?: string
@@ -50,7 +37,7 @@ interface Section {
 }
 
 const { halone, status, error } = useHost()
-const settings = useSettings(halone) as unknown as Ref<Record<Key, unknown> | null>
+const settings = useSettings(halone)
 const schema = ref<Record<string, Rule>>({})
 const message = ref<string | null>(null)
 const query = ref('')
@@ -569,7 +556,7 @@ const sections = onPhone
       }))
   : allSections
 
-function rule(key: Key): Rule | undefined {
+function rule(key: SettingKey): Rule | undefined {
   return schema.value[key]
 }
 
@@ -579,15 +566,15 @@ function options(item: Extract<Item, { kind: 'choice' }>) {
   return values.map((value) => ({ value, label: item.labels[value] ?? value }))
 }
 
-function range(key: Key) {
+function range(key: SettingKey) {
   const r = rule(key)
   return r?.type === 'number' ? r : { min: 0, max: 1 }
 }
 
-async function set(key: Key, value: unknown) {
+async function set<K extends SettingKey>(key: K, value: Settings[K]) {
   try {
     message.value = null
-    await halone.settings.set(key as SettingKey, value as Settings[SettingKey])
+    await halone.settings.set(key, value)
   } catch (caught) {
     message.value = caught instanceof Error ? caught.message : String(caught)
   }
