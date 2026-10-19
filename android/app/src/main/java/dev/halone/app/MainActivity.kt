@@ -97,7 +97,6 @@ class MainActivity : AppCompatActivity() {
             onSettings = ::openSettings,
             onShareReport = ::shareCrashReport,
             onDismissReport = ::dismissCrashReport,
-            onShareLog = ::shareLog,
         )
         setContentView(home.view)
         registerDevActions()
@@ -161,7 +160,6 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         lifecycle("resumed")
         home.showCrashReport(CrashReports.pending(this) != null)
-        home.showLogShare(CrashReports.enabled)
         refreshHome()
     }
 
@@ -266,25 +264,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun shareCrashReport() {
         val report = CrashReports.reportFile(this).takeIf { it.exists() } ?: return
-        val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.files", report)
-        val send = Intent(Intent.ACTION_SEND)
-            .setType("text/plain")
-            .putExtra(Intent.EXTRA_STREAM, uri)
-            .putExtra(Intent.EXTRA_SUBJECT, "Halone crash report")
-            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        startActivity(Intent.createChooser(send, "Share crash report"))
-    }
-
-    /** Halone's log right now, for when it misbehaves without crashing. */
-    private fun shareLog() {
-        val log = CrashReports.snapshot(this) ?: return
-        val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.files", log)
-        val send = Intent(Intent.ACTION_SEND)
-            .setType("text/plain")
-            .putExtra(Intent.EXTRA_STREAM, uri)
-            .putExtra(Intent.EXTRA_SUBJECT, "Halone log")
-            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        startActivity(Intent.createChooser(send, "Share Halone's log"))
+        CrashReports.share(this, report, "Halone crash report", "Share crash report")
     }
 
     private fun dismissCrashReport() {
@@ -411,7 +391,6 @@ class MainActivity : AppCompatActivity() {
         phoneShell?.close()
         phoneShell = null
         home.showCrashReport(CrashReports.pending(this) != null)
-        home.showLogShare(CrashReports.enabled)
     }
 
     private val settingsBack = object : OnBackPressedCallback(false) {

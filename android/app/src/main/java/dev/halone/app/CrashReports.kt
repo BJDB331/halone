@@ -3,8 +3,10 @@ package dev.halone.app
 import android.app.ActivityManager
 import android.app.ApplicationExitInfo
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Build
+import androidx.core.content.FileProvider
 import dev.halone.app.shell.PreferencesStore
 import dev.halone.shell.ShellSettings
 import org.json.JSONObject
@@ -248,4 +250,21 @@ object CrashReports {
     private fun dir() = File(app.filesDir, "crash").apply { mkdirs() }
     private fun javaCrashFile() = File(dir(), "java-crash.txt")
     fun reportFile(context: Context) = File(File(context.filesDir, "crash").apply { mkdirs() }, "halone-crash-report.txt")
+
+    /** Halone's log right now, for when it misbehaves without crashing; false while crash reports are off. */
+    fun shareLog(context: Context): Boolean {
+        val log = snapshot(context) ?: return false
+        share(context, log, "Halone log", "Share Halone's log")
+        return true
+    }
+
+    fun share(context: Context, file: File, subject: String, title: String) {
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", file)
+        val send = Intent(Intent.ACTION_SEND)
+            .setType("text/plain")
+            .putExtra(Intent.EXTRA_STREAM, uri)
+            .putExtra(Intent.EXTRA_SUBJECT, subject)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        context.startActivity(Intent.createChooser(send, title).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
 }

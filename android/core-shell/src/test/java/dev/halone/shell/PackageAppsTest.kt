@@ -179,6 +179,7 @@ class PackageAppsTest {
         assertEquals("permission-denied", app.code("windows.close", JSONObject().put("id", other.id)))
         assertEquals("permission-denied", app.code("plugins.list"))
         assertEquals("permission-denied", app.code("status.list"))
+        assertEquals("permission-denied", app.code("system.shareLog"))
         assertEquals("permission-denied", app.code("plugins.setEnabled", JSONObject().put("packageName", "dev.example.plugin").put("enabled", true)))
         assertTrue(shell.windows().any { it.id == other.id })
     }

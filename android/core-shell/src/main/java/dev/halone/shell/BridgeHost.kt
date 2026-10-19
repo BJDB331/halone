@@ -202,6 +202,7 @@ class BridgeHost(
             .put("sentAt", params.optDouble("sentAt"))
             .put("receivedAt", System.nanoTime() / 1e6)
         "system.battery" -> shell.battery?.toJson() ?: throw HaloneException("unavailable", "battery level is not known")
+        "system.shareLog" -> shell.shareLog().let { null }
         "screen.capture" -> shell.captureScreen(params.optLong("delayMs", 0)).let { null }
         "screen.recording" -> shell.recording.toJson()
         "screen.startRecording" -> shell.startRecording(params.optLong("delayMs", 0)).let { null }

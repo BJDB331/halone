@@ -35,7 +35,6 @@ class HomeScreen(
     onSettings: () -> Unit,
     onShareReport: () -> Unit,
     onDismissReport: () -> Unit,
-    onShareLog: () -> Unit,
 ) {
     private val density = context.resources.displayMetrics.density
     private var status = GlassesStatus.DISCONNECTED
@@ -115,23 +114,6 @@ class HomeScreen(
 
     fun showCrashReport(visible: Boolean) {
         crashRow.visibility = if (visible) View.VISIBLE else View.GONE
-        refreshLogShare()
-    }
-
-    /** Only while crash reports are on, and out of the way of a pending report. */
-    private val logShare = link(context, "Share Log", onShareLog).apply {
-        textSize = 13f
-        visibility = View.GONE
-    }
-    private var logShareWanted = false
-
-    fun showLogShare(visible: Boolean) {
-        logShareWanted = visible
-        refreshLogShare()
-    }
-
-    private fun refreshLogShare() {
-        logShare.visibility = if (logShareWanted && crashRow.visibility != View.VISIBLE) View.VISIBLE else View.GONE
     }
 
     val view: View = FrameLayout(context).apply {
@@ -150,7 +132,6 @@ class HomeScreen(
             bottomMargin = dp(80)
         })
         addView(settings, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.TOP or Gravity.END))
-        addView(logShare, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.START))
         addView(primary, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, dp(64), Gravity.BOTTOM))
         addView(crashRow, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
         val version = TextView(context).apply {
@@ -165,10 +146,6 @@ class HomeScreen(
             (settings.layoutParams as FrameLayout.LayoutParams).apply {
                 topMargin = bars.top + dp(12)
                 rightMargin = bars.right + dp(12)
-            }
-            (logShare.layoutParams as FrameLayout.LayoutParams).apply {
-                topMargin = bars.top + dp(16)
-                leftMargin = bars.left + dp(12)
             }
             (primary.layoutParams as FrameLayout.LayoutParams).apply {
                 leftMargin = bars.left + dp(24)
