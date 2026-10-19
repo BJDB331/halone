@@ -7,8 +7,10 @@ import android.os.Looper
 import dev.halone.compositor.Panel
 import dev.halone.compositor.Scene
 import dev.halone.engine.plugin.PluginDirectory
+import dev.halone.app.CrashReports
 import dev.halone.shell.AppInfo
 import dev.halone.shell.BridgeHost
+import dev.halone.shell.HaloneException
 import dev.halone.shell.NativeApps
 import dev.halone.shell.Shell
 import dev.halone.shell.ShellPlatform
@@ -73,5 +75,9 @@ class PhoneShell(private val context: Context, deviceName: String, log: (String)
 
     override fun openKeyCaptureSettings() {
         context.startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    override fun shareLog() {
+        if (!CrashReports.shareLog(context)) throw HaloneException("unavailable", "crash reports are off")
     }
 }

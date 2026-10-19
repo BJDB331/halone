@@ -16,7 +16,7 @@ type Item =
   | { kind: 'toggle'; key: SettingKey; label: string; help: string }
   | { kind: 'slider'; key: SettingKey; label: string; help: string; step: number; format: (v: number) => string }
   | { kind: 'choice'; key: SettingKey; label: string; help: string; labels: Record<string, string>; style: 'segmented' | 'dropdown' }
-  | { kind: 'action'; key: string; label: string; help: string; button: string; run: () => Promise<unknown> }
+  | { kind: 'action'; key: string; label: string; help: string; button: string; run: () => Promise<unknown>; enabledBy?: SettingKey }
 
 interface Group {
   title?: string
@@ -442,6 +442,32 @@ const allSections: Section[] = [
     ],
   },
   {
+    id: 'privacy',
+    title: 'Privacy',
+    icon: 'lock',
+    groups: [
+      {
+        items: [
+          {
+            kind: 'toggle',
+            key: 'diagnostics.crashReports',
+            label: 'Crash reports',
+            help: 'Keeps Halone\'s own log on this phone, and after a crash offers to let you share a report: the app version, phone model, Android version, the error and that log, with web addresses and file names removed. Nothing is sent unless you share it, and turning this off deletes the log.',
+          },
+          {
+            kind: 'action',
+            key: 'shareLog',
+            label: 'Share log',
+            help: 'For when something goes wrong without a crash: shares the same log, scrubbed the same way, from the phone.',
+            button: 'Share…',
+            run: () => halone.system.shareLog(),
+            enabledBy: 'diagnostics.crashReports',
+          },
+        ],
+      },
+    ],
+  },
+  {
     id: 'system',
     title: 'System',
     icon: 'memory',
@@ -575,7 +601,7 @@ const visible = computed<{ section: Section; groups: Group[] }[]>(() => {
                   <span class="label">{{ item.label }}</span>
                   <span class="help x-muted">{{ item.help }}</span>
                 </span>
-                <button class="x-button" @click="item.run().catch((caught) => (message = String(caught)))">{{ item.button }}</button>
+                <button class="x-button" :disabled="item.enabledBy !== undefined && !settings[item.enabledBy]" @click="item.run().catch((caught) => (message = String(caught)))">{{ item.button }}</button>
               </template>
 
               <template v-else-if="item.kind === 'slider'">

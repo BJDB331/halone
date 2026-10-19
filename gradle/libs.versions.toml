@@ -27,6 +27,7 @@ androidx-webkit = { group = "androidx.webkit", name = "webkit", version.ref = "w
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 geckoview = { group = "org.mozilla.geckoview", name = "geckoview", version.ref = "geckoview" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 json = { group = "org.json", name = "json", version.ref = "json" }
 androidx-test-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestJunit" }

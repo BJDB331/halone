@@ -6,6 +6,17 @@ const SEARCH: Record<Settings['browser.searchEngine'], string> = {
   bing: 'https://www.bing.com/search?q=',
 }
 
+const HOME: Record<Settings['browser.searchEngine'], string> = {
+  duckduckgo: 'https://duckduckgo.com/',
+  google: 'https://www.google.com/',
+  bing: 'https://www.bing.com/',
+}
+
+/** The search engine's own front page, for opening the browser with nothing typed. */
+export function homeUrl(engine: Settings['browser.searchEngine'] = 'duckduckgo') {
+  return HOME[engine]
+}
+
 /** What the wearer typed, as a URL to open: an address as it is, anything else as a search. */
 export function toUrl(input: string, engine: Settings['browser.searchEngine'] = 'duckduckgo') {
   const text = input.trim()

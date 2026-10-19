@@ -5,7 +5,7 @@ import AppIcon from '../shared/AppIcon.vue'
 import AppTile from './AppTile.vue'
 import Icon from '../shared/Icon.vue'
 import NoHost from '../shared/NoHost.vue'
-import { toUrl } from '../shared/address'
+import { homeUrl, toUrl } from '../shared/address'
 import { displayUrl } from '../shared/address'
 import { useApps, useHost, useRecording, useSettings, useWindows } from '../shared/host'
 import { showMenu } from '../shared/menu'
@@ -73,6 +73,35 @@ function openAddress() {
     await halone.windows.openUrl(url)
     address.value = ''
   })
+}
+
+/**
+ * The web browser as a tile of its own: typing into the address field is not
+ * where people look for one. It's not a registered app, so it can't be pinned.
+ */
+const browserTile = computed<AppInfo>(() => ({
+  id: 'web-browser',
+  name: 'Browser',
+  description: 'Browse the web',
+  icon: '',
+  iconUrl: '/icons/apps/browser.svg',
+  entry: homeUrl(settings.value?.['browser.searchEngine']),
+  widthPx: 1280,
+  heightPx: 800,
+}))
+
+const openBrowser = (isPrivate = false) => run(() => halone.browser.open(browserTile.value.entry, isPrivate))
+
+function browserMenu(event: MouseEvent) {
+  showMenu(
+    halone,
+    [
+      { id: 'open', label: 'Open', run: () => openBrowser() },
+      { id: 'private', label: 'Open a private window', run: () => openBrowser(true) },
+    ],
+    event.clientX,
+    event.clientY,
+  ).catch(() => {})
 }
 
 const pinnedApps = computed(() => settings.value?.['dock.pinnedApps'] ?? [])
@@ -225,6 +254,7 @@ function toggleFollow() {
       </div>
 
       <div v-else class="grid apps">
+        <AppTile :app="browserTile" :pinned="false" :pinnable="false" @open="openBrowser()" @menu="browserMenu($event)" />
         <AppTile
           v-for="app in launchable"
           :key="app.id"

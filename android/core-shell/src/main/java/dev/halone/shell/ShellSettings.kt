@@ -93,6 +93,7 @@ class ShellSettings(private val store: SettingsStore, schemaJson: String) {
 
     companion object {
         const val FOLLOW_ENABLED = "follow.enabled"
+        const val CRASH_REPORTS = "diagnostics.crashReports"
         const val FOLLOW_MARGIN_DEGREES = "follow.marginDegrees"
         const val FOLLOW_CATCH_UP_SECONDS = "follow.catchUpSeconds"
         const val SLOT_SPACING_DEGREES = "layout.slotSpacingDegrees"

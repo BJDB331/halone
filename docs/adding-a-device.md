@@ -123,6 +123,12 @@ literally cannot forget the unsupported case.
   private to your driver. Set `modeChangeRecreatesDisplay` if switching makes
   the host drop and re-add the display (XREAL does).
 - `brightness: BrightnessControl?`
+- `DriverMatch.setup: DeviceSetup?` — for glasses that depend on settings in
+  their own menu the host can't read. `beforeStarting` is shown as a reminder
+  before the environment starts; `linkOffHelp` and `enableLink` back the home
+  screen's "Network Connection Off" state, whose button asks the glasses to
+  turn their data link on. `enableLink` is only ever called when the wearer
+  presses it. The XREAL One series uses this for Stabilizer and TCP/IP.
 - `displayNameHints` — strings to match against `Display.getName()`, so the
   video link can be paired with the data link. These are discovered through
   entirely separate Android APIs with no shared identifier, so hints are the
@@ -195,7 +201,16 @@ Note that `screencap` wants the SurfaceFlinger id, not `Display.getDisplayId()`.
 ## If it isn't USB HID
 
 `HidTransport` is deliberately just "bytes in, bytes out", so Bluetooth or a
-vendor SDK can sit behind it. If your device needs a genuinely different shape —
+vendor SDK can sit behind it.
+
+Glasses that bring up a network over USB, like the XREAL One series, declare
+`TransportRequest(network = NetworkRequest(hosts, ports))` instead of interface
+ids. The host then skips USB permission, binds sockets to the glasses' network,
+and `open(port)` hands back a `SocketTransport`. Phones that never bring that
+network up get the in-process stack in `transport/usbnet` instead (USB CDC ECM,
+DHCP, ARP, minimal TCP), which does need USB permission. A TCP read returns whatever
+part of the stream has arrived, so the driver does its own framing — see
+`XrealOneFramer`, and test it against a capture split at random points. If your device needs a genuinely different shape —
 control transfers, isochronous streams, an SDK that owns its own threads — open
 an issue before writing much code; the transport layer is the right place to
 extend, and we would rather extend it with you than have you fight it.

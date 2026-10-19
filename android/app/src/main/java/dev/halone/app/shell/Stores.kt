@@ -19,11 +19,12 @@ internal class FileStore(context: Context, name: String, private val writer: jav
 }
 
 internal class PreferencesStore(context: Context) : SettingsStore {
-    private val preferences = context.getSharedPreferences("halone-shell", Context.MODE_PRIVATE)
+    private val preferences = context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
     override fun load(): String? = preferences.getString(KEY, null)
     override fun save(json: String) = preferences.edit().putString(KEY, json).apply()
 
     companion object {
+        const val NAME = "halone-shell"
         const val KEY = "settings"
     }
 }

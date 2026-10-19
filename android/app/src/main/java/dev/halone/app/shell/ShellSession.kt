@@ -23,6 +23,7 @@ import dev.halone.engine.webview.SelectPopup
 import dev.halone.engine.webview.TextField
 import dev.halone.engine.webview.WebViewEngine
 import dev.halone.glasses.api.BrightnessControl
+import dev.halone.app.CrashReports
 import dev.halone.shell.AppInfo
 import dev.halone.shell.Battery
 import dev.halone.shell.BrowserControl
@@ -45,6 +46,7 @@ import dev.halone.shell.MenuItem
 import dev.halone.shell.HalonePackage
 import dev.halone.shell.InstalledApp
 import dev.halone.shell.NativeApp
+import dev.halone.shell.HaloneException
 import dev.halone.shell.NativeApps
 import dev.halone.shell.WindowKind
 import dev.halone.shell.Sockets
@@ -575,6 +577,10 @@ class ShellSession(
 
     override fun openKeyCaptureSettings() {
         context.startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    override fun shareLog() {
+        if (!CrashReports.shareLog(context)) throw HaloneException("unavailable", "crash reports are off")
     }
 
     override fun notice(text: String) = notices.show(text, forMs = DOWNLOAD_NOTICE_MS)

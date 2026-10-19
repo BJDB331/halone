@@ -42,6 +42,9 @@ interface ShellPlatform {
     /** Opens Android's accessibility settings on the phone, where key capture is turned on. */
     fun openKeyCaptureSettings(): Unit = throw HaloneException("unavailable", "this host has no key capture")
 
+    /** Offers Halone's log to the phone's share sheet, while crash reports are on. */
+    fun shareLog(): Unit = throw HaloneException("unavailable", "this host keeps no log")
+
     /** A short message on the glasses, gone by itself. */
     fun notice(text: String) {}
 
@@ -597,6 +600,8 @@ class Shell(
     fun keyCaptureOn() = platform.keyCaptureOn()
 
     fun openKeyCaptureSettings() = platform.openKeyCaptureSettings()
+
+    fun shareLog() = platform.shareLog()
 
     fun clearBrowsingData(cookies: Boolean, cache: Boolean) {
         if (cookies || cache) platform.clearBrowsingData(cookies, cache)

@@ -19,6 +19,7 @@ enum class GlassesStatus(val title: String, val dimmed: Boolean) {
     DISCONNECTED("Glasses Disconnected", true),
     AWAITING_PERMISSION("Awaiting Permission", true),
     NO_VIDEO_OUTPUT("Video Output Not Supported", true),
+    LINK_OFF("Network Connection Off", true),
     READY("Glasses Ready", false),
     STARTING("Starting…", false),
     RUNNING("Environment Running", false),
@@ -32,6 +33,8 @@ class HomeScreen(
     context: Context,
     private val onPrimary: (GlassesStatus) -> Unit,
     onSettings: () -> Unit,
+    onShareReport: () -> Unit,
+    onDismissReport: () -> Unit,
 ) {
     private val density = context.resources.displayMetrics.density
     private var status = GlassesStatus.DISCONNECTED
@@ -51,6 +54,17 @@ class HomeScreen(
         gravity = Gravity.CENTER
     }
 
+    /** A second, smaller action under the detail, for a fix the detail suggests. */
+    private val secondary = TextView(context).apply {
+        textSize = 16f
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        setTextColor(ACCENT)
+        gravity = Gravity.CENTER
+        isClickable = true
+        isFocusable = true
+        visibility = View.GONE
+    }
+
     private val primary = TextView(context).apply {
         textSize = 20f
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
@@ -68,6 +82,40 @@ class HomeScreen(
         setOnClickListener { onSettings() }
     }
 
+    /** Shown after a crash, until shared or dismissed. */
+    private val crashRow = LinearLayout(context).apply {
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER_HORIZONTAL
+        visibility = View.GONE
+        addView(TextView(context).apply {
+            text = "Halone stopped unexpectedly last time."
+            textSize = 15f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+        })
+        addView(LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            addView(link(context, "Share Report", onShareReport))
+            addView(link(context, "Dismiss", onDismissReport))
+        })
+    }
+
+    private fun link(context: Context, label: String, onClick: () -> Unit) = TextView(context).apply {
+        text = label
+        textSize = 16f
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        setTextColor(ACCENT)
+        setPadding(dp(16), dp(10), dp(16), dp(10))
+        isClickable = true
+        isFocusable = true
+        setOnClickListener { onClick() }
+    }
+
+    fun showCrashReport(visible: Boolean) {
+        crashRow.visibility = if (visible) View.VISIBLE else View.GONE
+    }
+
     val view: View = FrameLayout(context).apply {
         setBackgroundColor(Color.BLACK)
         val column = LinearLayout(context).apply {
@@ -76,6 +124,7 @@ class HomeScreen(
             addView(icon, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
             addView(title, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(20) })
             addView(detail, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
+            addView(secondary, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(4) })
         }
         addView(column, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER).apply {
             leftMargin = dp(24)
@@ -84,6 +133,7 @@ class HomeScreen(
         })
         addView(settings, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.TOP or Gravity.END))
         addView(primary, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, dp(64), Gravity.BOTTOM))
+        addView(crashRow, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
         val version = TextView(context).apply {
             text = "Halone ${BuildConfig.VERSION_NAME}"
             textSize = 12f
@@ -103,26 +153,48 @@ class HomeScreen(
                 bottomMargin = bars.bottom + dp(48)
             }
             (version.layoutParams as FrameLayout.LayoutParams).bottomMargin = bars.bottom + dp(16)
+            (crashRow.layoutParams as FrameLayout.LayoutParams).apply {
+                leftMargin = bars.left + dp(24)
+                rightMargin = bars.right + dp(24)
+                bottomMargin = bars.bottom + dp(48 + 64 + 12)
+            }
             requestLayout()
             insets
         }
     }
 
-    fun render(status: GlassesStatus, model: String?) {
+    /**
+     * [help] is the device's own explanation for [GlassesStatus.LINK_OFF];
+     * [notice] is a hint about what just went wrong, shown under the detail.
+     */
+    fun render(
+        status: GlassesStatus,
+        model: String?,
+        help: String? = null,
+        notice: String? = null,
+        action: Pair<String, () -> Unit>? = null,
+    ) {
+        secondary.visibility = if (action != null) View.VISIBLE else View.GONE
+        secondary.text = action?.first
+        secondary.setPadding(dp(16), dp(10), dp(16), dp(10))
+        secondary.setOnClickListener { action?.second?.invoke() }
         this.status = status
         icon.alpha = if (status.dimmed) 0.3f else 1f
         title.text = status.title
-        detail.text = when (status) {
+        val text = when (status) {
             GlassesStatus.DISCONNECTED -> "Connect your glasses to the phone's USB-C port"
             GlassesStatus.AWAITING_PERMISSION -> listOfNotNull(model, "Allow Halone to use them").joinToString("\n")
             GlassesStatus.NO_VIDEO_OUTPUT -> "The glasses are connected, but this phone's USB-C port does not send video " +
                 "(DisplayPort Alt Mode), so it cannot drive them. Halone needs a phone that can show its screen on a USB-C display."
+            GlassesStatus.LINK_OFF -> listOfNotNull(model, help).joinToString("\n")
             else -> model.orEmpty()
         }
+        detail.text = listOfNotNull(text.takeIf { it.isNotEmpty() }, notice).joinToString("\n\n")
         val (label, enabled) = when (status) {
             GlassesStatus.DISCONNECTED -> "Start Environment" to false
             GlassesStatus.AWAITING_PERMISSION -> "Allow Access" to true
             GlassesStatus.NO_VIDEO_OUTPUT -> "Start Environment" to false
+            GlassesStatus.LINK_OFF -> "Turn It On" to true
             GlassesStatus.READY -> "Start Environment" to true
             GlassesStatus.STARTING -> "Starting…" to false
             GlassesStatus.RUNNING -> "Stop Environment" to true

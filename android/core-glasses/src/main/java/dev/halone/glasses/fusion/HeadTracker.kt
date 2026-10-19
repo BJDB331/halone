@@ -42,39 +42,6 @@ class HeadTracker(
     val calibration: DeviceCalibration? = null,
 ) : TrackingSink {
 
-    init {
-        calibration?.imu?.let { imu ->
-            filter.accelBias = imu.accelBias
-            filter.magnetToBody = imu.gyroToMag
-            // Seeded, not trusted. Gyro bias moves with temperature and with
-            // the years since the factory measured it, so this is a starting
-            // point that makes the first minute usable — not a substitute for
-            // measuring it, which still happens and still takes over.
-            filter.gyroBias = imu.gyroBias
-            initialBias = imu.gyroBias
-            factoryGyroBias = imu.gyroBias
-            biasSeeded = true
-        }
-        calibration?.let { mountingCorrection = it.headFromImu.conjugate() }
-
-        // On, because wearing it settled the question decisively.
-        //
-        // Worn, moving normally, measured against a real object by recentring
-        // on it and looking back: over ten minutes, **~19° with it against the
-        // ~99° the gyro alone reaches**. Short runs flatter it — two minutes
-        // gives 0.58°/min, which does not extrapolate, because what this does
-        // is bound the error rather than remove it. The
-        // baseline puts a whole panel width between the wearer and the object
-        // in two minutes, which is what it looks like when yaw has no reference
-        // at all and the stillness detector never fires to re-measure bias.
-        //
-        // It costs something in the opposite regime: on a stationary desk with
-        // bias estimation converged, yaw wandered 0.206°/min with it on against
-        // 0.035°/min with it off, because the indoor field itself moves ~1.5°.
-        // That trade is worth taking without hesitation — 0.2°/min is invisible
-        // over a session and 10°/min is not.
-        filter.magnetometer.enabled = MAGNETOMETER_ON_BY_DEFAULT
-    }
 
     private var initialBias: Vec3 = Vec3.ZERO
 
@@ -103,8 +70,13 @@ class HeadTracker(
         private set
 
     /**
-     * Rotation from the IMU frame to the head frame — the displays, which are
-     * what the wearer actually aims.
+     * The head frame — the displays, which are what the wearer actually aims —
+     * as seen from the IMU. Composed on the body side of the filter's
+     * orientation: the IMU turns with the head, so a turn about the world's
+     * vertical must stay one through any mount. Composing it on the world side
+     * instead tips the horizon by up to the mount angle once the wearer looks
+     * away from where they started, which a degree-sized mount hides and the
+     * One Pro's ~35° does not (see `HeadTrackerMountTest`).
      *
      * Falls back to the per-model pitch guess when there is no calibration.
      * With one, it carries the real mounting rotation, which on this hardware
@@ -162,6 +134,42 @@ class HeadTracker(
     var rawAngularVelocity: Vec3 = Vec3.ZERO
         private set
 
+    // Last of the initialisers on purpose: Kotlin runs them in order, so state
+    // declared below an init block resets whatever the block wrote to it.
+    init {
+        calibration?.imu?.let { imu ->
+            filter.accelBias = imu.accelBias
+            filter.magnetToBody = imu.gyroToMag
+            // Seeded, not trusted. Gyro bias moves with temperature and with
+            // the years since the factory measured it, so this is a starting
+            // point that makes the first minute usable — not a substitute for
+            // measuring it, which still happens and still takes over.
+            filter.gyroBias = imu.gyroBias
+            initialBias = imu.gyroBias
+            factoryGyroBias = imu.gyroBias
+            biasSeeded = true
+        }
+        calibration?.let { mountingCorrection = it.headFromImu }
+
+        // On, because wearing it settled the question decisively.
+        //
+        // Worn, moving normally, measured against a real object by recentring
+        // on it and looking back: over ten minutes, **~19° with it against the
+        // ~99° the gyro alone reaches**. Short runs flatter it — two minutes
+        // gives 0.58°/min, which does not extrapolate, because what this does
+        // is bound the error rather than remove it. The
+        // baseline puts a whole panel width between the wearer and the object
+        // in two minutes, which is what it looks like when yaw has no reference
+        // at all and the stillness detector never fires to re-measure bias.
+        //
+        // It costs something in the opposite regime: on a stationary desk with
+        // bias estimation converged, yaw wandered 0.206°/min with it on against
+        // 0.035°/min with it off, because the indoor field itself moves ~1.5°.
+        // That trade is worth taking without hesitation — 0.2°/min is invisible
+        // over a session and 10°/min is not.
+        filter.magnetometer.enabled = MAGNETOMETER_ON_BY_DEFAULT
+    }
+
     override fun onSample(sample: TrackingSample) {
         samples++
         when (sample) {
@@ -185,12 +193,12 @@ class HeadTracker(
     }
 
     private fun publish(raw: Quaternion, angularVelocity: Vec3, timestampNs: Long) {
-        val corrected = (mountingCorrection * raw).normalized()
+        val corrected = (raw * mountingCorrection).normalized()
         gravityOrientation = corrected
         published.set(
             HeadPose(
                 orientation = (worldReference * corrected).normalized(),
-                angularVelocity = angularVelocity,
+                angularVelocity = mountingCorrection.conjugate().rotate(angularVelocity),
                 timestampNs = timestampNs,
                 sampleCount = samples,
             )
@@ -230,7 +238,7 @@ class HeadTracker(
     /** Back to gravity, recentred on the current heading. Returns the world turn. */
     fun exitBedMode(): Quaternion = reframe(null)
 
-    private fun currentGravityOrientation() = (mountingCorrection * filter.orientation).normalized()
+    private fun currentGravityOrientation() = (filter.orientation * mountingCorrection).normalized()
 
     private fun reframe(bed: Quaternion?): Quaternion {
         val tilt = bed ?: Quaternion.IDENTITY
