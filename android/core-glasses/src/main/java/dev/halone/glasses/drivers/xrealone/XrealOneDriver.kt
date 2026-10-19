@@ -2,6 +2,7 @@ package dev.halone.glasses.drivers.xrealone
 
 import dev.halone.glasses.api.AxisConvention
 import dev.halone.glasses.api.DeviceInfo
+import dev.halone.glasses.api.DeviceSetup
 import dev.halone.glasses.api.DisplayMode
 import dev.halone.glasses.api.DriverMatch
 import dev.halone.glasses.api.GlassesDevice
@@ -11,7 +12,38 @@ import dev.halone.glasses.api.Optics
 import dev.halone.glasses.api.StereoLayout
 import dev.halone.glasses.api.TransportRequest
 import dev.halone.glasses.api.UsbIdentity
+import dev.halone.glasses.transport.HidTransport
 import dev.halone.glasses.transport.HidTransportProvider
+
+/**
+ * Stabilizer and Follow mode live only in the glasses' menu; the host can
+ * neither read nor set them, and with Stabilizer on the sensor port stays shut.
+ * The network link can be off too, in which case it is switched back on through
+ * the one HID write `XrealOneHid` permits.
+ */
+internal object XrealOneSetup : DeviceSetup {
+    override val beforeStarting =
+        "In the glasses' menu (double-click the X button), set the screen to Follow mode and turn Stabilizer off. " +
+            "Halone does the head tracking, and the two fight each other otherwise."
+
+    override val linkOffHelp =
+        "Halone reads the glasses' sensors over their network connection, which is switched off. " +
+            "Turn on TCP/IP in their Developer page (double-click X, choose Other, press minus until Serial Number, " +
+            "then hold X for five seconds), or let Halone switch it on."
+
+    override val controlInterface = XrealOneHid.HID_INTERFACE
+
+    override fun enableLink(transport: HidTransport): Result<Unit> {
+        val hid = XrealOneHid(transport)
+        val functions = hid.usbFunctions().getOrElse { return Result.failure(it) }
+        if (functions.networkOn) {
+            return Result.failure(
+                IllegalStateException("The glasses say their network is already on. Unplug them and plug them back in.")
+            )
+        }
+        return hid.enableNetwork()
+    }
+}
 
 internal data class XrealOneModel(
     val productId: Int,
@@ -53,6 +85,7 @@ class XrealOneDriver : GlassesDriver {
                 ),
             ),
             tag = model,
+            setup = XrealOneSetup,
         )
     }
 
@@ -64,7 +97,8 @@ class XrealOneDriver : GlassesDriver {
             return Result.failure(
                 IllegalStateException(
                     "could not open the report stream: ${it.message}. Check that the glasses are in " +
-                        "Follow mode with Stabilizer off; the port stays closed otherwise.",
+                        "Follow mode with Stabilizer off, and that TCP/IP is on (glasses menu: Other, " +
+                        "press minus until Serial Number, hold X for 5 s, Developer page).",
                 )
             )
         }
@@ -107,9 +141,13 @@ class XrealOneDriver : GlassesDriver {
             perEyeWidth = 1920,
             perEyeHeight = 1080,
             imuRateHz = 1000,
-            // The Air's measured latency, standing in until one of these is measured.
-            predictionConstantMs = 85f,
+            // Blind A/B by two One Pro wearers (test kit 0.6.0) settled on 35 and
+            // 17.5 ms; both rejected 105 outright. The Air's 85 is far too much.
+            predictionConstantMs = 30f,
             predictionFrametimeMultiplier = 1f,
+            // The same rounds put the right field of view at 0.83 and 0.95 of the
+            // factory calibration's.
+            calibratedFovScale = 0.9f,
         )
 
         val MODELS = mapOf(

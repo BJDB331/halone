@@ -22,6 +22,25 @@ both NCM (USB interfaces 1–2) and ECM (3–4). The interfaces Android lists to
 apps only include those with an address, so whether the kernel created a
 netdev that Android then ignored is unknown.
 
+The glasses' **TCP/IP** setting must be on, or they expose no network function
+over USB at all: a tester's One Pro enumerated with 7 interfaces (HID, audio,
+buttons) instead of 13, with no NCM or ECM. XREAL documents the setting
+([Developer page](https://tutorials.xreal.com/docs/glasses/one-series/osd/tcp-ip/)):
+double-click **X** → **Other** → press **−** until **Serial Number** → hold **X**
+for 5 s → **TCP/IP**. XREAL advises turning it off when a phone or TV box
+mistakes the glasses for a network device, so owners may have done exactly that.
+
+Underneath, the USB functions are a 32-bit word on the glasses, two bits per
+function (NCM 0–1, ECM 2–3, audio 4–5, HID 6–7, MTP 8–9, mass storage 10–11,
+cameras 12–15, enable 16–17). It's read with HID command `0xD2` and set with
+`0xD3` on interface 0; when setting, 0 leaves a field alone, 1 turns it on, 2
+off. Frames are 1024 bytes: `0xFD`, CRC-32 (standard), u16 length, u32 request
+id, u32 timestamp, the 2-byte command, five zero bytes, payload; replies add a
+status byte (xr-tools, `proto/usb`). The test kit reads this word when the menu
+toggle doesn't help, and with the tester's consent writes `0x00010005` (NCM
+and ECM on, nothing else). `XrealOneHid` refuses any other write. Untested on
+hardware so far.
+
 The glasses must be in **Follow** mode with **Stabilizer off**, set from their
 own menu. The host can neither read nor change either. With Stabilizer on, one
 project reports port 52998 staying closed, and another that the glasses re-centre
@@ -148,11 +167,18 @@ Each switch re-adds the display under a new id.
 ## Open questions
 
 - Does the link come up on any Android phone, and as which interface? Not on
-  a Galaxy S25 Ultra.
+  a Galaxy S25 Ultra, where the in-app ECM stack is needed.
+- Is TCP/IP on by default, or only after a firmware update? One tester reports
+  it on while their glasses enumerated without NCM/ECM on two phones, so the
+  setting may not be the only gate (firmware version, or needing a replug).
 - Axis signs and the mount rotation on a One Pro, worn.
 - EDID name and mode list per glasses setting; SBS refresh rates.
 - Brightness read and range; what events `0x2766`, `0x278A` and `0x2712` mean.
-- Display latency, for `predictionConstantMs` (currently the Air's 85 ms).
+- Display latency and field of view, beyond two wearers. Blind A/B in test kit
+  0.6.0 put prediction at 35 and 17.5 ms (both rejected 105) and the field of
+  view at 0.83 and 0.95 of the factory calibration's; the driver uses 30 ms
+  and 0.9 until more wearers weigh in. Neither could tell the factory mount
+  ±5° apart.
 
 ## Sources
 

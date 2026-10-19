@@ -82,4 +82,5 @@ data class DriverMatch(
     val transports: TransportRequest,
     /** Opaque driver-private payload, so probe results need no re-derivation. */
     val tag: Any? = null,
+    val setup: DeviceSetup? = null,
 )

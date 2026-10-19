@@ -4,12 +4,14 @@ import android.content.Context
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import dev.halone.glasses.api.GlassesDevice
+import dev.halone.glasses.api.NetworkRequest
 import dev.halone.glasses.registry.GlassesRegistry
 import dev.halone.glasses.registry.ProbeResult
 import dev.halone.glasses.transport.HidTransportProvider
 import dev.halone.glasses.transport.LinkLocalNetworks
 import dev.halone.glasses.transport.SocketTransportProvider
 import dev.halone.glasses.transport.UsbHidTransportProvider
+import dev.halone.glasses.transport.usbnet.UsbEcmLink
 import dev.halone.glasses.transport.usbnet.UsbNetTransportProvider
 import javax.net.SocketFactory
 
@@ -29,7 +31,10 @@ class GlassesConnection(
 
     private val linkLocal by lazy { LinkLocalNetworks(context) }
 
+    @Volatile
     private var provider: AutoCloseable? = null
+
+    @Volatile
     var device: GlassesDevice? = null
         private set
 
@@ -44,9 +49,29 @@ class GlassesConnection(
     /** Network devices skip the prompt only when the phone brought their network up itself. */
     fun hasPermission(usbDevice: UsbDevice): Boolean {
         val transports = registry.probe(UsbHidTransportProvider.identityOf(usbDevice))?.match?.transports
-        val network = transports?.network
-        val systemLink = network != null && network.hosts.any { linkLocal.networkFor(it) != null }
-        return systemLink || usbManager.hasPermission(usbDevice)
+        return hasSystemLink(transports?.network) || usbManager.hasPermission(usbDevice)
+    }
+
+    private fun hasSystemLink(network: NetworkRequest?) =
+        network != null && network.hosts.any { linkLocal.networkFor(it) != null }
+
+    /**
+     * True for a network device whose link is not there at all: the phone has
+     * no network to it, and it offers none over USB for Halone to run itself.
+     */
+    fun linkMissing(usbDevice: UsbDevice, probe: ProbeResult): Boolean {
+        val network = probe.match.transports.network ?: return false
+        return !hasSystemLink(network) && !UsbEcmLink.hasEcm(usbDevice)
+    }
+
+    /** Asks the device to turn its link on; it re-enumerates when this succeeds. Blocking. */
+    fun enableLink(usbDevice: UsbDevice, probe: ProbeResult): Result<Unit> {
+        val setup = probe.match.setup ?: return Result.failure(IllegalStateException("this device cannot do that"))
+        val connection = usbManager.openDevice(usbDevice)
+            ?: return Result.failure(IllegalStateException("openDevice returned null — permission not granted?"))
+        return UsbHidTransportProvider(usbDevice, connection).use { transports ->
+            transports.open(setup.controlInterface).mapCatching { setup.enableLink(it).getOrThrow() }
+        }
     }
 
     fun requestPermission(usbDevice: UsbDevice, intent: android.app.PendingIntent) =

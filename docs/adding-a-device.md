@@ -123,6 +123,12 @@ literally cannot forget the unsupported case.
   private to your driver. Set `modeChangeRecreatesDisplay` if switching makes
   the host drop and re-add the display (XREAL does).
 - `brightness: BrightnessControl?`
+- `DriverMatch.setup: DeviceSetup?` — for glasses that depend on settings in
+  their own menu the host can't read. `beforeStarting` is shown as a reminder
+  before the environment starts; `linkOffHelp` and `enableLink` back the home
+  screen's "Network Connection Off" state, whose button asks the glasses to
+  turn their data link on. `enableLink` is only ever called when the wearer
+  presses it. The XREAL One series uses this for Stabilizer and TCP/IP.
 - `displayNameHints` — strings to match against `Display.getName()`, so the
   video link can be paired with the data link. These are discovered through
   entirely separate Android APIs with no shared identifier, so hints are the

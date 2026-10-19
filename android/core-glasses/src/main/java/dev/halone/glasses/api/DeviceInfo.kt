@@ -73,6 +73,12 @@ data class Optics(
      */
     val predictionConstantMs: Float = 0f,
     val predictionFrametimeMultiplier: Float = 1f,
+    /**
+     * Multiplies the factory-calibrated frustum. Below 1 where wearers judge
+     * the calibration's field of view too wide, which on XREAL hardware they
+     * consistently have.
+     */
+    val calibratedFovScale: Float = 1f,
 ) {
     /**
      * Vertical half-angle follows from the diagonal and the aspect:

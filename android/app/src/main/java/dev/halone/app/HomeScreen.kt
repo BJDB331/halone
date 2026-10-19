@@ -19,6 +19,7 @@ enum class GlassesStatus(val title: String, val dimmed: Boolean) {
     DISCONNECTED("Glasses Disconnected", true),
     AWAITING_PERMISSION("Awaiting Permission", true),
     NO_VIDEO_OUTPUT("Video Output Not Supported", true),
+    LINK_OFF("Network Connection Off", true),
     READY("Glasses Ready", false),
     STARTING("Starting…", false),
     RUNNING("Environment Running", false),
@@ -108,21 +109,28 @@ class HomeScreen(
         }
     }
 
-    fun render(status: GlassesStatus, model: String?) {
+    /**
+     * [help] is the device's own explanation for [GlassesStatus.LINK_OFF];
+     * [notice] is a hint about what just went wrong, shown under the detail.
+     */
+    fun render(status: GlassesStatus, model: String?, help: String? = null, notice: String? = null) {
         this.status = status
         icon.alpha = if (status.dimmed) 0.3f else 1f
         title.text = status.title
-        detail.text = when (status) {
+        val text = when (status) {
             GlassesStatus.DISCONNECTED -> "Connect your glasses to the phone's USB-C port"
             GlassesStatus.AWAITING_PERMISSION -> listOfNotNull(model, "Allow Halone to use them").joinToString("\n")
             GlassesStatus.NO_VIDEO_OUTPUT -> "The glasses are connected, but this phone's USB-C port does not send video " +
                 "(DisplayPort Alt Mode), so it cannot drive them. Halone needs a phone that can show its screen on a USB-C display."
+            GlassesStatus.LINK_OFF -> listOfNotNull(model, help).joinToString("\n")
             else -> model.orEmpty()
         }
+        detail.text = listOfNotNull(text.takeIf { it.isNotEmpty() }, notice).joinToString("\n\n")
         val (label, enabled) = when (status) {
             GlassesStatus.DISCONNECTED -> "Start Environment" to false
             GlassesStatus.AWAITING_PERMISSION -> "Allow Access" to true
             GlassesStatus.NO_VIDEO_OUTPUT -> "Start Environment" to false
+            GlassesStatus.LINK_OFF -> "Turn It On" to true
             GlassesStatus.READY -> "Start Environment" to true
             GlassesStatus.STARTING -> "Starting…" to false
             GlassesStatus.RUNNING -> "Stop Environment" to true

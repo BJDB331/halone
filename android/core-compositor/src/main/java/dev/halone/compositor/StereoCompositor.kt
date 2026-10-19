@@ -99,9 +99,9 @@ class StereoCompositor(
             projectionDirty = true
         }
 
-    /** Scales the calibrated frustum, for sweeping field of view while worn. */
+    /** Scales the calibrated frustum; starts at the device's default and can be swept while worn. */
     @Volatile
-    var fovScale: Float = 1f
+    var fovScale: Float = optics.calibratedFovScale
         set(value) {
             field = value
             projectionDirty = true

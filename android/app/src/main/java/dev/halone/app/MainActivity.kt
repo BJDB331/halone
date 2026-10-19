@@ -176,6 +176,7 @@ class MainActivity : AppCompatActivity() {
             found == null -> GlassesStatus.DISCONNECTED
             noVideoOutput() -> GlassesStatus.NO_VIDEO_OUTPUT
             tracker != null -> GlassesStatus.READY
+            connection.linkMissing(found.first, found.second) -> GlassesStatus.LINK_OFF
             !connection.hasPermission(found.first) -> GlassesStatus.AWAITING_PERMISSION
             else -> GlassesStatus.READY
         }
@@ -213,14 +214,85 @@ class MainActivity : AppCompatActivity() {
     private fun refreshHome() {
         if (!::home.isInitialized) return
         val (status, model) = glassesStatus()
-        home.render(status, model)
+        val setup = connection.findSupported()?.second?.match?.setup
+        home.render(status, model, help = setup?.linkOffHelp, notice = homeNotice)
     }
+
+    /** Why the last attempt at something failed, for the home screen; cleared once things work. */
+    private var homeNotice: String? = null
 
     private fun onPrimary(status: GlassesStatus) {
         when (status) {
             GlassesStatus.AWAITING_PERMISSION -> requestPermissionAndConnect()
-            GlassesStatus.READY, GlassesStatus.RUNNING -> toggleEnvironment()
+            GlassesStatus.LINK_OFF -> turnOnLink()
+            GlassesStatus.READY -> remindThenStart()
+            GlassesStatus.RUNNING -> toggleEnvironment()
             else -> Unit
+        }
+    }
+
+    /**
+     * Shows the device's "before starting" reminder, once per start, until the
+     * wearer says not to. It's for settings only the glasses' own menu can
+     * change, which the host can't check.
+     */
+    private fun remindThenStart() {
+        val found = connection.findSupported()
+        val reminder = found?.second?.match?.setup?.beforeStarting
+        val key = "skip-reminder-${found?.second?.match?.info?.driverId}"
+        val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+        if (reminder == null || shellSession != null || prefs.getBoolean(key, false)) {
+            toggleEnvironment()
+            return
+        }
+        val dontAsk = android.widget.CheckBox(this).apply { text = "Don't remind me again" }
+        val padding = (20 * resources.displayMetrics.density).toInt()
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Before you start")
+            .setMessage(reminder)
+            .setView(android.widget.FrameLayout(this).apply {
+                setPadding(padding, 0, padding, 0)
+                addView(dontAsk)
+            })
+            .setPositiveButton("Start") { _, _ ->
+                if (dontAsk.isChecked) prefs.edit().putBoolean(key, true).apply()
+                toggleEnvironment()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    /** Set while a USB permission request is for turning the link on rather than for connecting. */
+    private var linkRequested = false
+
+    /**
+     * Asks the glasses to turn their data link on. They disconnect and come
+     * back as a new device, which the USB receiver picks up.
+     */
+    private fun turnOnLink() {
+        val (usbDevice, probe) = connection.findSupported() ?: return
+        if (!getSystemService(UsbManager::class.java).hasPermission(usbDevice)) {
+            linkRequested = true
+            connection.requestPermission(
+                usbDevice,
+                PendingIntent.getBroadcast(this, 0, Intent(ACTION_USB_PERMISSION).setPackage(packageName), PendingIntent.FLAG_MUTABLE),
+            )
+            return
+        }
+        lifecycleScope.launch {
+            logLine("▶ turning the glasses' network connection on")
+            val result = withContext(Dispatchers.IO) { connection.enableLink(usbDevice, probe) }
+            homeNotice = result.fold(
+                onSuccess = {
+                    logLine("  done; the glasses will reconnect")
+                    "Turning it on. The glasses will disconnect and reconnect by themselves."
+                },
+                onFailure = {
+                    logLine("  could not: ${it.message}")
+                    "Couldn't turn it on: ${it.message}"
+                },
+            )
+            refreshHome()
         }
     }
 
@@ -372,7 +444,13 @@ class MainActivity : AppCompatActivity() {
             val usbDevice = connection.findSupported()?.first
             val granted = extra || (usbDevice != null && connection.hasPermission(usbDevice))
             logLine("USB permission ${if (granted) "granted" else "DENIED"} (extra=$extra)")
-            if (granted) connect()
+            val forLink = linkRequested
+            linkRequested = false
+            when {
+                !granted -> Unit
+                forLink -> turnOnLink()
+                else -> connect()
+            }
             refreshHome()
         }
     }
@@ -492,8 +570,15 @@ class MainActivity : AppCompatActivity() {
         connection.close()
     }
 
+    /** Runs chained actions in order, letting a connect finish before the next one, since it now happens off the main thread. */
     private fun dispatchIntent(intent: Intent?) {
-        intent?.getStringExtra("action")?.split(',')?.forEach { run(it.trim()) }
+        val keys = intent?.getStringExtra("action")?.split(',')?.map { it.trim() } ?: return
+        lifecycleScope.launch {
+            for (key in keys) {
+                run(key)
+                connecting?.join()
+            }
+        }
     }
 
     /** Lets every development action be driven over adb: `am start ... -e action displays`. */
@@ -597,57 +682,77 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private var connecting: Job? = null
+
+    /**
+     * Off the main thread: a network device opens sockets, which Android
+     * refuses there outright, and reading its calibration can take seconds.
+     */
     private fun connect() {
-        connection.connect()
-            .onSuccess { device ->
-                // Holds the process out of the background freezer, which
-                // otherwise stops the render thread and freezes the glasses on a
-                // stale frame within seconds.
-                XrSessionService.start(this)
-                logLine("Connected: ${device.info.displayName} (${device.info.driverId})")
-                logLine(
-                    "  optics: ${device.optics.perEyeWidth}x${device.optics.perEyeHeight}/eye, " +
-                        "${device.optics.diagonalFovDegrees}° diagonal, ${device.optics.imuRateHz}Hz nominal"
-                )
-                logLine("  display control: ${if (device.display != null) "yes" else "no"}")
-                logLine("  brightness control: ${if (device.brightness != null) "yes" else "no"}")
-                logLine("  on-device fusion: ${device.tracking.providesOrientation}")
-
-                device.addEventListener { event ->
-                    logOnMain("  event: $event")
-                    if (event is DeviceEvent.Disconnected) runOnUiThread { glassesGone() }
-                }
-
-                // Two seconds of USB round trips, and it pauses the sensor
-                // stream, so it happens once here rather than lazily later.
-                val calibration = device.calibration?.load()
-                calibration?.let { logLine("  ${it.describe().replace("\n", "\n  ")}") }
-                if (calibration?.source == DeviceCalibration.Source.FALLBACK) {
-                    logLine("  WARNING: these are another unit's numbers — do not tune against them")
-                }
-
-                val head = HeadTracker(device.optics, calibration = calibration)
-                tracker = head
-                // One sink, fanned out: the tracker drives the pose while the
-                // development actions keep the last raw sample for axis identification.
-                device.tracking.start { sample ->
-                    head.onSample(sample)
-                    if (sample is TrackingSample.Inertial) {
-                        lastInertial = sample
-                        lastSampleHostNanos = System.nanoTime()
-                        tapRecorder?.record(sample, lastSampleHostNanos)
-                        detectGlassesTap(sample, lastSampleHostNanos)
+        if (connecting != null) return
+        connecting = lifecycleScope.launch {
+            try {
+                val connected = withContext(Dispatchers.IO) {
+                    connection.connect().map { device ->
+                        device.addEventListener { event ->
+                            logOnMain("  event: $event")
+                            if (event is DeviceEvent.Disconnected) runOnUiThread { glassesGone() }
+                        }
+                        // It pauses the sensor stream, so it happens once here
+                        // rather than lazily later.
+                        device to device.calibration?.load()
                     }
                 }
-                logLine("  tracking started")
-                startDisplayTiming(device)
-                if (stereoSession == null && starting == null && glassesInStereo()) setStereo(false)
+                connected
+                    .onSuccess { (device, calibration) -> connected(device, calibration) }
+                    .onFailure {
+                        logLine("Connect failed: ${it.message}")
+                        homeNotice = "Couldn't connect: ${it.message}"
+                    }
+            } finally {
+                connecting = null
                 refreshHome()
             }
-            .onFailure {
-                logLine("Connect failed: ${it.message}")
-                refreshHome()
+        }
+    }
+
+    private fun connected(device: GlassesDevice, calibration: DeviceCalibration?) {
+        homeNotice = null
+        // Holds the process out of the background freezer, which otherwise
+        // stops the render thread and freezes the glasses on a stale frame
+        // within seconds.
+        XrSessionService.start(this)
+        logLine("Connected: ${device.info.displayName} (${device.info.driverId})")
+        logLine(
+            "  optics: ${device.optics.perEyeWidth}x${device.optics.perEyeHeight}/eye, " +
+                "${device.optics.diagonalFovDegrees}° diagonal, ${device.optics.imuRateHz}Hz nominal"
+        )
+        logLine("  display control: ${if (device.display != null) "yes" else "no"}")
+        logLine("  brightness control: ${if (device.brightness != null) "yes" else "no"}")
+        logLine("  on-device fusion: ${device.tracking.providesOrientation}")
+
+        calibration?.let { logLine("  ${it.describe().replace("\n", "\n  ")}") }
+        if (calibration?.source == DeviceCalibration.Source.FALLBACK) {
+            logLine("  WARNING: these are another unit's numbers — do not tune against them")
+        }
+
+        val head = HeadTracker(device.optics, calibration = calibration)
+        tracker = head
+        // One sink, fanned out: the tracker drives the pose while the
+        // development actions keep the last raw sample for axis identification.
+        device.tracking.start { sample ->
+            head.onSample(sample)
+            if (sample is TrackingSample.Inertial) {
+                lastInertial = sample
+                lastSampleHostNanos = System.nanoTime()
+                tapRecorder?.record(sample, lastSampleHostNanos)
+                detectGlassesTap(sample, lastSampleHostNanos)
             }
+        }
+        logLine("  tracking started")
+        startDisplayTiming(device)
+        if (stereoSession == null && starting == null && glassesInStereo()) setStereo(false)
+        refreshHome()
     }
 
     /**
@@ -2171,6 +2276,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private companion object {
+        const val PREFS = "home"
         const val LOG_TAG = "Halone"
 
         /** What Nebula reads from an Air 2 Pro, for comparison against ours. */
