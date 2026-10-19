@@ -4,7 +4,7 @@ import AppIcon from '../shared/AppIcon.vue'
 import Icon from '../shared/Icon.vue'
 import { useTileColor } from '../shared/tileColor'
 
-const props = defineProps<{ app: AppInfo; pinned: boolean }>()
+const props = withDefaults(defineProps<{ app: AppInfo; pinned: boolean; pinnable?: boolean }>(), { pinnable: true })
 defineEmits<{ open: []; menu: [event: MouseEvent]; togglePin: [] }>()
 
 const color = useTileColor(() => props.app)
@@ -13,6 +13,7 @@ const color = useTileColor(() => props.app)
 <template>
   <button class="app-tile" :style="{ '--tile': color }" :title="app.name" @click="$emit('open')" @contextmenu.prevent="$emit('menu', $event)">
     <span
+      v-if="pinnable"
       class="dock-pin"
       :class="{ active: pinned }"
       role="button"
