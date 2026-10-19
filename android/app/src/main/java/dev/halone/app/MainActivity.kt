@@ -856,7 +856,7 @@ class MainActivity : AppCompatActivity() {
 
         val head = HeadTracker(device.optics, calibration = calibration)
         tracker = head
-        applySavedTuning(head, device)
+        applyTrackingSettings()
         // One sink, fanned out: the tracker drives the pose while the
         // development actions keep the last raw sample for axis identification.
         device.tracking.start { sample ->
@@ -1371,43 +1371,46 @@ class MainActivity : AppCompatActivity() {
     private fun showPad() {
         startHitHistory()
         if (pointerPad == null) pointerPad = PointerPad(this, padGestures, padActions).also { it.show() }
-        pointerPad?.tuning = trackingTuning()
+        applyTrackingSettings()
         startPadStats()
     }
 
     /**
-     * The pad's live tuning for the connected glasses: prediction horizon and
-     * rest hold, remembered per driver so a wearer's settings survive restarts.
+     * Tracking tuning and the pad's stats line, from the Developer settings.
+     *
+     * Kept in the shell's settings rather than anywhere of the pad's own, so
+     * a value set once stays set: it is saved when it changes and read back
+     * here on every connect, every compositor and every change. With custom
+     * tuning off, each pair of glasses gets its driver's tuning back.
      */
-    private fun trackingTuning(): PointerPad.Tuning? {
-        val head = tracker ?: return null
-        val device = connection.device ?: return null
-        val prefs = getSharedPreferences("tracking-tuning", MODE_PRIVATE)
-        val key = device.info.driverId
-        val defaultPrediction = head.predictionHorizonMs(1000f / (stereoSession?.display?.refreshRate ?: 60f)).roundToInt()
-        return PointerPad.Tuning(
-            predictionMs = prefs.getInt("$key.prediction", defaultPrediction),
-            deadbandTenths = prefs.getInt("$key.deadband", (head.restDeadbandDegrees * 10).roundToInt()),
-            onChange = { prediction, deadband ->
-                head.predictionOverrideMs = prediction.toFloat()
-                head.restDeadbandDegrees = deadband / 10f
-                prefs.edit().putInt("$key.prediction", prediction).putInt("$key.deadband", deadband).apply()
-            },
-            latchPacing = stereoSession?.compositor?.paceOnLatch ?: true,
-            onLatchPacing = { on ->
-                stereoSession?.compositor?.paceOnLatch = on
-                prefs.edit().putBoolean("$key.latchPacing", on).apply()
-            },
-        )
+    private fun applyTrackingSettings() {
+        val settings = shellSession?.shell?.settings
+        val custom = settings?.bool(ShellSettings.TRACKING_CUSTOM) == true
+        tracker?.let { head ->
+            val optics = connection.device?.optics
+            if (custom) {
+                head.predictionOverrideMs = settings!!.num(ShellSettings.TRACKING_PREDICTION_MS)?.toFloat()
+                settings.num(ShellSettings.TRACKING_STEADINESS_DEGREES)?.let { head.restDeadbandDegrees = it.toFloat() }
+            } else {
+                head.predictionOverrideMs = null
+                optics?.let { head.restDeadbandDegrees = it.restDeadbandDegrees }
+            }
+        }
+        stereoSession?.let { session ->
+            val compositor = session.compositor ?: return@let
+            compositor.paceOnLatch = when (settings?.str(ShellSettings.TRACKING_FRAME_PACING)) {
+                "wait" -> true
+                "free" -> false
+                else -> session.autoPaceOnLatch
+            }
+        }
+        pointerPad?.showStats = settings?.bool(ShellSettings.DEVELOPER_DISPLAY_STATS) == true
     }
 
-    /** Puts a wearer's saved tuning back on a newly connected tracker. */
-    private fun applySavedTuning(head: HeadTracker, device: GlassesDevice) {
-        val prefs = getSharedPreferences("tracking-tuning", MODE_PRIVATE)
-        val key = device.info.driverId
-        if (prefs.contains("$key.prediction")) head.predictionOverrideMs = prefs.getInt("$key.prediction", 0).toFloat()
-        if (prefs.contains("$key.deadband")) head.restDeadbandDegrees = prefs.getInt("$key.deadband", 0) / 10f
-    }
+    // Lenient reads: a settings file from an older build lacks the newer keys.
+    private fun ShellSettings.bool(key: String) = runCatching { boolean(key) }.getOrNull()
+    private fun ShellSettings.num(key: String) = runCatching { number(key) }.getOrNull()
+    private fun ShellSettings.str(key: String) = runCatching { string(key) }.getOrNull()
 
     private var padStatsJob: kotlinx.coroutines.Job? = null
 
@@ -1914,9 +1917,7 @@ class MainActivity : AppCompatActivity() {
             session.show(display, head, device.optics, displayClock)
             // A compositor built while the glasses pin the image must draw head-locked.
             session.compositor?.lockToHead = device.onboardPinning?.enabled == true
-            getSharedPreferences("tracking-tuning", MODE_PRIVATE)
-                .takeIf { it.contains("${device.info.driverId}.latchPacing") }
-                ?.let { session.compositor?.paceOnLatch = it.getBoolean("${device.info.driverId}.latchPacing", true) }
+            applyTrackingSettings()
 
             // Whatever the wearer happens to be facing becomes forward. This
             // also papers over the unverified IMU axis convention: the constant
@@ -2167,8 +2168,10 @@ class MainActivity : AppCompatActivity() {
 
             override fun onSettingsChanged() {
                 pointerPad?.setFollowing(shell.shell.settings.boolean(ShellSettings.FOLLOW_ENABLED))
+                applyTrackingSettings()
             }
         })
+        applyTrackingSettings()
         pointerPad?.setFollowing(shell.shell.settings.boolean(ShellSettings.FOLLOW_ENABLED))
         phoneSettings?.hide()
         logLine("  shell started with ${shell.shell.apps.size} apps")

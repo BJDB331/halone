@@ -62,35 +62,14 @@ class PointerPad(
     private val visibleParts = mutableListOf<View>()
     private var wakeStrip: View? = null
     private var screenOff = false
-    private var tuningPanel: View? = null
-
-    private val prefs get() = activity.getSharedPreferences("pad", android.content.Context.MODE_PRIVATE)
-
-    /**
-     * Whether the bottom line shows the display diagnostics. Off by default:
-     * it is for debugging, and while it is hidden the line is just the way
-     * into the options.
-     */
-    private var showStats: Boolean
-        get() = prefs.getBoolean("showStats", false)
-        set(value) { prefs.edit().putBoolean("showStats", value).apply() }
-
     private var lastStats = ""
 
-    /**
-     * Live tracking tuning, shown by tapping the stats line: the prediction
-     * horizon and the rest hold, set by feel while wearing the glasses.
-     */
-    class Tuning(
-        val predictionMs: Int,
-        val deadbandTenths: Int,
-        val onChange: (predictionMs: Int, deadbandTenths: Int) -> Unit,
-        /** Whether each frame waits for the previous one to reach the display. */
-        val latchPacing: Boolean,
-        val onLatchPacing: (Boolean) -> Unit,
-    )
-
-    var tuning: Tuning? = null
+    /** Whether the bottom line shows display diagnostics: a developer setting, off by default. */
+    var showStats: Boolean = false
+        set(value) {
+            field = value
+            activity.runOnUiThread { applyStats() }
+        }
 
     /** When set, the pad is a touchpad and every touch goes here instead. */
     @Volatile
@@ -187,11 +166,7 @@ class PointerPad(
                     setTextColor(Color.argb(0x66, 0xff, 0xff, 0xff))
                     gravity = Gravity.CENTER
                     setPadding(0, dp(12), 0, dp(12))
-                    contentDescription = "Options"
-                    text = if (showStats) lastStats else OPTIONS_LABEL
-                    setOnClickListener { toggleTuning(this@apply.parent as FrameLayout) }
                 }.also {
-                    visibleParts += it
                     addView(it, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM).apply { bottomMargin = dp(12) })
                 }
                 ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
@@ -205,6 +180,7 @@ class PointerPad(
             pad.bringToFront()
             ViewCompat.requestApplyInsets(pad)
             view = pad
+            applyStats()
             refresh()
         }
     }
@@ -220,68 +196,10 @@ class PointerPad(
         refresh()
     }
 
-    private fun toggleTuning(pad: FrameLayout) {
-        tuningPanel?.let {
-            pad.removeView(it)
-            tuningPanel = null
-            return
-        }
-        val t = tuning
-        val panel = LinearLayout(activity).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(16), dp(24), dp(16))
-            setBackgroundColor(Color.argb(0xE6, 0x10, 0x14, 0x1c))
-            isClickable = true
-        }
-        if (t != null) addTuning(panel, t)
-        panel.addView(android.widget.Switch(activity).apply {
-            text = "Show display stats along the bottom"
-            textSize = 14f
-            setTextColor(Color.WHITE)
-            isChecked = showStats
-            setOnCheckedChangeListener { _, on ->
-                showStats = on
-                stats?.text = if (on) lastStats else OPTIONS_LABEL
-            }
-        })
-        tuningPanel = panel
-        pad.addView(panel, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM).apply { bottomMargin = dp(56) })
-    }
-
-    private fun addTuning(panel: LinearLayout, t: Tuning) {
-        var prediction = t.predictionMs
-        var deadband = t.deadbandTenths
-        fun row(label: (Int) -> String, max: Int, start: Int, set: (Int) -> Unit) {
-            val text = TextView(activity).apply {
-                textSize = 14f
-                setTextColor(Color.WHITE)
-                this.text = label(start)
-            }
-            val bar = android.widget.SeekBar(activity).apply {
-                this.max = max
-                progress = start
-                setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
-                    override fun onProgressChanged(s: android.widget.SeekBar, value: Int, fromUser: Boolean) {
-                        text.text = label(value)
-                        set(value)
-                        t.onChange(prediction, deadband)
-                    }
-                    override fun onStartTrackingTouch(s: android.widget.SeekBar) = Unit
-                    override fun onStopTrackingTouch(s: android.widget.SeekBar) = Unit
-                })
-            }
-            panel.addView(text)
-            panel.addView(bar, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(40)))
-        }
-        row({ "Prediction: $it ms  (more = less lag, too much = wobble)" }, 80, prediction) { prediction = it }
-        row({ "Steadiness: %.1f°  (more = stiller at rest, too much = sticky)".format(it / 10f) }, 30, deadband) { deadband = it }
-        panel.addView(android.widget.Switch(activity).apply {
-            text = "Wait for each frame to display (off may reach 120 fps)"
-            textSize = 14f
-            setTextColor(Color.WHITE)
-            isChecked = t.latchPacing
-            setOnCheckedChangeListener { _, on -> t.onLatchPacing(on) }
-        })
+    /** Not one of [visibleParts]: it has its own setting, and stays dark with the screen. */
+    private fun applyStats() {
+        stats?.text = lastStats
+        stats?.visibility = if (showStats && !screenOff) View.VISIBLE else View.GONE
     }
 
     /** A line of display diagnostics along the bottom: refresh rate and frames drawn. */
@@ -350,9 +268,8 @@ class PointerPad(
     fun setScreenOff(off: Boolean) = activity.runOnUiThread {
         if (off == screenOff) return@runOnUiThread
         screenOff = off
-        tuningPanel?.let { (it.parent as? ViewGroup)?.removeView(it) }
-        tuningPanel = null
         visibleParts.forEach { it.visibility = if (off) View.INVISIBLE else View.VISIBLE }
+        applyStats()
         wakeStrip?.visibility = if (off) View.VISIBLE else View.GONE
         activity.window.attributes = activity.window.attributes.apply {
             screenBrightness =
@@ -411,6 +328,5 @@ class PointerPad(
         val PRESSED = Color.argb(0x30, 0x5c, 0xc8, 0xff)
         val BUTTON = Color.argb(0x26, 0xff, 0xff, 0xff)
         val RECORDING = Color.rgb(0xff, 0x6b, 0x6b)
-        const val OPTIONS_LABEL = "Options"
     }
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, type Ref } from 'vue'
 import type { SettingKey, Settings } from '@halone/sdk'
 import Dropdown from '../shared/Dropdown.vue'
 import Icon from '../shared/Icon.vue'
@@ -10,13 +10,25 @@ import PluginsPanel from './PluginsPanel.vue'
 import AboutPanel from './AboutPanel.vue'
 import { onPhone, onRoute, useHost, useSettings } from '../shared/host'
 
+/**
+ * Settings the published SDK does not list yet: tracking tuning, which the
+ * Android host reads and validates against the same schema.
+ */
+type LocalKey =
+  | 'developer.displayStats'
+  | 'tracking.custom'
+  | 'tracking.predictionMs'
+  | 'tracking.steadinessDegrees'
+  | 'tracking.framePacing'
+type Key = SettingKey | LocalKey
+
 type Rule = { type: 'boolean' } | { type: 'number'; min: number; max: number } | { type: 'enum'; values: string[] }
 
 type Item =
-  | { kind: 'toggle'; key: SettingKey; label: string; help: string }
-  | { kind: 'slider'; key: SettingKey; label: string; help: string; step: number; format: (v: number) => string }
-  | { kind: 'choice'; key: SettingKey; label: string; help: string; labels: Record<string, string>; style: 'segmented' | 'dropdown' }
-  | { kind: 'action'; key: string; label: string; help: string; button: string; run: () => Promise<unknown>; enabledBy?: SettingKey }
+  | { kind: 'toggle'; key: Key; label: string; help: string }
+  | { kind: 'slider'; key: Key; label: string; help: string; step: number; format: (v: number) => string }
+  | { kind: 'choice'; key: Key; label: string; help: string; labels: Record<string, string>; style: 'segmented' | 'dropdown' }
+  | { kind: 'action'; key: string; label: string; help: string; button: string; run: () => Promise<unknown>; enabledBy?: Key }
 
 interface Group {
   title?: string
@@ -36,7 +48,7 @@ interface Section {
 }
 
 const { halone, status, error } = useHost()
-const settings = useSettings(halone)
+const settings = useSettings(halone) as unknown as Ref<Record<Key, unknown> | null>
 const schema = ref<Record<string, Rule>>({})
 const message = ref<string | null>(null)
 const query = ref('')
@@ -437,7 +449,49 @@ const allSections: Section[] = [
             label: 'Developer mode',
             help: 'Lets the halone command line install apps over adb and run apps from your computer while you build them, with no prompt. Turning it off removes those apps.',
           },
+          {
+            kind: 'toggle',
+            key: 'developer.displayStats',
+            label: 'Show display stats',
+            help: 'The glasses’ refresh rate and the frames actually drawn, along the bottom of the phone pad.',
+          },
         ],
+      },
+      {
+        title: 'Head tracking',
+        items: [
+          {
+            kind: 'toggle',
+            key: 'tracking.custom',
+            label: 'Custom tracking tuning',
+            help: 'Off uses the tuning made for your glasses. On uses the two settings below instead.',
+          },
+          {
+            kind: 'slider',
+            key: 'tracking.predictionMs',
+            label: 'Prediction',
+            help: 'How far ahead of your head the view is drawn. More is less lag; too much wobbles and turns sensor noise into jitter.',
+            step: 1,
+            format: (v) => `${v} ms`,
+          },
+          {
+            kind: 'slider',
+            key: 'tracking.steadinessDegrees',
+            label: 'Steadiness',
+            help: 'How still the view holds while your head is still. More is stiller; too much feels sticky when you start to move.',
+            step: 0.1,
+            format: (v) => `${v.toFixed(1)}°`,
+          },
+          {
+            kind: 'choice',
+            key: 'tracking.framePacing',
+            label: 'Frame pacing',
+            help: 'Waiting for each frame to reach the display cuts lag on some glasses and halves the frame rate on others.',
+            labels: { auto: 'Auto', wait: 'Wait for each frame', free: 'Don’t wait' },
+            style: 'segmented',
+          },
+        ],
+        note: 'Changes apply straight away, so you can tune them while wearing the glasses.',
       },
     ],
   },
@@ -496,7 +550,7 @@ const sections = onPhone
       }))
   : allSections
 
-function rule(key: SettingKey): Rule | undefined {
+function rule(key: Key): Rule | undefined {
   return schema.value[key]
 }
 
@@ -506,15 +560,15 @@ function options(item: Extract<Item, { kind: 'choice' }>) {
   return values.map((value) => ({ value, label: item.labels[value] ?? value }))
 }
 
-function range(key: SettingKey) {
+function range(key: Key) {
   const r = rule(key)
   return r?.type === 'number' ? r : { min: 0, max: 1 }
 }
 
-async function set<K extends SettingKey>(key: K, value: Settings[K]) {
+async function set(key: Key, value: unknown) {
   try {
     message.value = null
-    await halone.settings.set(key, value)
+    await halone.settings.set(key as SettingKey, value as Settings[SettingKey])
   } catch (caught) {
     message.value = caught instanceof Error ? caught.message : String(caught)
   }

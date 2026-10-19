@@ -42,6 +42,10 @@ class GlassesStereoSession(
 
     private var optics: Optics? = null
 
+    /** Latch pacing as this session would choose it, for the `auto` frame-pacing setting. */
+    var autoPaceOnLatch = true
+        private set
+
     /** The glasses' display the compositor was last shown on. */
     var display: Display? = null
         private set
@@ -76,7 +80,8 @@ class GlassesStereoSession(
             // Latch pacing waits on frame timestamps that arrive a beat late;
             // tuned at XREAL's 60 Hz it fits, but at 120 Hz without a display
             // clock (RayNeo GT series, measured) it halved the frame rate.
-            if (displayClock == null && presentation.refreshHz > 90f) it.paceOnLatch = false
+            autoPaceOnLatch = !(displayClock == null && presentation.refreshHz > 90f)
+            it.paceOnLatch = autoPaceOnLatch
         }
     }
 

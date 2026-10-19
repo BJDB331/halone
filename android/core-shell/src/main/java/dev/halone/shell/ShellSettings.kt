@@ -118,6 +118,14 @@ class ShellSettings(private val store: SettingsStore, schemaJson: String) {
         const val BED_MODE_COUNTDOWN_SECONDS = "bedMode.countdownSeconds"
         const val BED_MODE_FORWARD_DEGREES = "bedMode.forwardDegrees"
         const val DEVELOPER_ENABLED = "developer.enabled"
+        /** The refresh rate and frames drawn, along the bottom of the phone pad. */
+        const val DEVELOPER_DISPLAY_STATS = "developer.displayStats"
+        /** Off: each pair of glasses uses its driver's own tuning, and the two below are ignored. */
+        const val TRACKING_CUSTOM = "tracking.custom"
+        const val TRACKING_PREDICTION_MS = "tracking.predictionMs"
+        const val TRACKING_STEADINESS_DEGREES = "tracking.steadinessDegrees"
+        /** `auto`, `wait` for each frame to reach the display, or run `free` of it. */
+        const val TRACKING_FRAME_PACING = "tracking.framePacing"
         const val INPUT_POINTER = "input.pointer"
         const val TOUCHPAD_SPEED = "input.touchpadSpeed"
         const val MOUSE_SPEED = "input.mouseSpeed"
