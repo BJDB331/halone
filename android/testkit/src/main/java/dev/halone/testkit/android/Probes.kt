@@ -79,7 +79,9 @@ class NetworkProbe(context: Context) {
     /** The phone's own network to the glasses, if it brought one up. */
     fun linkFor(host: String): Network? {
         val target = runCatching { InetAddress.getByName(host) as? Inet4Address }.getOrNull() ?: return null
-        val linkLocal = networks().filter { (_, addresses) -> addresses.any { it is Inet4Address && it.isLinkLocalAddress } }
+        val linkLocal = networks()
+            .filter { (_, addresses) -> addresses.any { it is Inet4Address && it.isLinkLocalAddress } }
+            .filter { (network, _) -> runCatching { network.socketFactory.createSocket().close() }.isSuccess }
         val match = linkLocal.firstOrNull { (_, addresses) ->
             addresses.any { it is Inet4Address && it.address.take(3) == target.address.take(3) }
         } ?: linkLocal.firstOrNull()

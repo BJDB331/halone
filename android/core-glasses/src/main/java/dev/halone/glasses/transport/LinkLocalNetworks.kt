@@ -23,7 +23,9 @@ class LinkLocalNetworks(context: Context) {
 
     fun networkFor(host: String): Network? {
         val target = parse(host) ?: return null
-        val linkLocal = candidates().filter { (_, addresses) -> addresses.any { it is Inet4Address && it.isLinkLocalAddress } }
+        val linkLocal = candidates()
+            .filter { (_, addresses) -> addresses.any { it is Inet4Address && it.isLinkLocalAddress } }
+            .filter { (network, _) -> usable(network) }
         return linkLocal.firstOrNull { (_, addresses) -> addresses.any { sameSlash24(it, target) } }?.first
             ?: linkLocal.firstOrNull()?.first
     }
@@ -36,7 +38,12 @@ class LinkLocalNetworks(context: Context) {
         }
         for ((network, addresses) in all) {
             val iface = connectivity.getLinkProperties(network)?.interfaceName ?: "?"
-            appendLine("network $network iface=$iface addresses=${addresses.joinToString { it.hostAddress ?: "?" }}")
+            val restricted = connectivity.getNetworkCapabilities(network)
+                ?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED) == false
+            appendLine(
+                "network $network iface=$iface addresses=${addresses.joinToString { it.hostAddress ?: "?" }}" +
+                    (if (restricted) " restricted" else "") + (if (usable(network)) "" else " unusable"),
+            )
         }
     }
 
@@ -45,6 +52,14 @@ class LinkLocalNetworks(context: Context) {
             val properties: LinkProperties = connectivity.getLinkProperties(network) ?: return@mapNotNull null
             network to properties.linkAddresses.map { it.address }
         }
+
+    /**
+     * Whether an app may use this network at all. On an AYN Thor (Android 13)
+     * binding to the glasses' link fails with EPERM, so Halone has to run the
+     * link itself instead. Binding sends nothing, so trying costs nothing.
+     */
+    private fun usable(network: Network): Boolean =
+        runCatching { network.socketFactory.createSocket().close() }.isSuccess
 
     private fun parse(host: String): Inet4Address? =
         runCatching { InetAddress.getByName(host) as? Inet4Address }.getOrNull()
