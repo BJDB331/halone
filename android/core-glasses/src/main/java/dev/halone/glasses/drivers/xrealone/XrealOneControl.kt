@@ -24,6 +24,14 @@ internal class XrealOneControl(
     private val pending = ConcurrentHashMap<Long, CompletableFuture<ByteArray>>()
     private val framer = XrealOneFramer(MAX_PAYLOAD)
 
+    /**
+     * Requests go out on a thread of their own because callers reach this
+     * from the UI: display mode and brightness on the main thread, where
+     * Android refuses socket traffic outright (`NetworkOnMainThreadException`).
+     * Waiting for the reply is not network traffic, so callers may still block.
+     */
+    private val writer = java.util.concurrent.Executors.newSingleThreadExecutor { Thread(it, "xreal-one-control-writer").apply { isDaemon = true } }
+
     @Volatile
     private var running = false
     private var thread: Thread? = null
@@ -50,7 +58,12 @@ internal class XrealOneControl(
 
         try {
             val packet = XrealOneProtocol.request(magic, transaction, body)
-            if (transport.write(packet) != packet.size) {
+            val written = try {
+                writer.submit<Int> { transport.write(packet) }.get(timeoutMs, TimeUnit.MILLISECONDS)
+            } catch (e: Exception) {
+                return Result.failure(IllegalStateException("write of 0x%04x failed: ${e.message}".format(magic)))
+            }
+            if (written != packet.size) {
                 return Result.failure(IllegalStateException("write of 0x%04x failed".format(magic)))
             }
             val payload = try {
@@ -95,6 +108,7 @@ internal class XrealOneControl(
 
     override fun close() {
         running = false
+        writer.shutdownNow()
         runCatching { transport.close() }
         thread?.join(500)
         thread = null

@@ -179,6 +179,33 @@ class XrealOneSessionTest {
         }
     }
 
+    /** A tester's Galaxy crashed with NetworkOnMainThreadException: the UI asked for the display mode. */
+    @Test
+    fun `requests are written off the calling thread`() {
+        val writers = CopyOnWriteArrayList<Thread>()
+        val reply = XrealOneCaptures.reply(XrealOneProtocol.MSG_GET_INPUT_MODE, 1, "22 02 10 00".parseHex())
+        val transport = object : HidTransport {
+            override val name = "recording"
+            private val queue = ConcurrentLinkedQueue<ByteArray>()
+            override fun write(packet: ByteArray, timeoutMs: Int): Int {
+                writers += Thread.currentThread()
+                queue += reply
+                return packet.size
+            }
+            override fun read(into: ByteArray, timeoutMs: Int): Int {
+                val next = queue.poll() ?: return 0.also { Thread.sleep(1) }
+                next.copyInto(into)
+                return next.size
+            }
+            override fun close() = Unit
+        }
+        XrealOneControl(transport, { _, _ -> }, {}).use { control ->
+            control.start()
+            assertTrue(control.request(XrealOneProtocol.MSG_GET_INPUT_MODE, XrealOneProtocol.getBody()).isSuccess)
+        }
+        assertTrue("written on ${writers.single().name}", writers.single() != Thread.currentThread())
+    }
+
     @Test
     fun `requests off the allowlist are never sent`() {
         val transport = GatedTransport()
