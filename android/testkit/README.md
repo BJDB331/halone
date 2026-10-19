@@ -15,6 +15,9 @@ needed: install the APK, tap Start, follow the voice.
    them, so the tester can read it while wearing them.
 3. Runs the profile. For the XREAL One series:
    - Asks the tester to set Follow mode and turn Stabilizer off.
+   - If the glasses offer no network function over USB, walks the tester through
+     turning TCP/IP on in the glasses' Developer page, waits for it, and reminds
+     them at the end that they can turn it off again.
    - Connects to the report stream, over the phone's own network to the glasses
      if it brought one up, otherwise over the in-app USB network stack (after
      asking for USB access). On failure it retries, then asks about Stabilizer,
@@ -22,7 +25,9 @@ needed: install the APK, tap Start, follow the voice.
    - Sends three read-only getters (config, firmware and DSP versions).
    - Records nine guided head motions. Each one is checked live from the gyro,
      and repeated if the tester didn't hold still or didn't move enough.
-   - Works out the axis convention on the phone (`AxisSolver`). Opposite motions
+   - Works out the axis convention on the phone (`AxisSolver`), from how far the
+     head got from where it was at each beep. Testers often make a small
+     settling motion right after the beep and start the real one seconds later. Opposite motions
      give each head axis as the IMU sees it, and two axes fix the frame. The
      third axis and gravity check it: turning the wrong way both times flips
      gravity, and mixing up a pair breaks the third axis. Contradicted motions
@@ -33,10 +38,10 @@ needed: install the APK, tap Start, follow the voice.
      factory calibration was read. A green world-locked grid replaces the
      instruction card on the glasses, tracked with the solved axes and Halone's
      `HeadTracker`. Each round shows two candidates as "first" and "second" in
-     random order, and the answers bisect three parameters in three rounds each:
-     the mount pitch (does the horizon stay level while turning), the field of
-     view (does the grid stick to the room) and the prediction horizon (does it
-     lag or swing past). Results go to `analysis/ab.json`.
+     random order, and the answers bisect two parameters in three rounds each: the
+     field of view (does the grid stick to the room) and the prediction horizon
+     (does it lag or swing past). Results go to `analysis/ab.json`. A mount-pitch
+     round was dropped after two wearers couldn't tell ±5° apart.
 4. Walks through the display modes (3D, refresh rate) in the glasses' own menu,
    noticing each change and recording the mode list the phone sees.
 5. Asks a few questions, takes an optional comment, and writes the zip.

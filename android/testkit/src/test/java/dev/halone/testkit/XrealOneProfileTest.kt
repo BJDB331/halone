@@ -3,6 +3,7 @@ package dev.halone.testkit
 import dev.halone.testkit.analysis.AxisSolver
 import dev.halone.testkit.analysis.D
 import dev.halone.testkit.engine.GenericProfile
+import dev.halone.testkit.engine.GlassesHidState
 import dev.halone.testkit.engine.ReportBundle
 import dev.halone.testkit.engine.Runner
 import dev.halone.testkit.profiles.XrealOneProfile
@@ -227,6 +228,127 @@ class XrealOneProfileTest {
         Runner(kit, profiles).run()
 
         assertEquals(0, kit.usbRequests)
+    }
+
+    @Test
+    fun `glasses with tcp ip off are walked through turning it on`() = runTest {
+        val kit = kit().apply {
+            performMotions()
+            systemLink = false
+            usbNetwork = false
+            val previous = onSay
+            onSay = { text ->
+                previous(text)
+                if (text == said(R.string.one_tcpip_intro)) usbNetwork = true
+            }
+        }
+
+        Runner(kit, profiles).run()
+
+        assertEquals("turned-on", kit.session.outcomes["tcpip"])
+        assertEquals("streaming", kit.session.outcomes["sensors"])
+        assertTrue(kit.spoken.contains(said(R.string.one_tcpip_reminder)))
+    }
+
+    @Test
+    fun `tcp ip already on gets a replug, and no reminder to turn it off`() = runTest {
+        val kit = kit().apply {
+            performMotions()
+            systemLink = false
+            usbNetwork = false
+            answer = { question, choices ->
+                choices.firstOrNull { question == said(R.string.one_tcpip_question) && it.id == "on" } ?: choices.first()
+            }
+            val previous = onSay
+            onSay = { text ->
+                previous(text)
+                if (text == said(R.string.one_tcpip_replug)) usbNetwork = true
+            }
+        }
+
+        Runner(kit, profiles).run()
+
+        assertEquals("appeared-after-replug", kit.session.outcomes["tcpip"])
+        assertEquals("streaming", kit.session.outcomes["sensors"])
+        assertFalse(kit.spoken.contains(said(R.string.one_tcpip_reminder)))
+    }
+
+    private fun FakeKit.answerTcpIpOn(hid: String = "yes", restore: String = "off") {
+        answer = { question, choices ->
+            val wanted = when (question) {
+                said(R.string.one_tcpip_question) -> "on"
+                said(R.string.one_hid_consent) -> hid
+                said(R.string.one_hid_restore) -> restore
+                else -> null
+            }
+            choices.firstOrNull { it.id == wanted } ?: choices.first()
+        }
+    }
+
+    @Test
+    fun `network still missing with tcp ip on is switched on over hid, with consent, and undone at the end`() = runTest {
+        val kit = kit().apply {
+            performMotions()
+            systemLink = false
+            usbNetwork = false
+            answerTcpIpOn()
+        }
+
+        Runner(kit, profiles).run()
+
+        assertEquals("enabled", kit.session.outcomes["hid"])
+        assertEquals("streaming", kit.session.outcomes["sensors"])
+        assertEquals("15.1.03", kit.session.outcomes["firmware_mcu"])
+        assertEquals("0x0001000a", kit.session.outcomes["usb_functions"])
+        assertEquals(listOf(true, false), kit.networkWrites)
+        assertEquals("restored", kit.session.outcomes["hid_restore"])
+    }
+
+    @Test
+    fun `declining the hid switch leaves the glasses untouched`() = runTest {
+        val kit = kit().apply {
+            systemLink = false
+            usbNetwork = false
+            answerTcpIpOn(hid = "no")
+        }
+
+        Runner(kit, profiles).run()
+
+        assertEquals("declined", kit.session.outcomes["hid"])
+        assertEquals("tcpip-off", kit.session.outcomes["sensors"])
+        assertTrue(kit.networkWrites.isEmpty())
+    }
+
+    @Test
+    fun `glasses that report their network on are not written, and firmware is asked when unknown`() = runTest {
+        val kit = kit().apply {
+            systemLink = false
+            usbNetwork = false
+            glassesState = GlassesHidState("0x00010005", networkOn = true, mcuVersion = null, dspVersion = null)
+            answerTcpIpOn()
+        }
+
+        Runner(kit, profiles).run()
+
+        assertEquals("network-on-but-missing", kit.session.outcomes["hid"])
+        assertTrue(kit.networkWrites.isEmpty())
+        assertTrue(kit.spoken.contains(said(R.string.one_firmware_question)))
+    }
+
+    @Test
+    fun `tcp ip left off and no hid answer skips the sensors without writing`() = runTest {
+        val kit = kit().apply {
+            systemLink = false
+            usbNetwork = false
+            glassesState = null
+        }
+
+        assertTrue(Runner(kit, profiles).run())
+
+        assertEquals("tcpip-off", kit.session.outcomes["sensors"])
+        assertEquals("read-failed", kit.session.outcomes["hid"])
+        assertTrue(kit.networkWrites.isEmpty())
+        assertFalse(kit.spoken.contains(said(R.string.one_tcpip_reminder)))
     }
 
     @Test

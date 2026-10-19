@@ -4,7 +4,7 @@
     <string name="tts_locale" translatable="false">en-US</string>
 
     <string name="start_title">Help bring Halone to your glasses</string>
-    <string name="start_body">This app records what your glasses report while you follow some short spoken steps. It takes about ten minutes. At the end you get one file to send back to the Halone developers.\n\nIt collects: technical details of your phone and glasses, sensor readings while you move your head, the glasses\' factory calibration, and your answers. It does not collect your location, contacts, camera, microphone or files. The glasses\' serial number is removed from the file.\n\nNothing is sent anywhere. You choose whether to share the file at the end.</string>
+    <string name="start_body">This app records what your glasses report while you follow some short spoken steps. It takes about ten minutes. At the end you get one file to send back to the Halone developers.\n\nIt collects: technical details of your phone and glasses, sensor readings while you move your head, the glasses\' factory calibration, and your answers. It does not collect your location, contacts, camera, microphone or files. The glasses\' serial number is removed from the file.\n\nIt only changes a setting on your glasses if you agree when asked.\n\nNothing is sent anywhere. You choose whether to share the file at the end.</string>
     <string name="start_button">Start</string>
     <string name="share_button">Share the results file</string>
     <string name="finished_body">All done. The results file is %1$s.\n\nTap the button below and send it the way the developers asked you to: email, Discord or a cloud drive.</string>
@@ -52,6 +52,28 @@
 
     <string name="one_menu">Using the buttons on your glasses, open their menu. Set the screen mode to Follow, and turn Stabilizer off. Take your time.</string>
     <string name="one_menu_cant_find">I can\'t find these</string>
+    <string name="one_tcpip_question">Your glasses aren\'t offering their network connection, which I need to read the sensors. It\'s controlled by a TCP/IP setting on their Developer page: double-click X, choose Other, press minus until Serial Number, then hold X for five seconds. Is TCP/IP on there?</string>
+    <string name="one_tcpip_off">It\'s off, or I\'m not sure</string>
+    <string name="one_tcpip_already_on">It\'s already on</string>
+    <string name="one_tcpip_replug">Let\'s try two things. On the Developer page, turn TCP/IP off and then on again. Then unplug the glasses\' cable from the phone, wait a couple of seconds, and plug it back in.</string>
+    <string name="one_tcpip_waiting_replug">Waiting for the glasses\' network connection: turn TCP/IP off and on again, then unplug the glasses and plug them back in. I\'ll notice when it appears.</string>
+    <string name="one_tcpip_give_up">It didn\'t work, skip this</string>
+    <string name="one_hid_intro">I can also look at the glasses\' network setting directly, over the cable. Your phone will ask whether this app may use the glasses. Please tap Allow.</string>
+    <string name="one_hid_consent">The glasses report their network connection as switched off. I can switch it on for you. It\'s the same setting as TCP/IP, nothing else changes, and I\'ll offer to switch it back at the end. Shall I?</string>
+    <string name="one_hid_yes">Yes, switch it on</string>
+    <string name="one_hid_no">No, leave it</string>
+    <string name="one_hid_waiting">Switching it on. The glasses will disconnect and reconnect by themselves. Leave them plugged in.</string>
+    <string name="one_hid_restore">Earlier I switched the glasses\' network connection on. Should I switch it back off now?</string>
+    <string name="one_hid_restore_off">Switch it back off</string>
+    <string name="one_hid_restore_keep">Leave it on</string>
+    <string name="one_hid_restored">Done, it\'s back off.</string>
+    <string name="one_firmware_question">That didn\'t bring it up. To help us find out why: what version number do the glasses show in their menu, under Other? Type it here, or skip.</string>
+    <string name="one_tcpip_intro">Here\'s how to turn it on. Double-click the X button on the glasses to open their menu, and choose Other. Press the minus button until you reach Serial Number. Then hold the X button for five seconds to open the Developer page, and turn TCP/IP on.</string>
+    <string name="one_tcpip_waiting">Waiting for TCP/IP to be turned on: double-click X, choose Other, press minus until Serial Number, then hold X for five seconds and turn TCP/IP on. I\'ll notice when it\'s on.</string>
+    <string name="one_tcpip_cant">I can\'t find it, skip this</string>
+    <string name="one_tcpip_on">That worked, thanks.</string>
+    <string name="one_tcpip_skipped">Without it I can\'t reach the sensors. That\'s OK, we\'ll carry on with the rest.</string>
+    <string name="one_tcpip_reminder">One last thing: you turned TCP/IP on for this test. If your phone or TV box had trouble with the glasses before, you can turn it off again the same way.</string>
     <string name="usb_access_intro">Your phone will now ask whether this app may use the glasses. Please tap Allow.</string>
     <string name="usb_access_denied">Without that permission I can\'t reach the sensors. That\'s OK, we\'ll carry on with the rest.</string>
     <string name="one_sensors_waiting">Connecting to the glasses\' sensors…</string>
@@ -90,8 +112,6 @@
     <string name="ab_first">First</string>
     <string name="ab_second">Second</string>
     <string name="ab_same">They look the same</string>
-    <string name="ab_mount_intro">For these, after the beep, slowly turn your head left and right while watching the bright horizontal line.</string>
-    <string name="ab_mount_question">Which one kept the line level, without tilting as you turned?</string>
     <string name="ab_fov_intro">For these, look at something in the room straight ahead, under the white cross. After the beep, slowly turn your head left and right.</string>
     <string name="ab_fov_question">Which one stayed stuck to the room, instead of sliding as you turned?</string>
     <string name="ab_prediction_intro">For these, after the beep, turn your head quickly from side to side, a few times.</string>

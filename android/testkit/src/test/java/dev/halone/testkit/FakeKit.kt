@@ -8,6 +8,7 @@ import dev.halone.testkit.analysis.D
 import dev.halone.testkit.capture.Tap
 import dev.halone.testkit.engine.Choice
 import dev.halone.testkit.engine.DisplayState
+import dev.halone.testkit.engine.GlassesHidState
 import dev.halone.testkit.engine.Io
 import dev.halone.testkit.engine.Kit
 import dev.halone.testkit.engine.Session
@@ -62,6 +63,21 @@ class FakeKit(clock: () -> Long) : Kit, Io {
     }
 
     var systemLink = true
+    var usbNetwork = true
+    override fun hasUsbNetwork() = usbNetwork
+
+    /** Null makes the HID read fail. */
+    var glassesState: GlassesHidState? = GlassesHidState("0x0001000a", networkOn = false, mcuVersion = "15.1.03", dspVersion = "15.A.01")
+    val networkWrites = mutableListOf<Boolean>()
+
+    override suspend fun readGlassesState() =
+        glassesState?.let { Result.success(it) } ?: Result.failure(java.io.IOException("no reply"))
+
+    override suspend fun setGlassesNetwork(on: Boolean): Result<Unit> {
+        networkWrites += on
+        usbNetwork = on
+        return Result.success(Unit)
+    }
     var usbGranted = true
     var usbRequests = 0
 

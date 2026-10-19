@@ -9,13 +9,16 @@ import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import androidx.core.content.ContextCompat
 import dev.halone.glasses.api.UsbIdentity
+import dev.halone.glasses.drivers.xrealone.XrealOneHid
 import dev.halone.glasses.transport.SocketTransport
+import dev.halone.glasses.transport.UsbHidTransportProvider
 import dev.halone.glasses.transport.usbnet.UsbEcmLink
 import dev.halone.glasses.transport.usbnet.UsbNetTransportProvider
 import dev.halone.testkit.capture.PcapWriter
 import dev.halone.testkit.capture.Tap
 import dev.halone.testkit.capture.TcpTap
 import dev.halone.testkit.engine.DisplayState
+import dev.halone.testkit.engine.GlassesHidState
 import dev.halone.testkit.engine.Io
 import dev.halone.testkit.engine.Kit
 import dev.halone.testkit.engine.Session
@@ -57,8 +60,10 @@ class AndroidKit(
 
     override fun hasSystemLink(hosts: List<String>) = hosts.any { network.linkFor(it) != null }
 
+    override fun hasUsbNetwork() = ecmDevice() != null
+
     override suspend fun requestUsbAccess(): Boolean {
-        val device = ecmDevice() ?: return false
+        val device = ecmDevice() ?: glassesDevice() ?: return false
         if (usb.hasPermission(device)) return true
         val answer = CompletableDeferred<Unit>()
         val receiver = object : BroadcastReceiver() {
@@ -137,6 +142,28 @@ class AndroidKit(
 
     private fun ecmDevice(): UsbDevice? = usb.deviceList.values.firstOrNull { UsbEcmLink.hasEcm(it) }
 
+    private fun glassesDevice(): UsbDevice? = usb.deviceList.values.firstOrNull { it.vendorId == XREAL_VENDOR }
+
+    override suspend fun readGlassesState(): Result<GlassesHidState> = withHid { hid ->
+        val functions = hid.usbFunctions().getOrThrow()
+        GlassesHidState(functions.toString(), functions.networkOn, hid.mcuVersion().getOrNull(), hid.dspVersion().getOrNull())
+    }
+
+    override suspend fun setGlassesNetwork(on: Boolean): Result<Unit> = withHid { hid ->
+        (if (on) hid.enableNetwork() else hid.restoreNetwork()).getOrThrow()
+    }
+
+    private suspend fun <T> withHid(block: (XrealOneHid) -> T): Result<T> = withContext(Dispatchers.IO) {
+        runCatching {
+            val device = glassesDevice() ?: throw IOException("no XREAL glasses attached")
+            if (!usb.hasPermission(device)) throw IOException("no USB permission for the glasses")
+            val connection = usb.openDevice(device) ?: throw IOException("could not open the glasses over USB")
+            UsbHidTransportProvider(device, connection).use { provider ->
+                block(XrealOneHid(provider.open(XrealOneHid.HID_INTERFACE).getOrThrow()))
+            }
+        }
+    }
+
     override fun close() {
         usbNet?.close()
         usbNet = null
@@ -149,5 +176,6 @@ class AndroidKit(
         const val CONNECT_TIMEOUT_MS = 2_000
         const val PERMISSION_TIMEOUT_MS = 60_000L
         const val REPORTS_PORT = 52998
+        const val XREAL_VENDOR = 0x3318
     }
 }

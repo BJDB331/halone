@@ -48,51 +48,28 @@ object AxisSolver {
     )
 
     /**
-     * The first real movement after the start cue, measured at its furthest
-     * point, in radians. Real testers carry on from the previous step while the
-     * next instruction plays, and some fidget before they start; neither counts.
-     * Taking the peak rather than the episode's end keeps an out-and-back done
-     * without a pause from cancelling itself out.
+     * How far the head got from where it was at the start cue, at its furthest
+     * point, in radians. For an out-and-back movement that is the out end.
+     *
+     * Measured from the cue because testers carry on from the previous step
+     * while the next instruction plays. Not "the first movement after the cue",
+     * which was tried: most testers make a small settling motion right after
+     * the beep and only start the real one seconds later.
      */
     fun swing(samples: SegmentRecorder.Samples, bias: D): D {
-        var i = maxOf(1, samples.goIndex)
-        while (i < samples.size) {
-            if (rate(samples, i, bias) < EPISODE_START) {
-                i++
-                continue
-            }
-            var x = 0.0
-            var y = 0.0
-            var z = 0.0
-            var peak = D(0.0, 0.0, 0.0)
-            var quietSince = -1L
-            while (i < samples.size) {
-                val dt = (samples.timestampsNs[i] - samples.timestampsNs[i - 1]) / 1e9
-                if (dt > 0 && dt <= MAX_GAP_SECONDS) {
-                    x += (samples.gyro[i * 3] - bias.x) * dt
-                    y += (samples.gyro[i * 3 + 1] - bias.y) * dt
-                    z += (samples.gyro[i * 3 + 2] - bias.z) * dt
-                    if (x * x + y * y + z * z > peak.dot(peak)) peak = D(x, y, z)
-                }
-                if (rate(samples, i, bias) < EPISODE_END) {
-                    if (quietSince < 0) quietSince = samples.timestampsNs[i]
-                    if (samples.timestampsNs[i] - quietSince > QUIET_NS) break
-                } else {
-                    quietSince = -1
-                }
-                i++
-            }
-            if (peak.length() >= MIN_SWING_RADIANS) return peak
-            i++
+        var x = 0.0
+        var y = 0.0
+        var z = 0.0
+        var peak = D(0.0, 0.0, 0.0)
+        for (i in maxOf(1, samples.goIndex + 1) until samples.size) {
+            val dt = (samples.timestampsNs[i] - samples.timestampsNs[i - 1]) / 1e9
+            if (dt <= 0 || dt > MAX_GAP_SECONDS) continue
+            x += (samples.gyro[i * 3] - bias.x) * dt
+            y += (samples.gyro[i * 3 + 1] - bias.y) * dt
+            z += (samples.gyro[i * 3 + 2] - bias.z) * dt
+            if (x * x + y * y + z * z > peak.dot(peak)) peak = D(x, y, z)
         }
-        return D(0.0, 0.0, 0.0)
-    }
-
-    private fun rate(s: SegmentRecorder.Samples, i: Int, bias: D): Double {
-        val x = s.gyro[i * 3] - bias.x
-        val y = s.gyro[i * 3 + 1] - bias.y
-        val z = s.gyro[i * 3 + 2] - bias.z
-        return sqrt(x * x + y * y + z * z)
+        return peak
     }
 
     /** Means over what came after the start cue only. */
@@ -113,7 +90,7 @@ object AxisSolver {
             if (p != null && n != null) {
                 val apart = degreesBetween(p.normalized(), -n.normalized())
                 if (apart > MAX_PAIR_DISAGREEMENT_DEGREES) {
-                    problems += "$name: $positive and $negative disagree by %.0f°".format(apart)
+                    gaps += "$name: $positive and $negative disagree by %.0f°, left out".format(apart)
                     redo += positive
                     redo += negative
                     return null
@@ -239,10 +216,8 @@ object AxisSolver {
 
     const val MIN_SWING_RADIANS = 0.17
     private const val MAX_GAP_SECONDS = 0.1
-    private val EPISODE_START = Math.toRadians(15.0)
-    private val EPISODE_END = Math.toRadians(5.0)
-    private const val QUIET_NS = 250_000_000L
-    private const val MAX_PAIR_DISAGREEMENT_DEGREES = 30.0
+    /** Generous on purpose: people nod a little while they tilt. A reversed pair is ~180°. */
+    private const val MAX_PAIR_DISAGREEMENT_DEGREES = 40.0
     private const val MAX_THIRD_AXIS_DEGREES = 30.0
     private const val MIN_DOMINANCE = 0.72
     private const val GRAVITY_WRONG_DEGREES = 50.0

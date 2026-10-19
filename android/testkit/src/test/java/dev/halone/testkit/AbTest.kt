@@ -124,7 +124,6 @@ class AbTest {
             Result.success(tap)
         }
         val questions = mapOf(
-            said(R.string.ab_mount_question) to "mount_offset_deg",
             said(R.string.ab_fov_question) to "fov_scale",
             said(R.string.ab_prediction_question) to "prediction_ms",
         )
@@ -135,7 +134,6 @@ class AbTest {
             } else {
                 val (first, second) = scenes.filterNotNull().takeLast(2)
                 fun value(p: SceneParams) = when (parameter) {
-                    "mount_offset_deg" -> p.mountOffsetDegrees
                     "fov_scale" -> p.verticalFovDegrees / Math.toDegrees(2 * kotlin.math.atan(540.0 / 2200.0))
                     else -> p.predictionMs
                 }
@@ -147,17 +145,17 @@ class AbTest {
 
     @Test
     fun `a session runs the rounds blind and lands near the wearer's preferences`() = runTest {
-        val truth = mapOf("mount_offset_deg" to 4.0, "fov_scale" to 0.86, "prediction_ms" to 90.0)
+        val truth = mapOf("fov_scale" to 0.86, "prediction_ms" to 25.0)
         val kit = kit().apply { setUp(truth) }
 
         Runner(kit, listOf(XrealOneProfile, GenericProfile)).run()
 
         assertEquals("done", kit.session.outcomes["ab"])
         val report = JSONObject(String(kit.session.files.getValue("analysis/ab.json") as ByteArray))
-        assertEquals(4.0, report.getJSONObject("mount_offset_deg").getDouble("estimate"), 1.25)
-        assertEquals(0.86, report.getJSONObject("fov_scale").getDouble("estimate"), 0.07)
-        assertEquals(90.0, report.getJSONObject("prediction_ms").getDouble("estimate"), 9.0)
-        assertTrue("every round shows two candidates", kit.scenes.filterNotNull().size == 18)
+        assertEquals(0.86, report.getJSONObject("fov_scale").getDouble("estimate"), 0.05)
+        assertEquals(25.0, report.getJSONObject("prediction_ms").getDouble("estimate"), 5.0)
+        assertFalse("the mount round is gone", report.has("mount_offset_deg"))
+        assertTrue("every round shows two candidates", kit.scenes.filterNotNull().size == 12)
         assertTrue("the scene is taken down at the end", kit.scenes.last() == null)
         assertFalse("the letters are never explained aloud", kit.spoken.any { it.contains("higher") || it.contains("lower") })
     }

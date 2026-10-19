@@ -46,7 +46,8 @@ object XrealOneProfile : Profile {
     override fun matches(device: UsbIdentity) = device.vendorId == VENDOR && device.productId in PRODUCTS
 
     sealed interface Check {
-        data class Still(val maxDegreesPerSec: Double) : Check
+        /** [maxTurnedDegrees] is the looser limit for a worn head, which is never truly still. */
+        data class Still(val maxDegreesPerSec: Double, val maxTurnedDegrees: Double = Double.MAX_VALUE) : Check
         data class Turn(val minDegrees: Double) : Check
         data object None : Check
     }
@@ -56,7 +57,7 @@ object XrealOneProfile : Profile {
 
     val MOTIONS = listOf(
         Motion("rest", R.string.motion_rest, 8, Check.Still(6.0), prepare = R.string.motion_rest_prepare),
-        Motion("level", R.string.motion_level, 5, Check.Still(20.0), prepare = R.string.motion_level_prepare),
+        Motion("level", R.string.motion_level, 5, Check.Still(Double.MAX_VALUE, maxTurnedDegrees = 45.0), prepare = R.string.motion_level_prepare),
         Motion("turn-left", R.string.motion_turn_left, 7, Check.Turn(30.0)),
         Motion("turn-right", R.string.motion_turn_right, 7, Check.Turn(30.0)),
         Motion("look-up", R.string.motion_look_up, 8, Check.Turn(20.0)),
@@ -112,12 +113,19 @@ object XrealOneProfile : Profile {
         kit.session.answer("model", question, model)
 
         kit.io.progress(7, steps)
-        CommonSteps.closing(kit)
+        if (kit.session.outcomes["tcpip"] == "turned-on") kit.io.say(kit.text(R.string.one_tcpip_reminder))
         reports?.close()
         control?.tap?.close()
+        offerHidRestore(kit)
+        CommonSteps.closing(kit)
     }
 
     private suspend fun connectSensors(kit: Kit, stream: XrealOneStream): Tap? {
+        if (!kit.hasSystemLink(HOSTS) && !kit.hasUsbNetwork() && !enableTcpIp(kit)) {
+            kit.session.outcome("sensors", "tcpip-off")
+            kit.io.say(kit.text(R.string.one_tcpip_skipped))
+            return null
+        }
         if (!kit.hasSystemLink(HOSTS)) {
             kit.io.say(kit.text(R.string.usb_access_intro))
             val granted = kit.requestUsbAccess()
@@ -174,6 +182,118 @@ object XrealOneProfile : Profile {
     }
 
     class ControlRead(val tap: Tap, val config: String)
+
+    /**
+     * Without their TCP/IP setting the glasses expose no network function over
+     * USB at all, and the sensors are unreachable. XREAL documents where it is,
+     * and tells people to turn it off when a phone mistakes the glasses for a
+     * network device. One tester's glasses still offered none with it on, so
+     * that case gets a replug and, failing that, the firmware version.
+     */
+    private suspend fun enableTcpIp(kit: Kit): Boolean {
+        val question = kit.text(R.string.one_tcpip_question)
+        val answer = kit.io.ask(
+            question,
+            listOf(
+                kit.choice("off", R.string.one_tcpip_off),
+                kit.choice("on", R.string.one_tcpip_already_on),
+                kit.choice("missing", R.string.one_tcpip_cant),
+            ),
+        )
+        kit.session.answer("tcpip_setting", question, answer)
+        if (answer.id == "missing") return overHidOrGiveUp(kit, "not-found")
+
+        kit.io.say(kit.text(if (answer.id == "on") R.string.one_tcpip_replug else R.string.one_tcpip_intro))
+        val waiting = if (answer.id == "on") R.string.one_tcpip_waiting_replug else R.string.one_tcpip_waiting
+        val on = kit.io.waitUntil(kit.text(waiting), TCPIP_TIMEOUT_MS, kit.choice("skip", R.string.one_tcpip_give_up)) {
+            networkAppeared(kit)
+        }
+        if (!on) return overHidOrGiveUp(kit, if (answer.id == "on") "on-but-missing" else "left-off")
+
+        kit.session.outcome("tcpip", if (answer.id == "on") "appeared-after-replug" else "turned-on")
+        kit.io.say(kit.text(R.string.one_tcpip_on))
+        kit.snapshot("tcpip-on")
+        return true
+    }
+
+    private fun networkAppeared(kit: Kit) = kit.hasUsbNetwork() || kit.hasSystemLink(HOSTS)
+
+    /**
+     * The menu toggle did not bring the network up, so look at the setting
+     * itself over HID: the USB function word, plus firmware versions while
+     * there. It is only ever changed with the tester's say-so, and only the
+     * NCM and ECM fields (see `XrealOneHid`).
+     */
+    private suspend fun overHidOrGiveUp(kit: Kit, outcome: String): Boolean {
+        kit.session.outcome("tcpip", outcome)
+        kit.io.say(kit.text(R.string.one_hid_intro))
+        if (!kit.requestUsbAccess()) {
+            kit.session.outcome("hid", "no-usb-access")
+            return giveUp(kit, askFirmware = true)
+        }
+        val state = kit.readGlassesState().getOrElse {
+            kit.session.note("hid read: ${it.message}")
+            kit.session.outcome("hid", "read-failed")
+            return giveUp(kit, askFirmware = true)
+        }
+        kit.session.outcome("usb_functions", state.functions)
+        state.mcuVersion?.let { kit.session.outcome("firmware_mcu", it) }
+        state.dspVersion?.let { kit.session.outcome("firmware_dsp", it) }
+        if (state.networkOn) {
+            kit.session.outcome("hid", "network-on-but-missing")
+            return giveUp(kit, askFirmware = state.mcuVersion == null)
+        }
+
+        val consent = kit.text(R.string.one_hid_consent)
+        val choice = kit.io.ask(consent, listOf(kit.choice("yes", R.string.one_hid_yes), kit.choice("no", R.string.one_hid_no)))
+        kit.session.answer("hid_enable_network", consent, choice)
+        if (choice.id != "yes") {
+            kit.session.outcome("hid", "declined")
+            return giveUp(kit, askFirmware = state.mcuVersion == null)
+        }
+        kit.setGlassesNetwork(on = true).onFailure {
+            kit.session.note("hid write: ${it.message}")
+            kit.session.outcome("hid", "write-failed")
+            return giveUp(kit, askFirmware = state.mcuVersion == null)
+        }
+        val appeared = kit.io.waitUntil(kit.text(R.string.one_hid_waiting), HID_REENUMERATE_TIMEOUT_MS, kit.choice("skip", R.string.one_tcpip_give_up)) {
+            networkAppeared(kit)
+        }
+        kit.snapshot("after-hid-enable")
+        kit.session.outcome("hid", if (appeared) "enabled" else "enabled-no-network")
+        if (!appeared) return giveUp(kit, askFirmware = false)
+        kit.session.outcome("tcpip", "enabled-over-hid")
+        kit.io.say(kit.text(R.string.one_tcpip_on))
+        return true
+    }
+
+    private suspend fun giveUp(kit: Kit, askFirmware: Boolean): Boolean {
+        kit.snapshot("tcpip-unavailable")
+        if (askFirmware) {
+            kit.io.askText(kit.text(R.string.one_firmware_question), kit.choice("skip", R.string.skip))
+                ?.takeIf { it.isNotBlank() }
+                ?.let { kit.session.note("firmware (read by tester): $it") }
+        }
+        return false
+    }
+
+    /** Offers to undo a network switch-on made over HID. */
+    private suspend fun offerHidRestore(kit: Kit) {
+        if (kit.session.outcomes["hid"] != "enabled") return
+        val question = kit.text(R.string.one_hid_restore)
+        val choice = kit.io.ask(question, listOf(kit.choice("off", R.string.one_hid_restore_off), kit.choice("keep", R.string.one_hid_restore_keep)))
+        kit.session.answer("hid_restore", question, choice)
+        if (choice.id != "off") return
+        kit.setGlassesNetwork(on = false)
+            .onSuccess {
+                kit.session.outcome("hid_restore", "restored")
+                kit.io.say(kit.text(R.string.one_hid_restored))
+            }
+            .onFailure {
+                kit.session.note("hid restore: ${it.message}")
+                kit.session.outcome("hid_restore", "failed")
+            }
+    }
 
     /** Read-only getters; the config reply is the factory calibration, about 220 KB of JSON. */
     private suspend fun readControl(kit: Kit): ControlRead? {
@@ -251,7 +371,8 @@ object XrealOneProfile : Profile {
             )
             when {
                 reading.samples == 0L -> true
-                motion.check is Check.Still -> reading.peakDegreesPerSec <= motion.check.maxDegreesPerSec
+                motion.check is Check.Still -> reading.peakDegreesPerSec <= motion.check.maxDegreesPerSec &&
+                    reading.turnedDegrees <= motion.check.maxTurnedDegrees
                 motion.check is Check.Turn -> reading.turnedDegrees >= motion.check.minDegrees
                 else -> true
             }
@@ -267,7 +388,7 @@ object XrealOneProfile : Profile {
      */
     private suspend fun solveAxes(kit: Kit, reports: Tap, meter: MotionMeter, recorder: SegmentRecorder, config: String?): AxisSolver.Result {
         var result = solve(recorder)
-        if (result.status == AxisSolver.Status.AMBIGUOUS && result.redo.isNotEmpty() && reports.alive) {
+        if (result.status != AxisSolver.Status.CONFIDENT && result.redo.isNotEmpty() && reports.alive) {
             kit.session.note("axes first pass: ${result.problems.joinToString("; ")}")
             kit.io.say(kit.text(R.string.axes_repeat))
             for (motion in MOTIONS.filter { it.label in result.redo }) {
@@ -361,5 +482,7 @@ object XrealOneProfile : Profile {
     private const val RETRY_PAUSE_MS = 5_000L
     private const val FIRST_REPORT_TIMEOUT_MS = 6_000L
     private const val CONFIG_TIMEOUT_MS = 12_000L
+    private const val TCPIP_TIMEOUT_MS = 240_000L
+    private const val HID_REENUMERATE_TIMEOUT_MS = 30_000L
     private const val QUIET_NS = 1_000_000_000L
 }

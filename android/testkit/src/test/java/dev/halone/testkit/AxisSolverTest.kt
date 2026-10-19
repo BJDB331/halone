@@ -125,12 +125,36 @@ class AxisSolverTest {
     }
 
     @Test
-    fun `one motion done backwards flags just its pair`() {
+    fun `one motion done backwards drops just its pair and still finds the frame`() {
         val glasses = Glasses(oneS, mountDegrees = 10.0)
         val result = AxisSolver.solve(glasses.swings(flip = setOf("look-up")), glasses.gravity())
 
-        assertEquals(Status.AMBIGUOUS, result.status)
+        assertEquals(Status.INFERRED, result.status)
         assertEquals(setOf("look-up", "look-down"), result.redo)
+        assertEquals(oneS, result.convention)
+    }
+
+    /** What the second real tester did: a small settling motion right after the beep, the real one seconds later. */
+    @Test
+    fun `the swing is the furthest excursion after the beep, not the first motion`() {
+        val recorder = SegmentRecorder()
+        recorder.begin("m")
+        var t = 0L
+        fun hold(rate: D, ms: Int) = repeat(ms) {
+            recorder.onImu(t, rate.x.toFloat(), rate.y.toFloat(), rate.z.toFloat(), 0f, 9.8f, 0f)
+            t += 1_000_000L
+        }
+        hold(D(0.0, -0.6, 0.0), 800)
+        recorder.go()
+        hold(D(0.4, 0.0, 0.0), 500)
+        hold(D(-0.4, 0.0, 0.0), 500)
+        hold(D(0.0, 0.0, 0.0), 1500)
+        hold(D(0.0, 0.0, 0.5), 1000)
+        hold(D(0.0, 0.0, -0.5), 1000)
+        recorder.end()
+
+        val swing = AxisSolver.swing(recorder.samples("m")!!, D(0.0, 0.0, 0.0))
+        assertTrue("picked $swing", swing.z > 0.45 && abs(swing.x) < 0.05 && abs(swing.y) < 0.05)
     }
 
     @Test

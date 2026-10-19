@@ -27,14 +27,16 @@ class AbRounds(
         val apply: (SceneParams, Double) -> SceneParams,
     )
 
+    /**
+     * Ranges centred on what the first two wearers chose (test kit 0.6.0). The
+     * mount round is gone: neither could tell ±5° apart, so the factory mount
+     * stands and the round only cost them time.
+     */
     private val parameters = listOf(
-        Parameter("mount_offset_deg", -10.0, 10.0, R.string.ab_mount_intro, R.string.ab_mount_question) { p, v ->
-            p.copy(mountOffsetDegrees = v)
-        },
-        Parameter("fov_scale", 0.7, 1.2, R.string.ab_fov_intro, R.string.ab_fov_question) { p, v ->
+        Parameter("fov_scale", 0.7, 1.1, R.string.ab_fov_intro, R.string.ab_fov_question) { p, v ->
             p.copy(verticalFovDegrees = baseFovDegrees * v)
         },
-        Parameter("prediction_ms", 0.0, 140.0, R.string.ab_prediction_intro, R.string.ab_prediction_question) { p, v ->
+        Parameter("prediction_ms", 0.0, 80.0, R.string.ab_prediction_intro, R.string.ab_prediction_question) { p, v ->
             p.copy(predictionMs = v)
         },
     )
@@ -102,6 +104,6 @@ class AbRounds(
     companion object {
         const val ROUNDS = 3
         const val SHOW_MS = 7_000L
-        const val START_PREDICTION_MS = 50.0
+        const val START_PREDICTION_MS = 30.0
     }
 }
