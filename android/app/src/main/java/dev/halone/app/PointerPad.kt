@@ -64,6 +64,19 @@ class PointerPad(
     private var screenOff = false
     private var tuningPanel: View? = null
 
+    private val prefs get() = activity.getSharedPreferences("pad", android.content.Context.MODE_PRIVATE)
+
+    /**
+     * Whether the bottom line shows the display diagnostics. Off by default:
+     * it is for debugging, and while it is hidden the line is just the way
+     * into the options.
+     */
+    private var showStats: Boolean
+        get() = prefs.getBoolean("showStats", false)
+        set(value) { prefs.edit().putBoolean("showStats", value).apply() }
+
+    private var lastStats = ""
+
     /**
      * Live tracking tuning, shown by tapping the stats line: the prediction
      * horizon and the rest hold, set by feel while wearing the glasses.
@@ -174,6 +187,8 @@ class PointerPad(
                     setTextColor(Color.argb(0x66, 0xff, 0xff, 0xff))
                     gravity = Gravity.CENTER
                     setPadding(0, dp(12), 0, dp(12))
+                    contentDescription = "Options"
+                    text = if (showStats) lastStats else OPTIONS_LABEL
                     setOnClickListener { toggleTuning(this@apply.parent as FrameLayout) }
                 }.also {
                     visibleParts += it
@@ -211,15 +226,31 @@ class PointerPad(
             tuningPanel = null
             return
         }
-        val t = tuning ?: return
-        var prediction = t.predictionMs
-        var deadband = t.deadbandTenths
+        val t = tuning
         val panel = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(16), dp(24), dp(16))
             setBackgroundColor(Color.argb(0xE6, 0x10, 0x14, 0x1c))
             isClickable = true
         }
+        if (t != null) addTuning(panel, t)
+        panel.addView(android.widget.Switch(activity).apply {
+            text = "Show display stats along the bottom"
+            textSize = 14f
+            setTextColor(Color.WHITE)
+            isChecked = showStats
+            setOnCheckedChangeListener { _, on ->
+                showStats = on
+                stats?.text = if (on) lastStats else OPTIONS_LABEL
+            }
+        })
+        tuningPanel = panel
+        pad.addView(panel, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM).apply { bottomMargin = dp(56) })
+    }
+
+    private fun addTuning(panel: LinearLayout, t: Tuning) {
+        var prediction = t.predictionMs
+        var deadband = t.deadbandTenths
         fun row(label: (Int) -> String, max: Int, start: Int, set: (Int) -> Unit) {
             val text = TextView(activity).apply {
                 textSize = 14f
@@ -251,13 +282,12 @@ class PointerPad(
             isChecked = t.latchPacing
             setOnCheckedChangeListener { _, on -> t.onLatchPacing(on) }
         })
-        tuningPanel = panel
-        pad.addView(panel, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM).apply { bottomMargin = dp(56) })
     }
 
     /** A line of display diagnostics along the bottom: refresh rate and frames drawn. */
     fun setStats(text: String) = activity.runOnUiThread {
-        stats?.text = text
+        lastStats = text
+        if (showStats) stats?.text = text
     }
 
     fun setFollowing(following: Boolean) = activity.runOnUiThread {
@@ -381,5 +411,6 @@ class PointerPad(
         val PRESSED = Color.argb(0x30, 0x5c, 0xc8, 0xff)
         val BUTTON = Color.argb(0x26, 0xff, 0xff, 0xff)
         val RECORDING = Color.rgb(0xff, 0x6b, 0x6b)
+        const val OPTIONS_LABEL = "Options"
     }
 }

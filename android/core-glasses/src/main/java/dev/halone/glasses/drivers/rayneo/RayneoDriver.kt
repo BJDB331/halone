@@ -200,27 +200,34 @@ class RayneoDriver : GlassesDriver {
             // scene about 15° low at a level gaze, so 44°. Fine-tune by eye:
             // content high means lower this, content low means raise it.
             imuPitchOffsetDegrees = 44f,
-            // [by feel, GT Max] 40 ms felt over-sensitive: the scene ran ahead
-            // of the head on every small movement, which is what too much
-            // prediction looks like, and it amplifies gyro noise into jitter.
-            // 16 ms is what the macOS GT project settled on by eye; with the
-            // frame time on top that is ~24 ms at 120 Hz. Residual lag is the
-            // lesser evil. Measure with the `latency` action and a camera.
-            predictionConstantMs = 16f,
+            // [by feel, GT Max] None. 40 ms ran the scene ahead of the head
+            // and amplified gyro noise into jitter; 16 ms plus the frame time
+            // was better; worn and tuned on the pad, 0 felt best of all. The
+            // frame time is left out too (multiplier below), so the pad's
+            // slider starts at the 0 a wearer settled on.
+            predictionConstantMs = 0f,
             // [by feel, GT Max] Off. Halone's per-row correction assumes
             // XREAL's top-to-bottom scan; on a GT Max it made nodding look
             // like dropped frames. How these micro-OLEDs scan is not known,
             // and the end-of-frame warp still runs without it.
             scanoutCompensation = 0f,
-            // [starting point] Hold the image while the head is still, the way
-            // the glasses' own pinned mode does; the GT series' raw gyro is
-            // too noisy at rest to show unfiltered. Tunable live on the pad.
-            restDeadbandDegrees = 0.5f,
-            predictionFrametimeMultiplier = 1f,
+            // [by feel, GT Max] Hold the image while the head is still, the
+            // way the glasses' own pinned mode does; the raw gyro is too noisy
+            // at rest to show unfiltered. 0.5° felt sticky; worn and tuned on
+            // the pad, 0.2°.
+            restDeadbandDegrees = 0.2f,
+            predictionFrametimeMultiplier = 0f,
         )
 
         /** GT: birdbath optics, 46°. A rendering FoV tuned by eye on one landed at 45–46°. */
-        val GT_OPTICS = GT_MAX_OPTICS.copy(diagonalFovDegrees = 45.5f)
+        val GT_OPTICS = GT_MAX_OPTICS.copy(
+            diagonalFovDegrees = 45.5f,
+            // Not worn by this project: the GT keeps the GT Max's earlier
+            // starting point rather than its by-feel tuning.
+            predictionConstantMs = 16f,
+            predictionFrametimeMultiplier = 1f,
+            restDeadbandDegrees = 0.5f,
+        )
 
         fun opticsFor(board: Int): Optics =
             if (board == RayneoProtocol.BOARD_GT) GT_OPTICS else GT_MAX_OPTICS
