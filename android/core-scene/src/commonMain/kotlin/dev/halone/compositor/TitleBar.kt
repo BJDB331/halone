@@ -37,7 +37,7 @@ data class PanelRect(val left: Float, val top: Float, val width: Float, val heig
 
 /**
  * The pill under every window: a grip, Back when the window asks for it, the
- * title, size, pin and close.
+ * title, the shape button when it is turned on, pin and close.
  *
  * Its geometry lives here because three things have to agree on it: the
  * compositor that draws it, the hit test that decides what a click on it does,
@@ -96,12 +96,12 @@ object TitleBar {
     }
 
     /** Which part of the bar is at ([x], [y]) in panel pixels, or null if none. */
-    fun partAt(panelWidthPx: Int, panelHeightPx: Int, x: Float, y: Float, back: Boolean = false): HitPart? = when {
+    fun partAt(panelWidthPx: Int, panelHeightPx: Int, x: Float, y: Float, back: Boolean = false, shape: Boolean = false): HitPart? = when {
         !bar(panelWidthPx, panelHeightPx).contains(x, y) -> null
         back && back(panelWidthPx, panelHeightPx).contains(x, y) -> HitPart.BACK
         close(panelWidthPx, panelHeightPx).contains(x, y) -> HitPart.CLOSE
         pin(panelWidthPx, panelHeightPx).contains(x, y) -> HitPart.PIN
-        size(panelWidthPx, panelHeightPx).contains(x, y) -> HitPart.SIZE
+        shape && size(panelWidthPx, panelHeightPx).contains(x, y) -> HitPart.SIZE
         else -> HitPart.TITLE_BAR
     }
 

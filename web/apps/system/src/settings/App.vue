@@ -15,6 +15,8 @@ import { onPhone, onRoute, useHost, useSettings } from '../shared/host'
  * Android host reads and validates against the same schema.
  */
 type LocalKey =
+  | 'windows.shapeButton'
+  | 'windows.reclaimPhone'
   | 'developer.displayStats'
   | 'tracking.custom'
   | 'tracking.predictionMs'
@@ -203,6 +205,23 @@ const allSections: Section[] = [
             help: 'How long the pointer has to be off your windows before they go.',
             step: 0.1,
             format: (v) => `${v.toFixed(1)} s`,
+          },
+        ],
+      },
+      {
+        title: 'Window buttons',
+        items: [
+          {
+            kind: 'toggle',
+            key: 'windows.shapeButton',
+            label: 'Shape button',
+            help: 'A button on every title bar that switches the window between landscape, portrait and 4:3.',
+          },
+          {
+            kind: 'toggle',
+            key: 'windows.reclaimPhone',
+            label: 'Keep the pad after closing an app',
+            help: 'Closing an Android app’s window can move the app onto the phone’s screen, in front of the pad. With this on, Halone comes straight back.',
           },
         ],
       },

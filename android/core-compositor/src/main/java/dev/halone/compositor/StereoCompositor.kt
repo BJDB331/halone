@@ -1122,7 +1122,7 @@ class StereoCompositor(
     /** The pill under the panel, in the panel's own plane. */
     private fun drawTitleBar(panel: Panel, viewProjection: FloatArray, active: Boolean, opacity: Float) {
         val hit = lastHit
-        val texture = titleBars.texture(panel, hovered = hit?.part?.takeIf { hit.panel === panel })
+        val texture = titleBars.texture(panel, hovered = hit?.part?.takeIf { hit.panel === panel }, shape = scene.shapeButtons)
         val pose = panel.pose
         val metresPerPx = pose.widthMetres / panel.widthPx
         val bar = TitleBar.bar(panel.widthPx, panel.heightPx)

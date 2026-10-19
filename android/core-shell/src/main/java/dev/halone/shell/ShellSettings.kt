@@ -102,6 +102,8 @@ class ShellSettings(private val store: SettingsStore, schemaJson: String) {
         const val DOCK_PINNED_APPS = "dock.pinnedApps"
         const val WINDOWS_AUTO_HIDE = "windows.autoHide"
         const val WINDOWS_AUTO_HIDE_DELAY_SECONDS = "windows.autoHideDelaySeconds"
+        const val WINDOWS_SHAPE_BUTTON = "windows.shapeButton"
+        const val WINDOWS_RECLAIM_PHONE = "windows.reclaimPhone"
         const val BROWSER_AUTO_HIDE_TOOLBAR = "browser.autoHideToolbar"
         const val BROWSER_USER_AGENT = "browser.userAgent"
         const val BROWSER_AD_BLOCKER = "browser.adBlocker"

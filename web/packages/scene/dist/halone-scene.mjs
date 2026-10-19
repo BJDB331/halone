@@ -193,7 +193,7 @@ function retargetOnHead($this, headYawRadians) {
   if ($this.n7_1) {
     tmp_1 = excessFromOrigin <= 0.0;
   } else {
-    tmp_1 = excessFromOrigin < -Companion_getInstance().v9_1;
+    tmp_1 = excessFromOrigin < -Companion_getInstance().w9_1;
   }
   tmp_0.n7_1 = tmp_1;
   if ($this.n7_1)
@@ -214,17 +214,17 @@ function _get_focusHeld__vtgs78($this) {
   return $this.d7_1 && !$this.f7_1 && ($this.e7_1 || $this.f8_1);
 }
 function targetOf($this, panel, headYawRadians) {
-  return $this.f7_1 ? panel.da_1.la_1 : Companion_getInstance_1().ka($this.j7_1 + panel.fa_1);
+  return $this.f7_1 ? panel.ea_1.ma_1 : Companion_getInstance_1().la($this.j7_1 + panel.ga_1);
 }
 function advanceReturn($this, headYawRadians, dt) {
   var anchorMoved = false;
   if (!$this.f7_1 && dt > 0.0 && dt <= 0.5) {
-    var target = $this.n7_1 ? $this.l7_1 : Companion_getInstance_1().ka($this.k7_1 + $this.i7_1);
-    var error = Companion_getInstance_1().ka(target - $this.j7_1);
+    var target = $this.n7_1 ? $this.l7_1 : Companion_getInstance_1().la($this.k7_1 + $this.i7_1);
+    var error = Companion_getInstance_1().la(target - $this.j7_1);
     // Inline function 'kotlin.math.abs' call
-    if (Math.abs(error) > Companion_getInstance().p9_1) {
-      var seconds = $this.e7_1 ? $this.p7_1 : $this.o7_1.sa_1;
-      var perSecond = $this.e7_1 ? $this.q7_1 : $this.o7_1.ta_1;
+    if (Math.abs(error) > Companion_getInstance().q9_1) {
+      var seconds = $this.e7_1 ? $this.p7_1 : $this.o7_1.ta_1;
+      var perSecond = $this.e7_1 ? $this.q7_1 : $this.o7_1.ua_1;
       var step = error * coerceAtMost(dt / seconds, 1.0);
       var floor = toRadians(perSecond) * dt;
       // Inline function 'kotlin.math.abs' call
@@ -237,7 +237,7 @@ function advanceReturn($this, headYawRadians, dt) {
         var b = Math.abs(error);
         step = tmp * Math.min(floor, b);
       }
-      $this.j7_1 = Companion_getInstance_1().ka($this.j7_1 + step);
+      $this.j7_1 = Companion_getInstance_1().la($this.j7_1 + step);
       anchorMoved = true;
     }
   }
@@ -257,26 +257,26 @@ function advanceReturn($this, headYawRadians, dt) {
   var _iterator__ex2g4s = sortedWith(this_0, tmp$ret$7).g();
   $l$loop_1: while (_iterator__ex2g4s.h()) {
     var panel = _iterator__ex2g4s.i();
-    if ($this.f7_1 && !$this.g7_1.q(panel.aa_1)) {
+    if ($this.f7_1 && !$this.g7_1.q(panel.ba_1)) {
       var tmp0_0 = $this.a7_1;
-      var tmp2 = panel.aa_1;
+      var tmp2 = panel.ba_1;
       // Inline function 'kotlin.collections.set' call
-      var value = panel.da_1.la_1;
+      var value = panel.ea_1.ma_1;
       tmp0_0.k2(tmp2, value);
       continue $l$loop_1;
     }
     var wanted = targetOf($this, panel, headYawRadians);
     var resolved = resolveTarget($this, panel, wanted, headYawRadians, dt);
     var tmp0_1 = $this.a7_1;
-    var tmp2_0 = panel.aa_1;
+    var tmp2_0 = panel.ba_1;
     // Inline function 'kotlin.collections.set' call
-    var value_0 = resolved.ya_1;
+    var value_0 = resolved.za_1;
     tmp0_1.k2(tmp2_0, value_0);
-    if (resolved.za_1)
+    if (resolved.ab_1)
       crossing = true;
-    var timeConstant = resolved.za_1 ? panel.ea_1.ua_1 : $this.e7_1 ? $this.p7_1 : $this.t7_1 ? 0.1 : panel.ea_1.sa_1;
-    var floor_0 = resolved.za_1 ? panel.ea_1.va_1 : $this.e7_1 ? $this.q7_1 : 0.0;
-    var tmp0_elvis_lhs = panel.ab(resolved.ya_1, dt, timeConstant, floor_0, true);
+    var timeConstant = resolved.ab_1 ? panel.fa_1.va_1 : $this.e7_1 ? $this.p7_1 : $this.t7_1 ? 0.1 : panel.fa_1.ta_1;
+    var floor_0 = resolved.ab_1 ? panel.fa_1.wa_1 : $this.e7_1 ? $this.q7_1 : 0.0;
+    var tmp0_elvis_lhs = panel.bb(resolved.za_1, dt, timeConstant, floor_0, true);
     var tmp_1;
     if (tmp0_elvis_lhs == null) {
       continue $l$loop_1;
@@ -284,9 +284,9 @@ function advanceReturn($this, headYawRadians, dt) {
       tmp_1 = tmp0_elvis_lhs;
     }
     var next = tmp_1;
-    if (next === panel.da_1.la_1)
+    if (next === panel.ea_1.ma_1)
       continue $l$loop_1;
-    panel.da_1 = panel.da_1.bb(next);
+    panel.ea_1 = panel.ea_1.cb(next);
     moved = true;
   }
   $this.f8_1 = crossing;
@@ -296,9 +296,9 @@ function advanceReturn($this, headYawRadians, dt) {
   while (_iterator__ex2g4s_0.h()) {
     var element = _iterator__ex2g4s_0.i();
     var tmp0_2 = $this.h7_1;
-    var tmp2_1 = element.aa_1;
+    var tmp2_1 = element.ba_1;
     // Inline function 'kotlin.collections.set' call
-    var value_1 = element.da_1.la_1;
+    var value_1 = element.ea_1.ma_1;
     tmp0_2.k2(tmp2_1, value_1);
   }
   if (!moved && !anchorMoved && !correctCentring($this)) {
@@ -322,7 +322,7 @@ function overlapping($this) {
   var _iterator__ex2g4s = $this.y6_1.g();
   $l$loop: while (_iterator__ex2g4s.h()) {
     var panel = _iterator__ex2g4s.i();
-    if (!panel.ea_1.qa_1 || panel === $this.a8_1)
+    if (!panel.fa_1.ra_1 || panel === $this.a8_1)
       continue $l$loop;
     var _iterator__ex2g4s_0 = $this.y6_1.g();
     $l$loop_2: while (_iterator__ex2g4s_0.h()) {
@@ -332,17 +332,17 @@ function overlapping($this) {
       if (!yieldsTo($this, panel, other))
         continue $l$loop_2;
       // Inline function 'kotlin.math.abs' call
-      var x = panel.da_1.ma_1 - other.da_1.ma_1;
+      var x = panel.ea_1.na_1 - other.ea_1.na_1;
       var pitchGap = Math.abs(x);
-      if (pitchGap > panel.cb() + other.cb()) {
+      if (pitchGap > panel.db() + other.db()) {
         continue $l$loop_2;
       }
       // Inline function 'kotlin.math.abs' call
-      var x_0 = Companion_getInstance_1().ka(panel.da_1.la_1 - other.da_1.la_1);
+      var x_0 = Companion_getInstance_1().la(panel.ea_1.ma_1 - other.ea_1.ma_1);
       var separation = Math.abs(x_0);
-      if (separation < panel.db() + other.db()) {
+      if (separation < panel.eb() + other.eb()) {
         // Inline function 'kotlin.collections.plusAssign' call
-        var element = panel.aa_1;
+        var element = panel.ba_1;
         found.e(element);
       }
     }
@@ -354,7 +354,7 @@ function degrees($this, radians, positivePrefix) {
   return formatFixed(toDegrees(radians), 0, positivePrefix);
 }
 function yieldsTo($this, panel, other) {
-  return !other.ea_1.qa_1 ? true : $this.b7_1.equals(CollisionPolicy_AVOID_PINNED_getInstance()) ? false : panel.ga_1 ? false : true;
+  return !other.fa_1.ra_1 ? true : $this.b7_1.equals(CollisionPolicy_AVOID_PINNED_getInstance()) ? false : panel.ha_1 ? false : true;
 }
 function nearestFollowerTo($this, headYawRadians) {
   // Inline function 'kotlin.collections.filter' call
@@ -364,7 +364,7 @@ function nearestFollowerTo($this, headYawRadians) {
   var _iterator__ex2g4s = tmp0.g();
   while (_iterator__ex2g4s.h()) {
     var element = _iterator__ex2g4s.i();
-    if (element.ea_1.qa_1 && !element.ga_1) {
+    if (element.fa_1.ra_1 && !element.ha_1) {
       destination.e(element);
     }
   }
@@ -383,12 +383,12 @@ function nearestFollowerTo($this, headYawRadians) {
     }
     var it = minElem;
     // Inline function 'kotlin.math.abs' call
-    var x = Companion_getInstance_1().ka($this.j7_1 + it.fa_1 - headYawRadians);
+    var x = Companion_getInstance_1().la($this.j7_1 + it.ga_1 - headYawRadians);
     var minValue = Math.abs(x);
     do {
       var e = iterator.i();
       // Inline function 'kotlin.math.abs' call
-      var x_0 = Companion_getInstance_1().ka($this.j7_1 + e.fa_1 - headYawRadians);
+      var x_0 = Companion_getInstance_1().la($this.j7_1 + e.ga_1 - headYawRadians);
       var v = Math.abs(x_0);
       if (compareTo(minValue, v) > 0) {
         minElem = e;
@@ -408,7 +408,7 @@ function widestPanelRadians($this) {
   var _iterator__ex2g4s = tmp0.g();
   while (_iterator__ex2g4s.h()) {
     var element = _iterator__ex2g4s.i();
-    if (element.ea_1.qa_1) {
+    if (element.fa_1.ra_1) {
       destination.e(element);
     }
   }
@@ -420,9 +420,9 @@ function widestPanelRadians($this) {
       tmp$ret$3 = null;
       break $l$block;
     }
-    var maxValue = 2.0 * iterator.i().db();
+    var maxValue = 2.0 * iterator.i().eb();
     while (iterator.h()) {
-      var v = 2.0 * iterator.i().db();
+      var v = 2.0 * iterator.i().eb();
       // Inline function 'kotlin.comparisons.maxOf' call
       var a = maxValue;
       maxValue = Math.max(a, v);
@@ -454,24 +454,24 @@ function bandExcessAround($this, anchor, headYawRadians) {
   var _iterator__ex2g4s = tmp0.g();
   while (_iterator__ex2g4s.h()) {
     var element = _iterator__ex2g4s.i();
-    if (element.ea_1.qa_1) {
+    if (element.fa_1.ra_1) {
       destination.e(element);
     }
   }
   var followers = destination;
   if (followers.k())
     return null;
-  var error = Companion_getInstance_1().ka(headYawRadians - anchor);
+  var error = Companion_getInstance_1().la(headYawRadians - anchor);
   var margin = toRadians($this.s7_1);
   // Inline function 'kotlin.collections.maxOf' call
   var iterator = followers.g();
   if (!iterator.h())
     throw NoSuchElementException_init_$Create$();
   var it = iterator.i();
-  var maxValue = it.fa_1 + it.db();
+  var maxValue = it.ga_1 + it.eb();
   while (iterator.h()) {
     var it_0 = iterator.i();
-    var v = it_0.fa_1 + it_0.db();
+    var v = it_0.ga_1 + it_0.eb();
     // Inline function 'kotlin.comparisons.maxOf' call
     var a = maxValue;
     maxValue = Math.max(a, v);
@@ -482,10 +482,10 @@ function bandExcessAround($this, anchor, headYawRadians) {
   if (!iterator_0.h())
     throw NoSuchElementException_init_$Create$();
   var it_1 = iterator_0.i();
-  var minValue = it_1.fa_1 - it_1.db();
+  var minValue = it_1.ga_1 - it_1.eb();
   while (iterator_0.h()) {
     var it_2 = iterator_0.i();
-    var v_0 = it_2.fa_1 - it_2.db();
+    var v_0 = it_2.ga_1 - it_2.eb();
     // Inline function 'kotlin.comparisons.minOf' call
     var a_0 = minValue;
     minValue = Math.min(a_0, v_0);
@@ -497,8 +497,8 @@ function bandExcessAround($this, anchor, headYawRadians) {
   return Math.max(tmp0_0, b);
 }
 function ResolvedTarget(target, crossing) {
-  this.ya_1 = target;
-  this.za_1 = crossing;
+  this.za_1 = target;
+  this.ab_1 = crossing;
 }
 function resolveTarget($this, panel, wanted, headYawRadians, dt) {
   if ($this.b7_1.equals(CollisionPolicy_OVERLAP_getInstance()))
@@ -511,45 +511,45 @@ function resolveTarget($this, panel, wanted, headYawRadians, dt) {
     if (other === panel)
       continue $l$loop_2;
     // Inline function 'kotlin.math.abs' call
-    var x = panel.da_1.ma_1 - other.da_1.ma_1;
+    var x = panel.ea_1.na_1 - other.ea_1.na_1;
     var pitchGap = Math.abs(x);
-    if (pitchGap > panel.cb() + other.cb())
+    if (pitchGap > panel.db() + other.db())
       continue $l$loop_2;
     if (!yieldsTo($this, panel, other))
       continue $l$loop_2;
-    if (other.ea_1.qa_1) {
-      var separation = panel.db() + other.db() + Companion_getInstance().q9_1;
-      var needed = separation + Companion_getInstance().x9_1;
+    if (other.fa_1.ra_1) {
+      var separation = panel.eb() + other.eb() + Companion_getInstance().r9_1;
+      var needed = separation + Companion_getInstance().y9_1;
       var tmp;
       if ($this.f7_1) {
-        tmp = other.da_1.la_1;
+        tmp = other.ea_1.ma_1;
       } else {
-        var tmp0_elvis_lhs = $this.a7_1.w(other.aa_1);
+        var tmp0_elvis_lhs = $this.a7_1.w(other.ba_1);
         tmp = tmp0_elvis_lhs == null ? targetOf($this, other, headYawRadians) : tmp0_elvis_lhs;
       }
       var otherTarget = tmp;
-      var order = Companion_getInstance_1().ka(panel.fa_1 - other.fa_1);
-      var goPositive = !(order === 0.0) ? order > 0.0 : compareTo(panel.aa_1, other.aa_1) > 0;
-      var gap = Companion_getInstance_1().ka(target - otherTarget);
+      var order = Companion_getInstance_1().la(panel.ga_1 - other.ga_1);
+      var goPositive = !(order === 0.0) ? order > 0.0 : compareTo(panel.ba_1, other.ba_1) > 0;
+      var gap = Companion_getInstance_1().la(target - otherTarget);
       if (goPositive && gap < needed) {
-        target = Companion_getInstance_1().ka(otherTarget + needed);
+        target = Companion_getInstance_1().la(otherTarget + needed);
       } else if (!goPositive && gap > -needed) {
-        target = Companion_getInstance_1().ka(otherTarget - needed);
+        target = Companion_getInstance_1().la(otherTarget - needed);
       }
       continue $l$loop_2;
     }
-    var separation_0 = panel.db() + other.db() + Companion_getInstance().q9_1;
-    var here = Companion_getInstance_1().ka(panel.da_1.la_1 - other.da_1.la_1);
-    var there = Companion_getInstance_1().ka(target - other.da_1.la_1);
-    var gaze = Companion_getInstance_1().ka(headYawRadians - other.da_1.la_1);
-    var edge = other.db();
-    var key = panel.aa_1 + '\x00' + other.aa_1;
+    var separation_0 = panel.eb() + other.eb() + Companion_getInstance().r9_1;
+    var here = Companion_getInstance_1().la(panel.ea_1.ma_1 - other.ea_1.ma_1);
+    var there = Companion_getInstance_1().la(target - other.ea_1.ma_1);
+    var gaze = Companion_getInstance_1().la(headYawRadians - other.ea_1.ma_1);
+    var edge = other.eb();
+    var key = panel.ba_1 + '\x00' + other.ba_1;
     var tmp1_elvis_lhs = $this.z6_1.w(key);
     var committed = tmp1_elvis_lhs == null ? there >= 0.0 : tmp1_elvis_lhs;
     // Inline function 'kotlin.math.abs' call
     var clear = Math.abs(here) >= separation_0;
     var arrived = clear && here >= 0.0 === committed;
-    var reference = other.ea_1.qa_1 ? there : gaze;
+    var reference = other.fa_1.ra_1 ? there : gaze;
     var tmp_0;
     if (!arrived) {
       tmp_0 = committed;
@@ -561,14 +561,14 @@ function resolveTarget($this, panel, wanted, headYawRadians, dt) {
     var goPositive_0 = tmp_0;
     // Inline function 'kotlin.collections.set' call
     $this.z6_1.k2(key, goPositive_0);
-    var targetSide = Companion_getInstance_1().ka(target - other.da_1.la_1) >= 0.0;
+    var targetSide = Companion_getInstance_1().la(target - other.ea_1.ma_1) >= 0.0;
     if (!clear || !(targetSide === here >= 0.0))
       crossing = true;
-    var parking = separation_0 + (other.ea_1.qa_1 ? Companion_getInstance().x9_1 : Companion_getInstance().w9_1);
+    var parking = separation_0 + (other.fa_1.ra_1 ? Companion_getInstance().y9_1 : Companion_getInstance().x9_1);
     if (goPositive_0 && there < parking) {
-      target = Companion_getInstance_1().ka(other.da_1.la_1 + parking);
+      target = Companion_getInstance_1().la(other.ea_1.ma_1 + parking);
     } else if (!goPositive_0 && there > -parking) {
-      target = Companion_getInstance_1().ka(other.da_1.la_1 - parking);
+      target = Companion_getInstance_1().la(other.ea_1.ma_1 - parking);
     }
   }
   // Inline function 'kotlin.collections.mapNotNull' call
@@ -590,28 +590,28 @@ function resolveTarget($this, panel, wanted, headYawRadians, dt) {
         break $l$block_1;
       }
       // Inline function 'kotlin.math.abs' call
-      var x_0 = panel.da_1.ma_1 - element.da_1.ma_1;
+      var x_0 = panel.ea_1.na_1 - element.ea_1.na_1;
       var pitchGap_0 = Math.abs(x_0);
-      if (pitchGap_0 > panel.cb() + element.cb()) {
+      if (pitchGap_0 > panel.db() + element.db()) {
         tmp$ret$7 = null;
         break $l$block_1;
       }
-      var separation_1 = panel.db() + element.db() + Companion_getInstance().q9_1;
+      var separation_1 = panel.eb() + element.eb() + Companion_getInstance().r9_1;
       var tmp_1;
-      if (element.ea_1.qa_1) {
+      if (element.fa_1.ra_1) {
         var tmp_2;
         if ($this.f7_1) {
-          tmp_2 = element.da_1.la_1;
+          tmp_2 = element.ea_1.ma_1;
         } else {
-          var tmp0_elvis_lhs_0 = $this.a7_1.w(element.aa_1);
+          var tmp0_elvis_lhs_0 = $this.a7_1.w(element.ba_1);
           tmp_2 = tmp0_elvis_lhs_0 == null ? targetOf($this, element, headYawRadians) : tmp0_elvis_lhs_0;
         }
         tmp_1 = tmp_2;
       } else {
-        tmp_1 = element.da_1.la_1;
+        tmp_1 = element.ea_1.ma_1;
       }
       var centre = tmp_1;
-      var half = separation_1 + (element.ea_1.qa_1 ? Companion_getInstance().x9_1 : Companion_getInstance().w9_1);
+      var half = separation_1 + (element.fa_1.ra_1 ? Companion_getInstance().y9_1 : Companion_getInstance().x9_1);
       tmp$ret$7 = to(centre, half);
     }
     var tmp0_safe_receiver = tmp$ret$7;
@@ -632,7 +632,7 @@ function resolveTarget($this, panel, wanted, headYawRadians, dt) {
       var element_0 = _iterator__ex2g4s_1.i();
       var centre_0 = element_0.q6();
       var half_0 = element_0.r6();
-      var list = listOf([Companion_getInstance_1().ka(centre_0 + half_0), Companion_getInstance_1().ka(centre_0 - half_0)]);
+      var list = listOf([Companion_getInstance_1().la(centre_0 + half_0), Companion_getInstance_1().la(centre_0 - half_0)]);
       addAll(destination_0, list);
     }
     // Inline function 'kotlin.collections.filter' call
@@ -660,12 +660,12 @@ function resolveTarget($this, panel, wanted, headYawRadians, dt) {
       }
       var it = minElem;
       // Inline function 'kotlin.math.abs' call
-      var x_1 = Companion_getInstance_1().ka(it - wanted);
+      var x_1 = Companion_getInstance_1().la(it - wanted);
       var minValue = Math.abs(x_1);
       do {
         var e = iterator.i();
         // Inline function 'kotlin.math.abs' call
-        var x_2 = Companion_getInstance_1().ka(e - wanted);
+        var x_2 = Companion_getInstance_1().la(e - wanted);
         var v = Math.abs(x_2);
         if (compareTo(minValue, v) > 0) {
           minElem = e;
@@ -678,14 +678,14 @@ function resolveTarget($this, panel, wanted, headYawRadians, dt) {
     var candidate = tmp$ret$17;
     if (!(candidate == null)) {
       // Inline function 'kotlin.math.abs' call
-      var x_3 = Companion_getInstance_1().ka(candidate - target);
-      if (Math.abs(x_3) > Companion_getInstance().o9_1) {
+      var x_3 = Companion_getInstance_1().la(candidate - target);
+      if (Math.abs(x_3) > Companion_getInstance().p9_1) {
         crossing = true;
       }
       target = candidate;
     }
   }
-  var displaced = !(target === wanted) || ($this.f7_1 && $this.g7_1.q(panel.aa_1));
+  var displaced = !(target === wanted) || ($this.f7_1 && $this.g7_1.q(panel.ba_1));
   if (!$this.b7_1.equals(CollisionPolicy_OVERLAP_getInstance()) && displaced) {
     // Inline function 'kotlin.collections.mapNotNull' call
     var tmp0_0 = $this.y6_1;
@@ -697,27 +697,27 @@ function resolveTarget($this, panel, wanted, headYawRadians, dt) {
       var element_2 = _iterator__ex2g4s_3.i();
       var tmp$ret$27;
       $l$block_6: {
-        if (element_2 === panel || element_2 === $this.a8_1 || !element_2.ea_1.qa_1) {
+        if (element_2 === panel || element_2 === $this.a8_1 || !element_2.fa_1.ra_1) {
           tmp$ret$27 = null;
           break $l$block_6;
         }
         // Inline function 'kotlin.math.abs' call
-        var x_4 = panel.da_1.ma_1 - element_2.da_1.ma_1;
+        var x_4 = panel.ea_1.na_1 - element_2.ea_1.na_1;
         var pitchGap_1 = Math.abs(x_4);
-        if (pitchGap_1 > panel.cb() + element_2.cb()) {
+        if (pitchGap_1 > panel.db() + element_2.db()) {
           tmp$ret$27 = null;
           break $l$block_6;
         }
-        var centre_1 = element_2.da_1.la_1;
-        var tmp0_elvis_lhs_1 = $this.h7_1.w(element_2.aa_1);
+        var centre_1 = element_2.ea_1.ma_1;
+        var tmp0_elvis_lhs_1 = $this.h7_1.w(element_2.ba_1);
         var previous = tmp0_elvis_lhs_1 == null ? centre_1 : tmp0_elvis_lhs_1;
         // Inline function 'kotlin.math.abs' call
-        var x_5 = Companion_getInstance_1().ka(centre_1 - previous);
-        if (Math.abs(x_5) > Companion_getInstance().y9_1) {
+        var x_5 = Companion_getInstance_1().la(centre_1 - previous);
+        if (Math.abs(x_5) > Companion_getInstance().z9_1) {
           tmp$ret$27 = null;
           break $l$block_6;
         }
-        tmp$ret$27 = to(centre_1, panel.db() + element_2.db() + Companion_getInstance().q9_1 + Companion_getInstance().x9_1);
+        tmp$ret$27 = to(centre_1, panel.eb() + element_2.eb() + Companion_getInstance().r9_1 + Companion_getInstance().y9_1);
       }
       var tmp0_safe_receiver_0 = tmp$ret$27;
       if (tmp0_safe_receiver_0 == null)
@@ -737,7 +737,7 @@ function resolveTarget($this, panel, wanted, headYawRadians, dt) {
         var element_3 = _iterator__ex2g4s_4.i();
         var centre_2 = element_3.q6();
         var half_1 = element_3.r6();
-        var list_0 = listOf([Companion_getInstance_1().ka(centre_2 + half_1), Companion_getInstance_1().ka(centre_2 - half_1)]);
+        var list_0 = listOf([Companion_getInstance_1().la(centre_2 + half_1), Companion_getInstance_1().la(centre_2 - half_1)]);
         addAll(destination_3, list_0);
       }
       // Inline function 'kotlin.collections.filter' call
@@ -765,12 +765,12 @@ function resolveTarget($this, panel, wanted, headYawRadians, dt) {
         }
         var it_0 = minElem_0;
         // Inline function 'kotlin.math.abs' call
-        var x_6 = Companion_getInstance_1().ka(it_0 - wanted);
+        var x_6 = Companion_getInstance_1().la(it_0 - wanted);
         var minValue_0 = Math.abs(x_6);
         do {
           var e_0 = iterator_0.i();
           // Inline function 'kotlin.math.abs' call
-          var x_7 = Companion_getInstance_1().ka(e_0 - wanted);
+          var x_7 = Companion_getInstance_1().la(e_0 - wanted);
           var v_0 = Math.abs(x_7);
           if (compareTo(minValue_0, v_0) > 0) {
             minElem_0 = e_0;
@@ -800,39 +800,39 @@ function windowReach($this) {
   var _iterator__ex2g4s = this_0.g();
   while (_iterator__ex2g4s.h()) {
     var item = _iterator__ex2g4s.i();
-    var pose = item.da_1;
-    var metresPerPx = pose.oa_1 / item.eb();
-    var distance = pose.na_1;
+    var pose = item.ea_1;
+    var metresPerPx = pose.pa_1 / item.fb();
+    var distance = pose.oa_1;
     var handles = 64.0;
     // Inline function 'kotlin.comparisons.maxOf' call
     var a = 14.0 + 56.0;
     var below = Math.max(a, handles);
     // Inline function 'kotlin.math.atan' call
-    var x = (item.eb() / 2.0 + handles) * metresPerPx / distance;
+    var x = (item.fb() / 2.0 + handles) * metresPerPx / distance;
     var tmp = Math.atan(x);
     // Inline function 'kotlin.math.atan' call
-    var x_0 = (item.fb() / 2.0 + below) * metresPerPx / distance;
+    var x_0 = (item.gb() / 2.0 + below) * metresPerPx / distance;
     var tmp$ret$5 = Math.atan(x_0);
-    var tmp_0 = pose.ma_1 - tmp$ret$5;
+    var tmp_0 = pose.na_1 - tmp$ret$5;
     // Inline function 'kotlin.math.atan' call
-    var x_1 = (item.fb() / 2.0 + handles) * metresPerPx / distance;
+    var x_1 = (item.gb() / 2.0 + handles) * metresPerPx / distance;
     var tmp$ret$6 = Math.atan(x_1);
-    var tmp$ret$2 = new AngularRect(pose.la_1, tmp, tmp_0, pose.ma_1 + tmp$ret$6);
+    var tmp$ret$2 = new AngularRect(pose.ma_1, tmp, tmp_0, pose.na_1 + tmp$ret$6);
     destination.e(tmp$ret$2);
   }
   return destination;
 }
 function ResizeAnimation(fromWidth, fromHeight, fromPitch, fromYaw, toWidth, toHeight, toPitch, toYaw, movesYaw) {
-  this.gb_1 = fromWidth;
-  this.hb_1 = fromHeight;
-  this.ib_1 = fromPitch;
-  this.jb_1 = fromYaw;
-  this.kb_1 = toWidth;
-  this.lb_1 = toHeight;
-  this.mb_1 = toPitch;
-  this.nb_1 = toYaw;
-  this.ob_1 = movesYaw;
-  this.pb_1 = 0.0;
+  this.hb_1 = fromWidth;
+  this.ib_1 = fromHeight;
+  this.jb_1 = fromPitch;
+  this.kb_1 = fromYaw;
+  this.lb_1 = toWidth;
+  this.mb_1 = toHeight;
+  this.nb_1 = toPitch;
+  this.ob_1 = toYaw;
+  this.pb_1 = movesYaw;
+  this.qb_1 = 0.0;
 }
 function advanceResizeAnimations($this, dt) {
   if ($this.i8_1.k())
@@ -847,24 +847,24 @@ function advanceResizeAnimations($this, dt) {
     var panel = _destruct__k2r9zo.t();
     // Inline function 'kotlin.collections.component2' call
     var animation = _destruct__k2r9zo.u();
-    animation.pb_1 = coerceAtMost(animation.pb_1 + dt / 0.22, 1.0);
+    animation.qb_1 = coerceAtMost(animation.qb_1 + dt / 0.22, 1.0);
     // Inline function 'kotlin.let' call
-    var it = 1.0 - animation.pb_1;
+    var it = 1.0 - animation.qb_1;
     var t = 1.0 - it * it * it;
     var tmp = panel;
-    var tmp0_$this = panel.da_1;
-    var tmp1_widthMetres = advanceResizeAnimations$lerp(t, animation.gb_1, animation.kb_1);
-    var tmp2_heightMetres = advanceResizeAnimations$lerp(t, animation.hb_1, animation.lb_1);
-    var tmp3_pitchRadians = advanceResizeAnimations$lerp(t, animation.ib_1, animation.mb_1);
+    var tmp0_$this = panel.ea_1;
+    var tmp1_widthMetres = advanceResizeAnimations$lerp(t, animation.hb_1, animation.lb_1);
+    var tmp2_heightMetres = advanceResizeAnimations$lerp(t, animation.ib_1, animation.mb_1);
+    var tmp3_pitchRadians = advanceResizeAnimations$lerp(t, animation.jb_1, animation.nb_1);
     var tmp_0;
-    if (animation.ob_1) {
-      tmp_0 = Companion_getInstance_1().ka(animation.jb_1 + Companion_getInstance_1().ka(animation.nb_1 - animation.jb_1) * t);
+    if (animation.pb_1) {
+      tmp_0 = Companion_getInstance_1().la(animation.kb_1 + Companion_getInstance_1().la(animation.ob_1 - animation.kb_1) * t);
     } else {
-      tmp_0 = panel.da_1.la_1;
+      tmp_0 = panel.ea_1.ma_1;
     }
     var tmp4_yawRadians = tmp_0;
-    tmp.da_1 = tmp0_$this.bb(tmp4_yawRadians, tmp3_pitchRadians, VOID, tmp1_widthMetres, tmp2_heightMetres);
-    if (animation.pb_1 >= 1.0) {
+    tmp.ea_1 = tmp0_$this.cb(tmp4_yawRadians, tmp3_pitchRadians, VOID, tmp1_widthMetres, tmp2_heightMetres);
+    if (animation.qb_1 >= 1.0) {
       // Inline function 'kotlin.collections.plusAssign' call
       done.e(panel);
     }
@@ -877,7 +877,7 @@ function advanceResizeAnimations($this, dt) {
   }
 }
 function placePopup($this) {
-  var tmp0_elvis_lhs = $this.y8_1;
+  var tmp0_elvis_lhs = $this.z8_1;
   var tmp;
   if (tmp0_elvis_lhs == null) {
     return Unit_instance;
@@ -885,7 +885,7 @@ function placePopup($this) {
     tmp = tmp0_elvis_lhs;
   }
   var popup = tmp;
-  var tmp1_elvis_lhs = $this.a9_1;
+  var tmp1_elvis_lhs = $this.b9_1;
   var tmp_0;
   if (tmp1_elvis_lhs == null) {
     return Unit_instance;
@@ -894,31 +894,31 @@ function placePopup($this) {
   }
   var parent = tmp_0;
   if (!$this.y6_1.q(parent) && !(parent === $this.j8_1) && !(parent === $this.k8_1)) {
-    $this.qb();
+    $this.rb();
     return Unit_instance;
   }
-  var pose = parent.da_1;
-  var metresPerPx = pose.oa_1 / parent.eb();
-  var width = popup.eb();
-  var height = popup.fb();
-  var left = placePopup$fit($this.b9_1, width, parent.eb());
-  var top = placePopup$fit($this.c9_1, height, parent.fb());
-  var distance = pose.na_1;
-  var right = (left + width / 2.0 - parent.eb() / 2.0) * metresPerPx;
-  var down = (top + height / 2.0 - parent.fb() / 2.0) * metresPerPx;
+  var pose = parent.ea_1;
+  var metresPerPx = pose.pa_1 / parent.fb();
+  var width = popup.fb();
+  var height = popup.gb();
+  var left = placePopup$fit($this.c9_1, width, parent.fb());
+  var top = placePopup$fit($this.d9_1, height, parent.gb());
+  var distance = pose.oa_1;
+  var right = (left + width / 2.0 - parent.fb() / 2.0) * metresPerPx;
+  var down = (top + height / 2.0 - parent.gb() / 2.0) * metresPerPx;
   var tmp_1 = popup;
   var tmp_2 = Companion_getInstance_1();
   // Inline function 'kotlin.math.atan' call
   var x = right / distance;
   var tmp$ret$0 = Math.atan(x);
-  var tmp_3 = tmp_2.ka(pose.la_1 - tmp$ret$0);
+  var tmp_3 = tmp_2.la(pose.ma_1 - tmp$ret$0);
   // Inline function 'kotlin.math.atan' call
   var x_0 = down / distance;
   var tmp$ret$1 = Math.atan(x_0);
-  tmp_1.da_1 = pose.bb(tmp_3, pose.ma_1 - tmp$ret$1, VOID, width * metresPerPx, height * metresPerPx);
+  tmp_1.ea_1 = pose.cb(tmp_3, pose.na_1 - tmp$ret$1, VOID, width * metresPerPx, height * metresPerPx);
 }
 function correctCentring($this) {
-  var tmp0_elvis_lhs = $this.d9_1;
+  var tmp0_elvis_lhs = $this.e9_1;
   var tmp;
   if (tmp0_elvis_lhs == null) {
     return false;
@@ -926,18 +926,18 @@ function correctCentring($this) {
     tmp = tmp0_elvis_lhs;
   }
   var panel = tmp;
-  if (!$this.y6_1.q(panel) || $this.f9_1 >= 2) {
-    $this.d9_1 = null;
+  if (!$this.y6_1.q(panel) || $this.g9_1 >= 2) {
+    $this.e9_1 = null;
     return false;
   }
-  var error = Companion_getInstance_1().ka($this.e9_1 - panel.da_1.la_1);
+  var error = Companion_getInstance_1().la($this.f9_1 - panel.ea_1.ma_1);
   // Inline function 'kotlin.math.abs' call
-  if (Math.abs(error) <= Companion_getInstance().g9_1) {
-    $this.d9_1 = null;
+  if (Math.abs(error) <= Companion_getInstance().h9_1) {
+    $this.e9_1 = null;
     return false;
   }
-  $this.f9_1 = $this.f9_1 + 1 | 0;
-  $this.k7_1 = Companion_getInstance_1().ka($this.k7_1 + $this.i7_1 + error);
+  $this.g9_1 = $this.g9_1 + 1 | 0;
+  $this.k7_1 = Companion_getInstance_1().la($this.k7_1 + $this.i7_1 + error);
   $this.i7_1 = 0.0;
   return true;
 }
@@ -950,9 +950,9 @@ function advanceOverlays($this, headYawRadians, dt) {
     tmp = tmp0_elvis_lhs;
   }
   var dock = tmp;
-  var previous = $this.v8_1;
-  var yaw = previous == null || dt <= 0.0 ? headYawRadians : Companion_getInstance_1().ka(previous + Companion_getInstance_1().ka(headYawRadians - previous) * coerceAtMost(dt / 0.15, 1.0));
-  $this.v8_1 = yaw;
+  var previous = $this.w8_1;
+  var yaw = previous == null || dt <= 0.0 ? headYawRadians : Companion_getInstance_1().la(previous + Companion_getInstance_1().la(headYawRadians - previous) * coerceAtMost(dt / 0.15, 1.0));
+  $this.w8_1 = yaw;
   var tmp0 = windowReach($this);
   var tmp$ret$0;
   $l$block: {
@@ -962,9 +962,9 @@ function advanceOverlays($this, headYawRadians, dt) {
       tmp$ret$0 = null;
       break $l$block;
     }
-    var minValue = iterator.i().tb_1;
+    var minValue = iterator.i().ub_1;
     while (iterator.h()) {
-      var v = iterator.i().tb_1;
+      var v = iterator.i().ub_1;
       // Inline function 'kotlin.comparisons.minOf' call
       var a = minValue;
       minValue = Math.min(a, v);
@@ -972,45 +972,45 @@ function advanceOverlays($this, headYawRadians, dt) {
     tmp$ret$0 = minValue;
   }
   var windowsBottom = tmp$ret$0;
-  var dockHalf = dock.cb();
+  var dockHalf = dock.db();
   var tmp1_safe_receiver = $this.k8_1;
-  var tmp2_elvis_lhs = tmp1_safe_receiver == null ? null : tmp1_safe_receiver.cb();
+  var tmp2_elvis_lhs = tmp1_safe_receiver == null ? null : tmp1_safe_receiver.db();
   var launcherHalf = tmp2_elvis_lhs == null ? 0.0 : tmp2_elvis_lhs;
-  var resting = -(launcherHalf + Companion_getInstance().m9_1 + dockHalf);
+  var resting = -(launcherHalf + Companion_getInstance().n9_1 + dockHalf);
   var tmp_0;
   if (windowsBottom == null) {
     tmp_0 = resting;
   } else {
     // Inline function 'kotlin.comparisons.minOf' call
-    var b = windowsBottom - Companion_getInstance().l9_1 - dockHalf;
+    var b = windowsBottom - Companion_getInstance().m9_1 - dockHalf;
     tmp_0 = Math.min(resting, b);
   }
   var dockPitch = tmp_0;
-  dock.da_1 = dock.da_1.bb(yaw, dockPitch);
+  dock.ea_1 = dock.ea_1.cb(yaw, dockPitch);
   var tmp3_safe_receiver = $this.k8_1;
   if (tmp3_safe_receiver == null)
     null;
   else {
     // Inline function 'kotlin.let' call
-    tmp3_safe_receiver.da_1 = tmp3_safe_receiver.da_1.bb(yaw, dockPitch + dockHalf + Companion_getInstance().m9_1 + launcherHalf);
+    tmp3_safe_receiver.ea_1 = tmp3_safe_receiver.ea_1.cb(yaw, dockPitch + dockHalf + Companion_getInstance().n9_1 + launcherHalf);
   }
   var tmp_1 = $this;
   var tmp_2;
-  if (windowsBottom == null || $this.xb() || $this.l8_1.equals(DockVisibility_ALWAYS_getInstance())) {
+  if (windowsBottom == null || $this.yb() || $this.l8_1.equals(DockVisibility_ALWAYS_getInstance())) {
     tmp_2 = true;
   } else if (!($this.a8_1 == null)) {
     tmp_2 = $this.n8_1;
   } else {
-    var aim = $this.w8_1;
+    var aim = $this.x8_1;
     var tmp_3;
     if (aim == null) {
       tmp_3 = null;
     } else {
       // Inline function 'kotlin.let' call
       var tmp0_safe_receiver = aimAngles($this, aim);
-      tmp_3 = tmp0_safe_receiver == null ? null : tmp0_safe_receiver.wb_1;
+      tmp_3 = tmp0_safe_receiver == null ? null : tmp0_safe_receiver.xb_1;
     }
-    var pitches = listOfNotNull([tmp_3, $this.x8_1]);
+    var pitches = listOfNotNull([tmp_3, $this.y8_1]);
     var tmp_4;
     if (!(aim == null) && !(intersect($this, dock, aim, false) == null)) {
       tmp_4 = true;
@@ -1060,7 +1060,7 @@ function advanceOverlays($this, headYawRadians, dt) {
             var _iterator__ex2g4s_0 = pitches.g();
             while (_iterator__ex2g4s_0.h()) {
               var element_0 = _iterator__ex2g4s_0.i();
-              if (!(element_0 > windowsBottom + Companion_getInstance().n9_1)) {
+              if (!(element_0 > windowsBottom + Companion_getInstance().o9_1)) {
                 tmp$ret$11 = false;
                 break $l$block_3;
               }
@@ -1080,12 +1080,12 @@ function advanceOverlays($this, headYawRadians, dt) {
   tmp_1.n8_1 = tmp_2;
   var fade = dt > 0.0 ? dt / 0.15 : 1.0;
   $this.o8_1 = approachLinearly($this, $this.o8_1, $this.n8_1 ? 1.0 : 0.0, fade);
-  $this.p8_1 = approachLinearly($this, $this.p8_1, $this.xb() ? 1.0 : 0.0, fade);
+  $this.p8_1 = approachLinearly($this, $this.p8_1, $this.yb() ? 1.0 : 0.0, fade);
   advanceWindowsVisibility($this, dt, fade);
 }
 function advanceWindowsVisibility($this, dt, fade) {
-  var aim = $this.w8_1;
-  var held = !$this.q8_1 || !($this.a8_1 == null) || !($this.h8_1 == null) || $this.xb() || $this.z8_1;
+  var aim = $this.x8_1;
+  var held = !$this.q8_1 || !($this.a8_1 == null) || !($this.h8_1 == null) || $this.yb() || $this.a9_1;
   var tmp;
   if (!(aim == null)) {
     var tmp0 = $this.y6_1;
@@ -1117,9 +1117,9 @@ function advanceWindowsVisibility($this, dt, fade) {
     tmp = false;
   }
   var pointed = tmp;
-  $this.u8_1 = held || pointed || aim == null ? 0.0 : $this.u8_1 + dt;
-  $this.s8_1 = held || pointed || $this.u8_1 < $this.r8_1;
-  $this.t8_1 = approachLinearly($this, $this.t8_1, $this.s8_1 ? 1.0 : 0.0, fade);
+  $this.v8_1 = held || pointed || aim == null ? 0.0 : $this.v8_1 + dt;
+  $this.t8_1 = held || pointed || $this.v8_1 < $this.s8_1;
+  $this.u8_1 = approachLinearly($this, $this.u8_1, $this.t8_1 ? 1.0 : 0.0, fade);
 }
 function approachLinearly($this, value, target, step) {
   var tmp;
@@ -1136,31 +1136,31 @@ function approachLinearly($this, value, target, step) {
 }
 function intersect($this, panel, direction, chrome) {
   chrome = chrome === VOID ? true : chrome;
-  var pose = panel.da_1;
-  var local = Companion_getInstance().yb(direction, pose.la_1, pose.ma_1);
-  if (local.bc_1 >= -1.0E-4)
+  var pose = panel.ea_1;
+  var local = Companion_getInstance().zb(direction, pose.ma_1, pose.na_1);
+  if (local.cc_1 >= -1.0E-4)
     return null;
-  var t = -pose.na_1 / local.bc_1;
+  var t = -pose.oa_1 / local.cc_1;
   if (t <= 0.0)
     return null;
-  var u = local.zb_1 * t / pose.oa_1 + 0.5;
-  var v = 0.5 - local.ac_1 * t / pose.pa_1;
-  var x = u * panel.eb();
-  var y = v * panel.fb();
+  var u = local.ac_1 * t / pose.pa_1 + 0.5;
+  var v = 0.5 - local.bc_1 * t / pose.qa_1;
+  var x = u * panel.fb();
+  var y = v * panel.gb();
   var tmp;
   if ((0.0 <= u ? u <= 1.0 : false) && (0.0 <= v ? v <= 1.0 : false)) {
     tmp = HitPart_CONTENT_getInstance();
   } else if (chrome) {
-    var tmp0_elvis_lhs = TitleBar_instance.mc(panel.eb(), panel.fb(), x, y, panel.ca_1);
+    var tmp0_elvis_lhs = TitleBar_getInstance().oc(panel.fb(), panel.gb(), x, y, panel.da_1, $this.r8_1);
     var tmp_0;
     if (tmp0_elvis_lhs == null) {
-      var tmp1_safe_receiver = ResizeHandles_instance.tc(panel.eb(), panel.fb(), x, y);
+      var tmp1_safe_receiver = ResizeHandles_instance.vc(panel.fb(), panel.gb(), x, y);
       var tmp_1;
       if (tmp1_safe_receiver == null) {
         tmp_1 = null;
       } else {
         // Inline function 'kotlin.let' call
-        tmp_1 = Companion_instance_2.uc(tmp1_safe_receiver);
+        tmp_1 = Companion_instance_2.wc(tmp1_safe_receiver);
       }
       tmp_0 = tmp_1;
     } else {
@@ -1181,60 +1181,60 @@ function intersect($this, panel, direction, chrome) {
   return new PanelSceneHit(panel, new PanelHit(x, y), t, part);
 }
 function Aim(yaw, pitch) {
-  this.vb_1 = yaw;
-  this.wb_1 = pitch;
+  this.wb_1 = yaw;
+  this.xb_1 = pitch;
 }
 function aimAngles($this, direction) {
   var length = direction.a();
   if (length < 1.0E-6)
     return null;
-  var d = direction.vc(1.0 / length);
-  var tmp0 = -d.zb_1;
+  var d = direction.xc(1.0 / length);
+  var tmp0 = -d.ac_1;
   // Inline function 'kotlin.math.atan2' call
-  var x = -d.bc_1;
+  var x = -d.cc_1;
   var tmp = Math.atan2(tmp0, x);
   // Inline function 'kotlin.math.asin' call
-  var x_0 = coerceIn(d.ac_1, -1.0, 1.0);
+  var x_0 = coerceIn(d.bc_1, -1.0, 1.0);
   var tmp$ret$1 = Math.asin(x_0);
   return new Aim(tmp, tmp$ret$1);
 }
 function Companion() {
   Companion_instance = this;
-  this.g9_1 = toRadians(1.0);
-  this.h9_1 = 2;
-  this.i9_1 = 0.22;
-  this.j9_1 = 0.15;
+  this.h9_1 = toRadians(1.0);
+  this.i9_1 = 2;
+  this.j9_1 = 0.22;
   this.k9_1 = 0.15;
-  this.l9_1 = toRadians(1.6);
-  this.m9_1 = toRadians(0.8);
-  this.n9_1 = toRadians(1.5);
-  this.o9_1 = toRadians(0.01);
-  this.p9_1 = toRadians(0.5);
-  this.q9_1 = toRadians(2.0);
-  this.r9_1 = 30.0;
-  this.s9_1 = toRadians(6.0);
-  this.t9_1 = 0.3;
-  this.u9_1 = 0.1;
-  this.v9_1 = toRadians(3.0);
-  this.w9_1 = toRadians(6.0);
-  this.x9_1 = toRadians(2.0);
-  this.y9_1 = toRadians(0.05);
-  this.z9_1 = toRadians(25.0);
+  this.l9_1 = 0.15;
+  this.m9_1 = toRadians(1.6);
+  this.n9_1 = toRadians(0.8);
+  this.o9_1 = toRadians(1.5);
+  this.p9_1 = toRadians(0.01);
+  this.q9_1 = toRadians(0.5);
+  this.r9_1 = toRadians(2.0);
+  this.s9_1 = 30.0;
+  this.t9_1 = toRadians(6.0);
+  this.u9_1 = 0.3;
+  this.v9_1 = 0.1;
+  this.w9_1 = toRadians(3.0);
+  this.x9_1 = toRadians(6.0);
+  this.y9_1 = toRadians(2.0);
+  this.z9_1 = toRadians(0.05);
+  this.aa_1 = toRadians(25.0);
 }
-protoOf(Companion).yb = function (direction, yawRadians, pitchRadians) {
+protoOf(Companion).zb = function (direction, yawRadians, pitchRadians) {
   // Inline function 'kotlin.math.cos' call
   var cy = Math.cos(yawRadians);
   // Inline function 'kotlin.math.sin' call
   var sy = Math.sin(yawRadians);
-  var x = cy * direction.zb_1 - sy * direction.bc_1;
-  var zYaw = sy * direction.zb_1 + cy * direction.bc_1;
+  var x = cy * direction.ac_1 - sy * direction.cc_1;
+  var zYaw = sy * direction.ac_1 + cy * direction.cc_1;
   if (pitchRadians === 0.0)
-    return new Vec3(x, direction.ac_1, zYaw);
+    return new Vec3(x, direction.bc_1, zYaw);
   // Inline function 'kotlin.math.cos' call
   var cp = Math.cos(pitchRadians);
   // Inline function 'kotlin.math.sin' call
   var sp = Math.sin(pitchRadians);
-  return new Vec3(x, cp * direction.ac_1 + sp * zYaw, -sp * direction.ac_1 + cp * zYaw);
+  return new Vec3(x, cp * direction.bc_1 + sp * zYaw, -sp * direction.bc_1 + cp * zYaw);
 };
 var Companion_instance;
 function Companion_getInstance() {
@@ -1243,16 +1243,16 @@ function Companion_getInstance() {
   return Companion_instance;
 }
 function sam$kotlin_Comparator$0(function_0) {
-  this.wc_1 = function_0;
+  this.yc_1 = function_0;
 }
 protoOf(sam$kotlin_Comparator$0).l5 = function (a, b) {
-  return this.wc_1(a, b);
+  return this.yc_1(a, b);
 };
 protoOf(sam$kotlin_Comparator$0).compare = function (a, b) {
   return this.l5(a, b);
 };
 protoOf(sam$kotlin_Comparator$0).i1 = function () {
-  return this.wc_1;
+  return this.yc_1;
 };
 protoOf(sam$kotlin_Comparator$0).equals = function (other) {
   var tmp;
@@ -1273,16 +1273,16 @@ protoOf(sam$kotlin_Comparator$0).hashCode = function () {
   return hashCode(this.i1());
 };
 function sam$kotlin_Comparator$0_0(function_0) {
-  this.xc_1 = function_0;
+  this.zc_1 = function_0;
 }
 protoOf(sam$kotlin_Comparator$0_0).l5 = function (a, b) {
-  return this.xc_1(a, b);
+  return this.zc_1(a, b);
 };
 protoOf(sam$kotlin_Comparator$0_0).compare = function (a, b) {
   return this.l5(a, b);
 };
 protoOf(sam$kotlin_Comparator$0_0).i1 = function () {
-  return this.xc_1;
+  return this.zc_1;
 };
 protoOf(sam$kotlin_Comparator$0_0).equals = function (other) {
   var tmp;
@@ -1304,7 +1304,7 @@ protoOf(sam$kotlin_Comparator$0_0).hashCode = function () {
 };
 function PanelScene$remove$lambda($panel) {
   return function (it) {
-    return startsWith(it, $panel.aa_1 + '\x00') || endsWith(it, '\x00' + $panel.aa_1);
+    return startsWith(it, $panel.ba_1 + '\x00') || endsWith(it, '\x00' + $panel.ba_1);
   };
 }
 function PanelScene$bringIntoView$lambda($panel, $nearest) {
@@ -1314,19 +1314,19 @@ function PanelScene$bringIntoView$lambda($panel, $nearest) {
 }
 function PanelScene$endGrab$lambda($panel) {
   return function (it) {
-    return startsWith(it, $panel.aa_1 + '\x00');
+    return startsWith(it, $panel.ba_1 + '\x00');
   };
 }
 function PanelScene$advanceReturn$lambda(a, b) {
   // Inline function 'kotlin.comparisons.compareValuesBy' call
-  var tmp = a.fa_1;
-  var tmp$ret$2 = b.fa_1;
+  var tmp = a.ga_1;
+  var tmp$ret$2 = b.ga_1;
   return compareValues(tmp, tmp$ret$2);
 }
 function PanelScene$describe$lambda(a, b) {
   // Inline function 'kotlin.comparisons.compareValuesBy' call
-  var tmp = a.fa_1;
-  var tmp$ret$2 = b.fa_1;
+  var tmp = a.ga_1;
+  var tmp$ret$2 = b.ga_1;
   return compareValues(tmp, tmp$ret$2);
 }
 function resolveTarget$feasible(blocked, at) {
@@ -1349,8 +1349,8 @@ function resolveTarget$feasible(blocked, at) {
       var centre = element.q6();
       var half = element.r6();
       // Inline function 'kotlin.math.abs' call
-      var x = Companion_getInstance_1().ka(at - centre);
-      if (Math.abs(x) < half - Companion_getInstance().o9_1) {
+      var x = Companion_getInstance_1().la(at - centre);
+      if (Math.abs(x) < half - Companion_getInstance().p9_1) {
         tmp$ret$0 = false;
         break $l$block_0;
       }
@@ -1379,8 +1379,8 @@ function resolveTarget$free(occupied, at) {
       var centre = element.q6();
       var half = element.r6();
       // Inline function 'kotlin.math.abs' call
-      var x = Companion_getInstance_1().ka(at - centre);
-      if (Math.abs(x) < half - Companion_getInstance().o9_1) {
+      var x = Companion_getInstance_1().la(at - centre);
+      if (Math.abs(x) < half - Companion_getInstance().p9_1) {
         tmp$ret$0 = false;
         break $l$block_0;
       }
@@ -1401,7 +1401,7 @@ function placePopup$fit(at, size, room) {
   return at + size <= room ? at : at - size >= 0.0 ? at - size : coerceAtLeast(room - size, 0.0);
 }
 function PanelScene$drawOrder$lambda(it) {
-  return -it.da_1.na_1;
+  return -it.ea_1.oa_1;
 }
 function PanelScene$drawOrder$lambda_0($held) {
   return function (it) {
@@ -1460,44 +1460,45 @@ function PanelScene() {
   this.o8_1 = 1.0;
   this.p8_1 = 0.0;
   this.q8_1 = false;
-  this.r8_1 = 1.0;
-  this.s8_1 = true;
-  this.t8_1 = 1.0;
-  this.u8_1 = 0.0;
-  this.v8_1 = null;
+  this.r8_1 = false;
+  this.s8_1 = 1.0;
+  this.t8_1 = true;
+  this.u8_1 = 1.0;
+  this.v8_1 = 0.0;
   this.w8_1 = null;
   this.x8_1 = null;
   this.y8_1 = null;
-  this.z8_1 = false;
-  this.a9_1 = null;
-  this.b9_1 = 0.0;
+  this.z8_1 = null;
+  this.a9_1 = false;
+  this.b9_1 = null;
   this.c9_1 = 0.0;
-  this.d9_1 = null;
-  this.e9_1 = 0.0;
-  this.f9_1 = 0;
+  this.d9_1 = 0.0;
+  this.e9_1 = null;
+  this.f9_1 = 0.0;
+  this.g9_1 = 0;
 }
-protoOf(PanelScene).yc = function () {
+protoOf(PanelScene).ad = function () {
   return this.y6_1;
 };
-protoOf(PanelScene).zc = function () {
+protoOf(PanelScene).bd = function () {
   return this.j7_1;
 };
-protoOf(PanelScene).ad = function () {
+protoOf(PanelScene).cd = function () {
   return this.d7_1;
 };
-protoOf(PanelScene).bd = function (panel) {
+protoOf(PanelScene).dd = function (panel) {
   this.y6_1.e(panel);
   if (this.v7_1 == null)
     this.v7_1 = panel;
   return panel;
 };
-protoOf(PanelScene).cd = function (panel) {
+protoOf(PanelScene).ed = function (panel) {
   this.y6_1.k1(panel);
   this.i8_1.b3(panel);
   var tmp0_safe_receiver = this.h8_1;
-  if ((tmp0_safe_receiver == null ? null : tmp0_safe_receiver.dd_1) === panel)
+  if ((tmp0_safe_receiver == null ? null : tmp0_safe_receiver.fd_1) === panel)
     this.h8_1 = null;
-  this.a7_1.b3(panel.aa_1);
+  this.a7_1.b3(panel.ba_1);
   if (this.a8_1 === panel)
     this.a8_1 = null;
   if (this.w7_1 === panel)
@@ -1507,7 +1508,7 @@ protoOf(PanelScene).cd = function (panel) {
   if (this.v7_1 === panel)
     this.v7_1 = firstOrNull(this.y6_1);
 };
-protoOf(PanelScene).hd = function (id) {
+protoOf(PanelScene).jd = function (id) {
   var tmp0 = this.y6_1;
   var tmp$ret$0;
   $l$block: {
@@ -1515,7 +1516,7 @@ protoOf(PanelScene).hd = function (id) {
     var _iterator__ex2g4s = tmp0.g();
     while (_iterator__ex2g4s.h()) {
       var element = _iterator__ex2g4s.i();
-      if (element.aa_1 === id) {
+      if (element.ba_1 === id) {
         tmp$ret$0 = element;
         break $l$block;
       }
@@ -1524,7 +1525,7 @@ protoOf(PanelScene).hd = function (id) {
   }
   return tmp$ret$0;
 };
-protoOf(PanelScene).id = function () {
+protoOf(PanelScene).kd = function () {
   this.j7_1 = 0.0;
   this.k7_1 = 0.0;
   // Inline function 'kotlin.collections.forEach' call
@@ -1532,11 +1533,11 @@ protoOf(PanelScene).id = function () {
   while (_iterator__ex2g4s.h()) {
     var element = _iterator__ex2g4s.i();
     if (!(element === this.a8_1)) {
-      element.id();
+      element.kd();
     }
   }
 };
-protoOf(PanelScene).jd = function (spacingDegrees, immediate, respaceHandPlaced) {
+protoOf(PanelScene).ld = function (spacingDegrees, immediate, respaceHandPlaced) {
   this.c7_1 = spacingDegrees;
   if (!immediate) {
     this.d7_1 = true;
@@ -1556,7 +1557,7 @@ protoOf(PanelScene).jd = function (spacingDegrees, immediate, respaceHandPlaced)
   var _iterator__ex2g4s = tmp0.g();
   while (_iterator__ex2g4s.h()) {
     var element = _iterator__ex2g4s.i();
-    if (element.ea_1.qa_1 && (respaceHandPlaced || !element.ga_1)) {
+    if (element.fa_1.ra_1 && (respaceHandPlaced || !element.ha_1)) {
       destination.e(element);
     }
   }
@@ -1571,33 +1572,33 @@ protoOf(PanelScene).jd = function (spacingDegrees, immediate, respaceHandPlaced)
     index = _unary__edvuaz + 1 | 0;
     var slot = (checkIndexOverflow(_unary__edvuaz) - centre) * spacing;
     if (immediate) {
-      item.ld(slot);
+      item.nd(slot);
     } else {
-      item.kd(slot);
+      item.md(slot);
     }
   }
 };
-protoOf(PanelScene).md = function (spacingDegrees, immediate, respaceHandPlaced, $super) {
+protoOf(PanelScene).od = function (spacingDegrees, immediate, respaceHandPlaced, $super) {
   spacingDegrees = spacingDegrees === VOID ? this.c7_1 : spacingDegrees;
   immediate = immediate === VOID ? true : immediate;
   respaceHandPlaced = respaceHandPlaced === VOID ? false : respaceHandPlaced;
   var tmp;
   if ($super === VOID) {
-    this.jd(spacingDegrees, immediate, respaceHandPlaced);
+    this.ld(spacingDegrees, immediate, respaceHandPlaced);
     tmp = Unit_instance;
   } else {
-    tmp = $super.jd.call(this, spacingDegrees, immediate, respaceHandPlaced);
+    tmp = $super.ld.call(this, spacingDegrees, immediate, respaceHandPlaced);
   }
   return tmp;
 };
-protoOf(PanelScene).nd = function (panel, follow) {
-  panel.ea_1 = follow;
-  this.md(VOID, false);
+protoOf(PanelScene).pd = function (panel, follow) {
+  panel.fa_1 = follow;
+  this.od(VOID, false);
 };
-protoOf(PanelScene).od = function (panel, headYawRadians) {
-  if (!panel.ea_1.qa_1 || panel.ga_1 || !this.y6_1.q(panel))
+protoOf(PanelScene).qd = function (panel, headYawRadians) {
+  if (!panel.fa_1.ra_1 || panel.ha_1 || !this.y6_1.q(panel))
     return false;
-  var heading = Companion_getInstance_1().ka(headYawRadians - this.j7_1);
+  var heading = Companion_getInstance_1().la(headYawRadians - this.j7_1);
   // Inline function 'kotlin.collections.filter' call
   var tmp0 = this.y6_1;
   // Inline function 'kotlin.collections.filterTo' call
@@ -1605,7 +1606,7 @@ protoOf(PanelScene).od = function (panel, headYawRadians) {
   var _iterator__ex2g4s = tmp0.g();
   while (_iterator__ex2g4s.h()) {
     var element = _iterator__ex2g4s.i();
-    if (element.ea_1.qa_1 && !element.ga_1) {
+    if (element.fa_1.ra_1 && !element.ha_1) {
       destination.e(element);
     }
   }
@@ -1624,12 +1625,12 @@ protoOf(PanelScene).od = function (panel, headYawRadians) {
     }
     var it = minElem;
     // Inline function 'kotlin.math.abs' call
-    var x = Companion_getInstance_1().ka(it.fa_1 - heading);
+    var x = Companion_getInstance_1().la(it.ga_1 - heading);
     var minValue = Math.abs(x);
     do {
       var e = iterator.i();
       // Inline function 'kotlin.math.abs' call
-      var x_0 = Companion_getInstance_1().ka(e.fa_1 - heading);
+      var x_0 = Companion_getInstance_1().la(e.ga_1 - heading);
       var v = Math.abs(x_0);
       if (compareTo(minValue, v) > 0) {
         minElem = e;
@@ -1649,24 +1650,24 @@ protoOf(PanelScene).od = function (panel, headYawRadians) {
   var nearest = tmp;
   if (!(nearest === panel)) {
     replaceEach(this.y6_1, PanelScene$bringIntoView$lambda(panel, nearest));
-    this.md(VOID, false);
+    this.od(VOID, false);
   }
   return true;
 };
-protoOf(PanelScene).pd = function () {
+protoOf(PanelScene).rd = function () {
   this.d7_1 = true;
   this.e7_1 = true;
   this.m7_1 = false;
   this.n7_1 = false;
 };
-protoOf(PanelScene).qd = function (panel) {
-  this.bd(panel);
-  this.md(VOID, false);
-  panel.ld(panel.fa_1);
-  panel.da_1 = panel.da_1.bb(Companion_getInstance_1().ka(this.j7_1 + panel.fa_1));
+protoOf(PanelScene).sd = function (panel) {
+  this.dd(panel);
+  this.od(VOID, false);
+  panel.nd(panel.ga_1);
+  panel.ea_1 = panel.ea_1.cb(Companion_getInstance_1().la(this.j7_1 + panel.ga_1));
   return panel;
 };
-protoOf(PanelScene).rd = function (panel, pointerDirection) {
+protoOf(PanelScene).td = function (panel, pointerDirection) {
   var tmp0_elvis_lhs = aimAngles(this, pointerDirection);
   var tmp;
   if (tmp0_elvis_lhs == null) {
@@ -1676,14 +1677,14 @@ protoOf(PanelScene).rd = function (panel, pointerDirection) {
   }
   var aim = tmp;
   this.a8_1 = panel;
-  this.d9_1 = null;
-  this.d8_1 = panel.da_1.la_1;
-  this.e8_1 = panel.da_1.ma_1;
-  this.b8_1 = Companion_getInstance_1().ka(panel.da_1.la_1 - aim.vb_1);
-  this.c8_1 = panel.da_1.ma_1 - aim.wb_1;
+  this.e9_1 = null;
+  this.d8_1 = panel.ea_1.ma_1;
+  this.e8_1 = panel.ea_1.na_1;
+  this.b8_1 = Companion_getInstance_1().la(panel.ea_1.ma_1 - aim.wb_1);
+  this.c8_1 = panel.ea_1.na_1 - aim.xb_1;
   return true;
 };
-protoOf(PanelScene).sd = function () {
+protoOf(PanelScene).ud = function () {
   var tmp0_elvis_lhs = this.a8_1;
   var tmp;
   if (tmp0_elvis_lhs == null) {
@@ -1693,9 +1694,9 @@ protoOf(PanelScene).sd = function () {
   }
   var panel = tmp;
   this.a8_1 = null;
-  panel.da_1 = panel.da_1.bb(this.d8_1, this.e8_1);
+  panel.ea_1 = panel.ea_1.cb(this.d8_1, this.e8_1);
 };
-protoOf(PanelScene).td = function (pointerDirection) {
+protoOf(PanelScene).vd = function (pointerDirection) {
   var tmp0_elvis_lhs = this.a8_1;
   var tmp;
   if (tmp0_elvis_lhs == null) {
@@ -1712,9 +1713,9 @@ protoOf(PanelScene).td = function (pointerDirection) {
     tmp_0 = tmp1_elvis_lhs;
   }
   var aim = tmp_0;
-  panel.da_1 = panel.da_1.bb(Companion_getInstance_1().ka(aim.vb_1 + this.b8_1), coerceIn(aim.wb_1 + this.c8_1, -Companion_getInstance().z9_1, Companion_getInstance().z9_1));
+  panel.ea_1 = panel.ea_1.cb(Companion_getInstance_1().la(aim.wb_1 + this.b8_1), coerceIn(aim.xb_1 + this.c8_1, -Companion_getInstance().aa_1, Companion_getInstance().aa_1));
 };
-protoOf(PanelScene).ud = function (headYawRadians) {
+protoOf(PanelScene).wd = function (headYawRadians) {
   var tmp0_elvis_lhs = this.a8_1;
   var tmp;
   if (tmp0_elvis_lhs == null) {
@@ -1726,12 +1727,12 @@ protoOf(PanelScene).ud = function (headYawRadians) {
   this.a8_1 = null;
   var tmp_0 = this.z6_1.j2();
   removeAll(tmp_0, PanelScene$endGrab$lambda(panel));
-  if (panel.ea_1.qa_1) {
-    panel.vd(Companion_getInstance_1().ka(panel.da_1.la_1 - this.j7_1), true);
+  if (panel.fa_1.ra_1) {
+    panel.xd(Companion_getInstance_1().la(panel.ea_1.ma_1 - this.j7_1), true);
   }
   return panel;
 };
-protoOf(PanelScene).wd = function (headYawRadians, dt) {
+protoOf(PanelScene).yd = function (headYawRadians, dt) {
   var tmp0_safe_receiver = this.y7_1;
   if (tmp0_safe_receiver == null)
     null;
@@ -1740,14 +1741,14 @@ protoOf(PanelScene).wd = function (headYawRadians, dt) {
     if (dt > 0.0) {
       var tmp = this;
       // Inline function 'kotlin.math.abs' call
-      var x = toDegrees(Companion_getInstance_1().ka(headYawRadians - tmp0_safe_receiver));
+      var x = toDegrees(Companion_getInstance_1().la(headYawRadians - tmp0_safe_receiver));
       tmp.x7_1 = Math.abs(x) / dt;
     }
   }
   this.y7_1 = headYawRadians;
   this.z7_1 = this.x7_1 < 30.0 ? this.z7_1 + dt : 0.0;
   advanceOverlays(this, headYawRadians, dt);
-  if (this.z8_1) {
+  if (this.a9_1) {
     placePopup(this);
   }
   advanceResizeAnimations(this, dt);
@@ -1766,7 +1767,7 @@ protoOf(PanelScene).wd = function (headYawRadians, dt) {
     if (!hasLeftTheBand(this, headYawRadians))
       return false;
     var catchUp = this.g8_1 > widestPanelRadians(this);
-    if (!catchUp && (this.g8_1 < Companion_getInstance().s9_1 || this.z7_1 < 0.3)) {
+    if (!catchUp && (this.g8_1 < Companion_getInstance().t9_1 || this.z7_1 < 0.3)) {
       return false;
     }
     this.d7_1 = true;
@@ -1784,7 +1785,7 @@ protoOf(PanelScene).wd = function (headYawRadians, dt) {
     } else {
       // Inline function 'kotlin.takeIf' call
       var tmp_2;
-      if (centred.ea_1.qa_1 && !centred.ga_1) {
+      if (centred.fa_1.ra_1 && !centred.ha_1) {
         tmp_2 = centred;
       } else {
         tmp_2 = null;
@@ -1797,7 +1798,7 @@ protoOf(PanelScene).wd = function (headYawRadians, dt) {
       tmp_3 = null;
     } else {
       // Inline function 'kotlin.let' call
-      tmp_3 = -tmp2_safe_receiver.fa_1;
+      tmp_3 = -tmp2_safe_receiver.ga_1;
     }
     var tmp3_elvis_lhs = tmp_3;
     tmp_0.i7_1 = tmp3_elvis_lhs == null ? 0.0 : tmp3_elvis_lhs;
@@ -1806,7 +1807,7 @@ protoOf(PanelScene).wd = function (headYawRadians, dt) {
   }
   return advanceReturn(this, headYawRadians, dt);
 };
-protoOf(PanelScene).xd = function (headYawRadians) {
+protoOf(PanelScene).zd = function (headYawRadians) {
   // Inline function 'kotlin.text.buildString' call
   // Inline function 'kotlin.apply' call
   var this_0 = StringBuilder_init_$Create$();
@@ -1815,7 +1816,7 @@ protoOf(PanelScene).xd = function (headYawRadians) {
   this_0.a5('returning=' + this.d7_1 + ' commanded=' + this.e7_1 + ' ');
   var tmp = this.f7_1;
   var tmp0_safe_receiver = this.a8_1;
-  this_0.a5('inPlace=' + tmp + ' grabbed=' + (tmp0_safe_receiver == null ? null : tmp0_safe_receiver.aa_1) + ' ');
+  this_0.a5('inPlace=' + tmp + ' grabbed=' + (tmp0_safe_receiver == null ? null : tmp0_safe_receiver.ba_1) + ' ');
   this_0.a5('policy=' + this.b7_1.toString() + ' overlap=' + hasUnresolvedOverlap(this) + ' ');
   this_0.a5('band=' + hasLeftTheBand(this, headYawRadians));
   // Inline function 'kotlin.collections.sortedBy' call
@@ -1827,65 +1828,76 @@ protoOf(PanelScene).xd = function (headYawRadians) {
   while (_iterator__ex2g4s.h()) {
     var panel = _iterator__ex2g4s.i();
     var tmp_1;
-    if (panel.ea_1.qa_1) {
+    if (panel.fa_1.ra_1) {
       tmp_1 = resolveTarget(this, panel, targetOf(this, panel, headYawRadians), headYawRadians, 0.0);
     } else {
       tmp_1 = null;
     }
     var resolved = tmp_1;
-    this_0.a5('\n    ' + padEnd(panel.aa_1, 7) + ' at ' + degrees(this, panel.da_1.la_1, '+') + '\xB0 ');
-    this_0.a5('slot ' + degrees(this, panel.fa_1, '+') + '\xB0');
+    this_0.a5('\n    ' + padEnd(panel.ba_1, 7) + ' at ' + degrees(this, panel.ea_1.ma_1, '+') + '\xB0 ');
+    this_0.a5('slot ' + degrees(this, panel.ga_1, '+') + '\xB0');
     if (resolved == null)
       null;
     else {
       // Inline function 'kotlin.let' call
-      this_0.a5(' -> ' + degrees(this, resolved.ya_1, '+') + '\xB0');
+      this_0.a5(' -> ' + degrees(this, resolved.za_1, '+') + '\xB0');
     }
-    if ((resolved == null ? null : resolved.za_1) === true) {
+    if ((resolved == null ? null : resolved.ab_1) === true) {
       this_0.a5(' CROSSING');
     }
-    this_0.a5(!panel.ea_1.qa_1 ? ' pinned' : panel.ga_1 ? ' byHand' : '');
+    this_0.a5(!panel.fa_1.ra_1 ? ' pinned' : panel.ha_1 ? ' byHand' : '');
   }
   return this_0.toString();
 };
-protoOf(PanelScene).yd = function (panel, oldWidthPx, oldHeightPx, fixed) {
+protoOf(PanelScene).ae = function (panel, oldWidthPx, oldHeightPx, fixed, keepCentreX) {
   if (!this.y6_1.q(panel))
     return Unit_instance;
-  var pose = panel.da_1;
-  var metresPerPx = pose.oa_1 / oldWidthPx;
-  var width = panel.eb() * metresPerPx;
-  var height = panel.fb() * metresPerPx;
-  var distance = pose.na_1;
-  var yawShift = (-fixed.be_1 | 0) * (resized$halfAngle(distance, pose.oa_1) - resized$halfAngle(distance, width));
-  var pitchShift = fixed.ce_1 * (resized$halfAngle(distance, pose.pa_1) - resized$halfAngle(distance, height));
+  var pose = panel.ea_1;
+  var metresPerPx = pose.pa_1 / oldWidthPx;
+  var width = panel.fb() * metresPerPx;
+  var height = panel.gb() * metresPerPx;
+  var distance = pose.oa_1;
+  var yawShift = keepCentreX ? 0.0 : (-fixed.de_1 | 0) * (resized$halfAngle(distance, pose.pa_1) - resized$halfAngle(distance, width));
+  var pitchShift = fixed.ee_1 * (resized$halfAngle(distance, pose.qa_1) - resized$halfAngle(distance, height));
   var tmp0 = this.i8_1;
   // Inline function 'kotlin.collections.set' call
-  var value = new ResizeAnimation(pose.oa_1, pose.pa_1, pose.ma_1, pose.la_1, width, height, pose.ma_1 + pitchShift, Companion_getInstance_1().ka(pose.la_1 + yawShift), !panel.ea_1.qa_1);
+  var value = new ResizeAnimation(pose.pa_1, pose.qa_1, pose.na_1, pose.ma_1, width, height, pose.na_1 + pitchShift, Companion_getInstance_1().la(pose.ma_1 + yawShift), !panel.fa_1.ra_1);
   tmp0.k2(panel, value);
-  if (panel.ea_1.qa_1) {
-    panel.vd(Companion_getInstance_1().ka(panel.fa_1 + yawShift), panel.ga_1);
-    this.pd();
+  if (panel.fa_1.ra_1) {
+    panel.xd(Companion_getInstance_1().la(panel.ga_1 + yawShift), panel.ha_1);
+    this.rd();
   }
 };
-protoOf(PanelScene).xb = function () {
+protoOf(PanelScene).fe = function (panel, oldWidthPx, oldHeightPx, fixed, keepCentreX, $super) {
+  keepCentreX = keepCentreX === VOID ? false : keepCentreX;
+  var tmp;
+  if ($super === VOID) {
+    this.ae(panel, oldWidthPx, oldHeightPx, fixed, keepCentreX);
+    tmp = Unit_instance;
+  } else {
+    tmp = $super.ae.call(this, panel, oldWidthPx, oldHeightPx, fixed, keepCentreX);
+  }
+  return tmp;
+};
+protoOf(PanelScene).yb = function () {
   return !(this.k8_1 == null) && (this.m8_1 || this.y6_1.k());
 };
-protoOf(PanelScene).de = function (dock, launcher) {
+protoOf(PanelScene).ge = function (dock, launcher) {
   this.j8_1 = dock;
   this.k8_1 = launcher;
 };
-protoOf(PanelScene).qb = function () {
-  this.z8_1 = false;
-  this.a9_1 = null;
+protoOf(PanelScene).rb = function () {
+  this.a9_1 = false;
+  this.b9_1 = null;
 };
-protoOf(PanelScene).ee = function (panel) {
+protoOf(PanelScene).he = function (panel) {
   if (!this.y6_1.q(panel))
     return Unit_instance;
   this.v7_1 = panel;
   this.w7_1 = panel;
 };
-protoOf(PanelScene).fe = function (panel, headYawRadians) {
-  if (!this.y6_1.q(panel) || !panel.ea_1.qa_1)
+protoOf(PanelScene).ie = function (panel, headYawRadians) {
+  if (!this.y6_1.q(panel) || !panel.fa_1.ra_1)
     return Unit_instance;
   this.d7_1 = true;
   this.e7_1 = true;
@@ -1893,32 +1905,32 @@ protoOf(PanelScene).fe = function (panel, headYawRadians) {
   this.m7_1 = false;
   this.n7_1 = false;
   this.k7_1 = headYawRadians;
-  this.i7_1 = -panel.fa_1;
-  this.d9_1 = panel;
-  this.e9_1 = headYawRadians;
-  this.f9_1 = 0;
+  this.i7_1 = -panel.ga_1;
+  this.e9_1 = panel;
+  this.f9_1 = headYawRadians;
+  this.g9_1 = 0;
 };
-protoOf(PanelScene).ge = function () {
+protoOf(PanelScene).je = function () {
   var focus = this.v7_1;
   var held = this.a8_1;
   var tmp = PanelScene$drawOrder$lambda;
   var tmp_0 = PanelScene$drawOrder$lambda_0(held);
   return sortedWith(this.y6_1, compareBy([tmp, tmp_0, PanelScene$drawOrder$lambda_1(focus)]));
 };
-protoOf(PanelScene).he = function (worldDirection) {
+protoOf(PanelScene).ke = function (worldDirection) {
   var length = worldDirection.a();
   if (length < 1.0E-6)
     return null;
-  var direction = worldDirection.vc(1.0 / length);
-  this.w8_1 = direction;
-  var tmp0_safe_receiver = this.y8_1;
+  var direction = worldDirection.xc(1.0 / length);
+  this.x8_1 = direction;
+  var tmp0_safe_receiver = this.z8_1;
   var tmp;
   if (tmp0_safe_receiver == null) {
     tmp = null;
   } else {
     // Inline function 'kotlin.takeIf' call
     var tmp_0;
-    if (this.z8_1) {
+    if (this.a9_1) {
       tmp_0 = tmp0_safe_receiver;
     } else {
       tmp_0 = null;
@@ -1933,7 +1945,7 @@ protoOf(PanelScene).he = function (worldDirection) {
   } else {
     // Inline function 'kotlin.takeIf' call
     var tmp_3;
-    if (this.xb()) {
+    if (this.yb()) {
       tmp_3 = tmp1_safe_receiver;
     } else {
       tmp_3 = null;
@@ -1977,7 +1989,7 @@ protoOf(PanelScene).he = function (worldDirection) {
     // Inline function 'kotlin.let' call
     return tmp3_safe_receiver;
   }
-  var tmp0_0 = asReversed(this.ge());
+  var tmp0_0 = asReversed(this.je());
   var tmp$ret$10;
   $l$block_0: {
     // Inline function 'kotlin.collections.firstNotNullOfOrNull' call
@@ -2066,10 +2078,10 @@ function Corner_initEntries() {
 var $ENTRIES;
 function Corner(name, ordinal, sx, sy) {
   Enum.call(this, name, ordinal);
-  this.be_1 = sx;
-  this.ce_1 = sy;
+  this.de_1 = sx;
+  this.ee_1 = sy;
 }
-protoOf(Corner).ie = function () {
+protoOf(Corner).le = function () {
   var tmp0 = get_entries();
   var tmp$ret$0;
   $l$block: {
@@ -2077,7 +2089,7 @@ protoOf(Corner).ie = function () {
     var _iterator__ex2g4s = tmp0.g();
     while (_iterator__ex2g4s.h()) {
       var element = _iterator__ex2g4s.i();
-      if (element.be_1 === (-this.be_1 | 0) && element.ce_1 === (-this.ce_1 | 0)) {
+      if (element.de_1 === (-this.de_1 | 0) && element.ee_1 === (-this.ee_1 | 0)) {
         tmp$ret$0 = element;
         break $l$block;
       }
@@ -2086,18 +2098,18 @@ protoOf(Corner).ie = function () {
   }
   return tmp$ret$0;
 };
-protoOf(Corner).je = function (widthPx, heightPx) {
-  return new PanelHit(this.be_1 < 0 ? 0.0 : widthPx, this.ce_1 > 0 ? 0.0 : heightPx);
+protoOf(Corner).me = function (widthPx, heightPx) {
+  return new PanelHit(this.de_1 < 0 ? 0.0 : widthPx, this.ee_1 > 0 ? 0.0 : heightPx);
 };
 function ResizeHandles() {
-  this.nc_1 = 14.0;
-  this.oc_1 = 5.0;
-  this.pc_1 = 28.0;
-  this.qc_1 = 64.0;
-  this.rc_1 = 40.0;
-  this.sc_1 = 150.0;
+  this.pc_1 = 14.0;
+  this.qc_1 = 5.0;
+  this.rc_1 = 28.0;
+  this.sc_1 = 64.0;
+  this.tc_1 = 40.0;
+  this.uc_1 = 150.0;
 }
-protoOf(ResizeHandles).tc = function (widthPx, heightPx, x, y) {
+protoOf(ResizeHandles).vc = function (widthPx, heightPx, x, y) {
   var w = widthPx;
   var h = heightPx;
   if ((0.0 <= x ? x <= w : false) && (0.0 <= y ? y <= h : false))
@@ -2109,9 +2121,9 @@ protoOf(ResizeHandles).tc = function (widthPx, heightPx, x, y) {
     var _iterator__ex2g4s = tmp0.g();
     while (_iterator__ex2g4s.h()) {
       var element = _iterator__ex2g4s.i();
-      var c = element.je(w, h);
-      var outwardX = (x - c.s6_1) * element.be_1;
-      var outwardY = (c.t6_1 - y) * element.ce_1;
+      var c = element.me(w, h);
+      var outwardX = (x - c.s6_1) * element.de_1;
+      var outwardY = (c.t6_1 - y) * element.ee_1;
       if ((-40.0 <= outwardX ? outwardX <= 64.0 : false) && (-40.0 <= outwardY ? outwardY <= 64.0 : false)) {
         tmp$ret$0 = element;
         break $l$block;
@@ -2147,40 +2159,38 @@ function PanelPose(yawRadians, pitchRadians, distanceMetres, widthMetres, height
   distanceMetres = distanceMetres === VOID ? 4.0 : distanceMetres;
   widthMetres = widthMetres === VOID ? 1.28 : widthMetres;
   heightMetres = heightMetres === VOID ? 0.8 : heightMetres;
-  this.la_1 = yawRadians;
-  this.ma_1 = pitchRadians;
-  this.na_1 = distanceMetres;
-  this.oa_1 = widthMetres;
-  this.pa_1 = heightMetres;
+  this.ma_1 = yawRadians;
+  this.na_1 = pitchRadians;
+  this.oa_1 = distanceMetres;
+  this.pa_1 = widthMetres;
+  this.qa_1 = heightMetres;
 }
-protoOf(PanelPose).ke = function (yawRadians, pitchRadians, distanceMetres, widthMetres, heightMetres) {
+protoOf(PanelPose).ne = function (yawRadians, pitchRadians, distanceMetres, widthMetres, heightMetres) {
   return new PanelPose(yawRadians, pitchRadians, distanceMetres, widthMetres, heightMetres);
 };
-protoOf(PanelPose).bb = function (yawRadians, pitchRadians, distanceMetres, widthMetres, heightMetres, $super) {
-  yawRadians = yawRadians === VOID ? this.la_1 : yawRadians;
-  pitchRadians = pitchRadians === VOID ? this.ma_1 : pitchRadians;
-  distanceMetres = distanceMetres === VOID ? this.na_1 : distanceMetres;
-  widthMetres = widthMetres === VOID ? this.oa_1 : widthMetres;
-  heightMetres = heightMetres === VOID ? this.pa_1 : heightMetres;
-  return $super === VOID ? this.ke(yawRadians, pitchRadians, distanceMetres, widthMetres, heightMetres) : $super.ke.call(this, yawRadians, pitchRadians, distanceMetres, widthMetres, heightMetres);
+protoOf(PanelPose).cb = function (yawRadians, pitchRadians, distanceMetres, widthMetres, heightMetres, $super) {
+  yawRadians = yawRadians === VOID ? this.ma_1 : yawRadians;
+  pitchRadians = pitchRadians === VOID ? this.na_1 : pitchRadians;
+  distanceMetres = distanceMetres === VOID ? this.oa_1 : distanceMetres;
+  widthMetres = widthMetres === VOID ? this.pa_1 : widthMetres;
+  heightMetres = heightMetres === VOID ? this.qa_1 : heightMetres;
+  return $super === VOID ? this.ne(yawRadians, pitchRadians, distanceMetres, widthMetres, heightMetres) : $super.ne.call(this, yawRadians, pitchRadians, distanceMetres, widthMetres, heightMetres);
 };
 protoOf(PanelPose).toString = function () {
-  return 'PanelPose(yawRadians=' + this.la_1 + ', pitchRadians=' + this.ma_1 + ', distanceMetres=' + this.na_1 + ', widthMetres=' + this.oa_1 + ', heightMetres=' + this.pa_1 + ')';
+  return 'PanelPose(yawRadians=' + this.ma_1 + ', pitchRadians=' + this.na_1 + ', distanceMetres=' + this.oa_1 + ', widthMetres=' + this.pa_1 + ', heightMetres=' + this.qa_1 + ')';
 };
 protoOf(PanelPose).hashCode = function () {
-  var result = getNumberHashCode(this.la_1);
-  result = imul(result, 31) + getNumberHashCode(this.ma_1) | 0;
+  var result = getNumberHashCode(this.ma_1);
   result = imul(result, 31) + getNumberHashCode(this.na_1) | 0;
   result = imul(result, 31) + getNumberHashCode(this.oa_1) | 0;
   result = imul(result, 31) + getNumberHashCode(this.pa_1) | 0;
+  result = imul(result, 31) + getNumberHashCode(this.qa_1) | 0;
   return result;
 };
 protoOf(PanelPose).equals = function (other) {
   if (this === other)
     return true;
   if (!(other instanceof PanelPose))
-    return false;
-  if (!equals(this.la_1, other.la_1))
     return false;
   if (!equals(this.ma_1, other.ma_1))
     return false;
@@ -2190,11 +2200,13 @@ protoOf(PanelPose).equals = function (other) {
     return false;
   if (!equals(this.pa_1, other.pa_1))
     return false;
+  if (!equals(this.qa_1, other.qa_1))
+    return false;
   return true;
 };
 function Companion_0() {
   Companion_instance_0 = this;
-  this.le_1 = new SmoothFollow(false);
+  this.oe_1 = new SmoothFollow(false);
 }
 var Companion_instance_0;
 function Companion_getInstance_0() {
@@ -2212,41 +2224,41 @@ function SmoothFollow(enabled, deadzoneDegrees, timeConstantSeconds, followDegre
   crossingDegreesPerSecond = crossingDegreesPerSecond === VOID ? 150.0 : crossingDegreesPerSecond;
   layoutTimeConstantSeconds = layoutTimeConstantSeconds === VOID ? 0.5 : layoutTimeConstantSeconds;
   layoutDegreesPerSecond = layoutDegreesPerSecond === VOID ? 60.0 : layoutDegreesPerSecond;
-  this.qa_1 = enabled;
-  this.ra_1 = deadzoneDegrees;
-  this.sa_1 = timeConstantSeconds;
-  this.ta_1 = followDegreesPerSecond;
-  this.ua_1 = crossingTimeConstantSeconds;
-  this.va_1 = crossingDegreesPerSecond;
-  this.wa_1 = layoutTimeConstantSeconds;
-  this.xa_1 = layoutDegreesPerSecond;
+  this.ra_1 = enabled;
+  this.sa_1 = deadzoneDegrees;
+  this.ta_1 = timeConstantSeconds;
+  this.ua_1 = followDegreesPerSecond;
+  this.va_1 = crossingTimeConstantSeconds;
+  this.wa_1 = crossingDegreesPerSecond;
+  this.xa_1 = layoutTimeConstantSeconds;
+  this.ya_1 = layoutDegreesPerSecond;
 }
-protoOf(SmoothFollow).me = function (enabled, deadzoneDegrees, timeConstantSeconds, followDegreesPerSecond, crossingTimeConstantSeconds, crossingDegreesPerSecond, layoutTimeConstantSeconds, layoutDegreesPerSecond) {
+protoOf(SmoothFollow).pe = function (enabled, deadzoneDegrees, timeConstantSeconds, followDegreesPerSecond, crossingTimeConstantSeconds, crossingDegreesPerSecond, layoutTimeConstantSeconds, layoutDegreesPerSecond) {
   return new SmoothFollow(enabled, deadzoneDegrees, timeConstantSeconds, followDegreesPerSecond, crossingTimeConstantSeconds, crossingDegreesPerSecond, layoutTimeConstantSeconds, layoutDegreesPerSecond);
 };
-protoOf(SmoothFollow).ne = function (enabled, deadzoneDegrees, timeConstantSeconds, followDegreesPerSecond, crossingTimeConstantSeconds, crossingDegreesPerSecond, layoutTimeConstantSeconds, layoutDegreesPerSecond, $super) {
-  enabled = enabled === VOID ? this.qa_1 : enabled;
-  deadzoneDegrees = deadzoneDegrees === VOID ? this.ra_1 : deadzoneDegrees;
-  timeConstantSeconds = timeConstantSeconds === VOID ? this.sa_1 : timeConstantSeconds;
-  followDegreesPerSecond = followDegreesPerSecond === VOID ? this.ta_1 : followDegreesPerSecond;
-  crossingTimeConstantSeconds = crossingTimeConstantSeconds === VOID ? this.ua_1 : crossingTimeConstantSeconds;
-  crossingDegreesPerSecond = crossingDegreesPerSecond === VOID ? this.va_1 : crossingDegreesPerSecond;
-  layoutTimeConstantSeconds = layoutTimeConstantSeconds === VOID ? this.wa_1 : layoutTimeConstantSeconds;
-  layoutDegreesPerSecond = layoutDegreesPerSecond === VOID ? this.xa_1 : layoutDegreesPerSecond;
-  return $super === VOID ? this.me(enabled, deadzoneDegrees, timeConstantSeconds, followDegreesPerSecond, crossingTimeConstantSeconds, crossingDegreesPerSecond, layoutTimeConstantSeconds, layoutDegreesPerSecond) : $super.me.call(this, enabled, deadzoneDegrees, timeConstantSeconds, followDegreesPerSecond, crossingTimeConstantSeconds, crossingDegreesPerSecond, layoutTimeConstantSeconds, layoutDegreesPerSecond);
+protoOf(SmoothFollow).qe = function (enabled, deadzoneDegrees, timeConstantSeconds, followDegreesPerSecond, crossingTimeConstantSeconds, crossingDegreesPerSecond, layoutTimeConstantSeconds, layoutDegreesPerSecond, $super) {
+  enabled = enabled === VOID ? this.ra_1 : enabled;
+  deadzoneDegrees = deadzoneDegrees === VOID ? this.sa_1 : deadzoneDegrees;
+  timeConstantSeconds = timeConstantSeconds === VOID ? this.ta_1 : timeConstantSeconds;
+  followDegreesPerSecond = followDegreesPerSecond === VOID ? this.ua_1 : followDegreesPerSecond;
+  crossingTimeConstantSeconds = crossingTimeConstantSeconds === VOID ? this.va_1 : crossingTimeConstantSeconds;
+  crossingDegreesPerSecond = crossingDegreesPerSecond === VOID ? this.wa_1 : crossingDegreesPerSecond;
+  layoutTimeConstantSeconds = layoutTimeConstantSeconds === VOID ? this.xa_1 : layoutTimeConstantSeconds;
+  layoutDegreesPerSecond = layoutDegreesPerSecond === VOID ? this.ya_1 : layoutDegreesPerSecond;
+  return $super === VOID ? this.pe(enabled, deadzoneDegrees, timeConstantSeconds, followDegreesPerSecond, crossingTimeConstantSeconds, crossingDegreesPerSecond, layoutTimeConstantSeconds, layoutDegreesPerSecond) : $super.pe.call(this, enabled, deadzoneDegrees, timeConstantSeconds, followDegreesPerSecond, crossingTimeConstantSeconds, crossingDegreesPerSecond, layoutTimeConstantSeconds, layoutDegreesPerSecond);
 };
 protoOf(SmoothFollow).toString = function () {
-  return 'SmoothFollow(enabled=' + this.qa_1 + ', deadzoneDegrees=' + this.ra_1 + ', timeConstantSeconds=' + this.sa_1 + ', followDegreesPerSecond=' + this.ta_1 + ', crossingTimeConstantSeconds=' + this.ua_1 + ', crossingDegreesPerSecond=' + this.va_1 + ', layoutTimeConstantSeconds=' + this.wa_1 + ', layoutDegreesPerSecond=' + this.xa_1 + ')';
+  return 'SmoothFollow(enabled=' + this.ra_1 + ', deadzoneDegrees=' + this.sa_1 + ', timeConstantSeconds=' + this.ta_1 + ', followDegreesPerSecond=' + this.ua_1 + ', crossingTimeConstantSeconds=' + this.va_1 + ', crossingDegreesPerSecond=' + this.wa_1 + ', layoutTimeConstantSeconds=' + this.xa_1 + ', layoutDegreesPerSecond=' + this.ya_1 + ')';
 };
 protoOf(SmoothFollow).hashCode = function () {
-  var result = getBooleanHashCode(this.qa_1);
-  result = imul(result, 31) + getNumberHashCode(this.ra_1) | 0;
+  var result = getBooleanHashCode(this.ra_1);
   result = imul(result, 31) + getNumberHashCode(this.sa_1) | 0;
   result = imul(result, 31) + getNumberHashCode(this.ta_1) | 0;
   result = imul(result, 31) + getNumberHashCode(this.ua_1) | 0;
   result = imul(result, 31) + getNumberHashCode(this.va_1) | 0;
   result = imul(result, 31) + getNumberHashCode(this.wa_1) | 0;
   result = imul(result, 31) + getNumberHashCode(this.xa_1) | 0;
+  result = imul(result, 31) + getNumberHashCode(this.ya_1) | 0;
   return result;
 };
 protoOf(SmoothFollow).equals = function (other) {
@@ -2254,9 +2266,7 @@ protoOf(SmoothFollow).equals = function (other) {
     return true;
   if (!(other instanceof SmoothFollow))
     return false;
-  if (!(this.qa_1 === other.qa_1))
-    return false;
-  if (!equals(this.ra_1, other.ra_1))
+  if (!(this.ra_1 === other.ra_1))
     return false;
   if (!equals(this.sa_1, other.sa_1))
     return false;
@@ -2270,14 +2280,16 @@ protoOf(SmoothFollow).equals = function (other) {
     return false;
   if (!equals(this.xa_1, other.xa_1))
     return false;
+  if (!equals(this.ya_1, other.ya_1))
+    return false;
   return true;
 };
 function Companion_1() {
   Companion_instance_1 = this;
-  this.ia_1 = toRadians(0.5);
-  this.ja_1 = 0.5;
+  this.ja_1 = toRadians(0.5);
+  this.ka_1 = 0.5;
 }
-protoOf(Companion_1).ka = function (angle) {
+protoOf(Companion_1).la = function (angle) {
   var a = angle;
   while (a > 3.141592653589793)
     a = a - 2.0 * 3.141592653589793;
@@ -2294,68 +2306,68 @@ function Companion_getInstance_1() {
 function ScenePanel(id, pose, follow) {
   Companion_getInstance_1();
   follow = follow === VOID ? new SmoothFollow() : follow;
-  this.aa_1 = id;
-  this.ba_1 = null;
-  this.ca_1 = false;
-  this.da_1 = pose;
-  this.ea_1 = follow;
-  this.fa_1 = pose.la_1;
-  this.ga_1 = false;
+  this.ba_1 = id;
+  this.ca_1 = null;
+  this.da_1 = false;
+  this.ea_1 = pose;
+  this.fa_1 = follow;
+  this.ga_1 = pose.ma_1;
   this.ha_1 = false;
+  this.ia_1 = false;
 }
-protoOf(ScenePanel).id = function () {
-  this.da_1 = this.da_1.bb(this.fa_1);
+protoOf(ScenePanel).kd = function () {
+  this.ea_1 = this.ea_1.cb(this.ga_1);
 };
-protoOf(ScenePanel).ld = function (yawRadians) {
-  this.fa_1 = yawRadians;
-  this.ga_1 = false;
-  this.da_1 = this.da_1.bb(yawRadians);
+protoOf(ScenePanel).nd = function (yawRadians) {
+  this.ga_1 = yawRadians;
+  this.ha_1 = false;
+  this.ea_1 = this.ea_1.cb(yawRadians);
 };
-protoOf(ScenePanel).vd = function (yawRadians, byHand) {
-  this.fa_1 = yawRadians;
-  this.ga_1 = byHand;
+protoOf(ScenePanel).xd = function (yawRadians, byHand) {
+  this.ga_1 = yawRadians;
+  this.ha_1 = byHand;
 };
-protoOf(ScenePanel).kd = function (yawRadians, byHand, $super) {
+protoOf(ScenePanel).md = function (yawRadians, byHand, $super) {
   byHand = byHand === VOID ? false : byHand;
   var tmp;
   if ($super === VOID) {
-    this.vd(yawRadians, byHand);
+    this.xd(yawRadians, byHand);
     tmp = Unit_instance;
   } else {
-    tmp = $super.vd.call(this, yawRadians, byHand);
+    tmp = $super.xd.call(this, yawRadians, byHand);
   }
   return tmp;
 };
+protoOf(ScenePanel).eb = function () {
+  // Inline function 'kotlin.math.atan' call
+  var x = this.ea_1.pa_1 / 2.0 / this.ea_1.oa_1;
+  return Math.atan(x);
+};
 protoOf(ScenePanel).db = function () {
   // Inline function 'kotlin.math.atan' call
-  var x = this.da_1.oa_1 / 2.0 / this.da_1.na_1;
+  var x = this.ea_1.qa_1 / 2.0 / this.ea_1.oa_1;
   return Math.atan(x);
 };
-protoOf(ScenePanel).cb = function () {
-  // Inline function 'kotlin.math.atan' call
-  var x = this.da_1.pa_1 / 2.0 / this.da_1.na_1;
-  return Math.atan(x);
-};
-protoOf(ScenePanel).ab = function (target, dt, timeConstantSeconds, minimumDegreesPerSecond, alreadyTriggered) {
-  if (!this.ea_1.qa_1 || dt <= 0.0 || dt > 0.5)
+protoOf(ScenePanel).bb = function (target, dt, timeConstantSeconds, minimumDegreesPerSecond, alreadyTriggered) {
+  if (!this.fa_1.ra_1 || dt <= 0.0 || dt > 0.5)
     return null;
-  var error = Companion_getInstance_1().ka(target - this.da_1.la_1);
-  var deadzone = toRadians(this.ea_1.ra_1);
-  if (!alreadyTriggered && !this.ha_1) {
+  var error = Companion_getInstance_1().la(target - this.ea_1.ma_1);
+  var deadzone = toRadians(this.fa_1.sa_1);
+  if (!alreadyTriggered && !this.ia_1) {
     // Inline function 'kotlin.math.abs' call
     if (Math.abs(error) <= deadzone)
       return null;
-    this.ha_1 = true;
+    this.ia_1 = true;
   }
   // Inline function 'kotlin.math.abs' call
-  if (Math.abs(error) <= Companion_getInstance_1().ia_1) {
-    this.ha_1 = false;
+  if (Math.abs(error) <= Companion_getInstance_1().ja_1) {
+    this.ia_1 = false;
     return null;
   }
   var alpha = coerceAtMost(dt / timeConstantSeconds, 1.0);
   var step = error * alpha;
   // Inline function 'kotlin.comparisons.maxOf' call
-  var b = this.ea_1.ta_1;
+  var b = this.fa_1.ua_1;
   var floorDegrees = Math.max(minimumDegreesPerSecond, b);
   var floor = toRadians(floorDegrees) * dt;
   // Inline function 'kotlin.math.abs' call
@@ -2368,12 +2380,13 @@ protoOf(ScenePanel).ab = function (target, dt, timeConstantSeconds, minimumDegre
     var b_0 = Math.abs(error);
     step = tmp * Math.min(floor, b_0);
   }
-  return Companion_getInstance_1().ka(this.da_1.la_1 + step);
+  return Companion_getInstance_1().la(this.ea_1.ma_1 + step);
 };
 var HitPart_CONTENT_instance;
 var HitPart_TITLE_BAR_instance;
 var HitPart_BACK_instance;
 var HitPart_PIN_instance;
+var HitPart_SIZE_instance;
 var HitPart_CLOSE_instance;
 var HitPart_RESIZE_TOP_LEFT_instance;
 var HitPart_RESIZE_TOP_RIGHT_instance;
@@ -2381,7 +2394,7 @@ var HitPart_RESIZE_BOTTOM_LEFT_instance;
 var HitPart_RESIZE_BOTTOM_RIGHT_instance;
 function Companion_2() {
 }
-protoOf(Companion_2).uc = function (corner) {
+protoOf(Companion_2).wc = function (corner) {
   var tmp0 = get_entries_0();
   var tmp$ret$0;
   $l$block: {
@@ -2389,7 +2402,7 @@ protoOf(Companion_2).uc = function (corner) {
     var _iterator__ex2g4s = tmp0.g();
     while (_iterator__ex2g4s.h()) {
       var element = _iterator__ex2g4s.i();
-      if (equals(element.qe_1, corner)) {
+      if (equals(element.te_1, corner)) {
         tmp$ret$0 = element;
         break $l$block;
       }
@@ -2403,7 +2416,7 @@ function Companion_getInstance_2() {
   return Companion_instance_2;
 }
 function values_0() {
-  return [HitPart_CONTENT_getInstance(), HitPart_TITLE_BAR_getInstance(), HitPart_BACK_getInstance(), HitPart_PIN_getInstance(), HitPart_CLOSE_getInstance(), HitPart_RESIZE_TOP_LEFT_getInstance(), HitPart_RESIZE_TOP_RIGHT_getInstance(), HitPart_RESIZE_BOTTOM_LEFT_getInstance(), HitPart_RESIZE_BOTTOM_RIGHT_getInstance()];
+  return [HitPart_CONTENT_getInstance(), HitPart_TITLE_BAR_getInstance(), HitPart_BACK_getInstance(), HitPart_PIN_getInstance(), HitPart_SIZE_getInstance(), HitPart_CLOSE_getInstance(), HitPart_RESIZE_TOP_LEFT_getInstance(), HitPart_RESIZE_TOP_RIGHT_getInstance(), HitPart_RESIZE_BOTTOM_LEFT_getInstance(), HitPart_RESIZE_BOTTOM_RIGHT_getInstance()];
 }
 function get_entries_0() {
   if ($ENTRIES_0 == null)
@@ -2419,32 +2432,33 @@ function HitPart_initEntries() {
   HitPart_TITLE_BAR_instance = new HitPart('TITLE_BAR', 1);
   HitPart_BACK_instance = new HitPart('BACK', 2);
   HitPart_PIN_instance = new HitPart('PIN', 3);
-  HitPart_CLOSE_instance = new HitPart('CLOSE', 4);
-  HitPart_RESIZE_TOP_LEFT_instance = new HitPart('RESIZE_TOP_LEFT', 5, Corner_TOP_LEFT_getInstance());
-  HitPart_RESIZE_TOP_RIGHT_instance = new HitPart('RESIZE_TOP_RIGHT', 6, Corner_TOP_RIGHT_getInstance());
-  HitPart_RESIZE_BOTTOM_LEFT_instance = new HitPart('RESIZE_BOTTOM_LEFT', 7, Corner_BOTTOM_LEFT_getInstance());
-  HitPart_RESIZE_BOTTOM_RIGHT_instance = new HitPart('RESIZE_BOTTOM_RIGHT', 8, Corner_BOTTOM_RIGHT_getInstance());
+  HitPart_SIZE_instance = new HitPart('SIZE', 4);
+  HitPart_CLOSE_instance = new HitPart('CLOSE', 5);
+  HitPart_RESIZE_TOP_LEFT_instance = new HitPart('RESIZE_TOP_LEFT', 6, Corner_TOP_LEFT_getInstance());
+  HitPart_RESIZE_TOP_RIGHT_instance = new HitPart('RESIZE_TOP_RIGHT', 7, Corner_TOP_RIGHT_getInstance());
+  HitPart_RESIZE_BOTTOM_LEFT_instance = new HitPart('RESIZE_BOTTOM_LEFT', 8, Corner_BOTTOM_LEFT_getInstance());
+  HitPart_RESIZE_BOTTOM_RIGHT_instance = new HitPart('RESIZE_BOTTOM_RIGHT', 9, Corner_BOTTOM_RIGHT_getInstance());
 }
 var $ENTRIES_0;
 function HitPart(name, ordinal, corner) {
   corner = corner === VOID ? null : corner;
   Enum.call(this, name, ordinal);
-  this.qe_1 = corner;
+  this.te_1 = corner;
 }
 function AngularRect(yaw, halfWidth, bottom, top) {
-  this.rb_1 = yaw;
-  this.sb_1 = halfWidth;
-  this.tb_1 = bottom;
-  this.ub_1 = top;
+  this.sb_1 = yaw;
+  this.tb_1 = halfWidth;
+  this.ub_1 = bottom;
+  this.vb_1 = top;
 }
 protoOf(AngularRect).toString = function () {
-  return 'AngularRect(yaw=' + this.rb_1 + ', halfWidth=' + this.sb_1 + ', bottom=' + this.tb_1 + ', top=' + this.ub_1 + ')';
+  return 'AngularRect(yaw=' + this.sb_1 + ', halfWidth=' + this.tb_1 + ', bottom=' + this.ub_1 + ', top=' + this.vb_1 + ')';
 };
 protoOf(AngularRect).hashCode = function () {
-  var result = getNumberHashCode(this.rb_1);
-  result = imul(result, 31) + getNumberHashCode(this.sb_1) | 0;
+  var result = getNumberHashCode(this.sb_1);
   result = imul(result, 31) + getNumberHashCode(this.tb_1) | 0;
   result = imul(result, 31) + getNumberHashCode(this.ub_1) | 0;
+  result = imul(result, 31) + getNumberHashCode(this.vb_1) | 0;
   return result;
 };
 protoOf(AngularRect).equals = function (other) {
@@ -2452,47 +2466,47 @@ protoOf(AngularRect).equals = function (other) {
     return true;
   if (!(other instanceof AngularRect))
     return false;
-  if (!equals(this.rb_1, other.rb_1))
-    return false;
   if (!equals(this.sb_1, other.sb_1))
     return false;
   if (!equals(this.tb_1, other.tb_1))
     return false;
   if (!equals(this.ub_1, other.ub_1))
     return false;
+  if (!equals(this.vb_1, other.vb_1))
+    return false;
   return true;
 };
 function PanelRect(left, top, width, height) {
-  this.re_1 = left;
-  this.se_1 = top;
-  this.te_1 = width;
-  this.ue_1 = height;
+  this.ue_1 = left;
+  this.ve_1 = top;
+  this.we_1 = width;
+  this.xe_1 = height;
 }
-protoOf(PanelRect).ve = function () {
-  return this.re_1 + this.te_1;
+protoOf(PanelRect).ye = function () {
+  return this.ue_1 + this.we_1;
 };
-protoOf(PanelRect).we = function () {
-  return this.se_1 + this.ue_1;
+protoOf(PanelRect).ze = function () {
+  return this.ve_1 + this.xe_1;
 };
-protoOf(PanelRect).xe = function (x, y) {
+protoOf(PanelRect).af = function (x, y) {
   var tmp;
-  var containsLower = this.re_1;
-  if (x <= this.ve() ? containsLower <= x : false) {
-    var containsLower_0 = this.se_1;
-    tmp = y <= this.we() ? containsLower_0 <= y : false;
+  var containsLower = this.ue_1;
+  if (x <= this.ye() ? containsLower <= x : false) {
+    var containsLower_0 = this.ve_1;
+    tmp = y <= this.ze() ? containsLower_0 <= y : false;
   } else {
     tmp = false;
   }
   return tmp;
 };
 protoOf(PanelRect).toString = function () {
-  return 'PanelRect(left=' + this.re_1 + ', top=' + this.se_1 + ', width=' + this.te_1 + ', height=' + this.ue_1 + ')';
+  return 'PanelRect(left=' + this.ue_1 + ', top=' + this.ve_1 + ', width=' + this.we_1 + ', height=' + this.xe_1 + ')';
 };
 protoOf(PanelRect).hashCode = function () {
-  var result = getNumberHashCode(this.re_1);
-  result = imul(result, 31) + getNumberHashCode(this.se_1) | 0;
-  result = imul(result, 31) + getNumberHashCode(this.te_1) | 0;
-  result = imul(result, 31) + getNumberHashCode(this.ue_1) | 0;
+  var result = getNumberHashCode(this.ue_1);
+  result = imul(result, 31) + getNumberHashCode(this.ve_1) | 0;
+  result = imul(result, 31) + getNumberHashCode(this.we_1) | 0;
+  result = imul(result, 31) + getNumberHashCode(this.xe_1) | 0;
   return result;
 };
 protoOf(PanelRect).equals = function (other) {
@@ -2500,55 +2514,63 @@ protoOf(PanelRect).equals = function (other) {
     return true;
   if (!(other instanceof PanelRect))
     return false;
-  if (!equals(this.re_1, other.re_1))
-    return false;
-  if (!equals(this.se_1, other.se_1))
-    return false;
-  if (!equals(this.te_1, other.te_1))
-    return false;
   if (!equals(this.ue_1, other.ue_1))
+    return false;
+  if (!equals(this.ve_1, other.ve_1))
+    return false;
+  if (!equals(this.we_1, other.we_1))
+    return false;
+  if (!equals(this.xe_1, other.xe_1))
     return false;
   return true;
 };
 function button($this, bar, left) {
-  return new PanelRect(left, bar.se_1 + (bar.ue_1 - 40.0) / 2.0, 40.0, 40.0);
+  return new PanelRect(left, bar.ve_1 + (bar.xe_1 - 40.0) / 2.0, 40.0, 40.0);
 }
 function TitleBar() {
-  this.cc_1 = 14.0;
-  this.dc_1 = 56.0;
-  this.ec_1 = 40.0;
-  this.fc_1 = 6.0;
-  this.gc_1 = 20.0;
-  this.hc_1 = 10.0;
-  this.ic_1 = 38.0;
-  this.jc_1 = 0.45;
-  this.kc_1 = 360.0;
-  this.lc_1 = 640.0;
+  TitleBar_instance = this;
+  this.dc_1 = 14.0;
+  this.ec_1 = 56.0;
+  this.fc_1 = 40.0;
+  this.gc_1 = 6.0;
+  this.hc_1 = 20.0;
+  this.ic_1 = 10.0;
+  this.jc_1 = 38.0;
+  this.kc_1 = 0.45;
+  this.lc_1 = 360.0;
+  this.mc_1 = 640.0;
+  this.nc_1 = listOf([to(1280, 720), to(720, 1280), to(1024, 768)]);
 }
-protoOf(TitleBar).ye = function (panelWidthPx, panelHeightPx) {
+protoOf(TitleBar).bf = function (panelWidthPx, panelHeightPx) {
   var tmp = panelWidthPx * 0.45;
   // Inline function 'kotlin.math.min' call
   var tmp$ret$0 = Math.min(640.0, panelWidthPx);
   var width = coerceIn(tmp, 360.0, tmp$ret$0);
   return new PanelRect((panelWidthPx - width) / 2.0, panelHeightPx + 14.0, width, 56.0);
 };
-protoOf(TitleBar).ze = function (panelWidthPx, panelHeightPx) {
-  var bar = this.ye(panelWidthPx, panelHeightPx);
-  return button(this, bar, bar.ve() - 10.0 - 40.0);
+protoOf(TitleBar).cf = function (panelWidthPx, panelHeightPx) {
+  var bar = this.bf(panelWidthPx, panelHeightPx);
+  return button(this, bar, bar.ye() - 10.0 - 40.0);
 };
-protoOf(TitleBar).af = function (panelWidthPx, panelHeightPx) {
-  var close = this.ze(panelWidthPx, panelHeightPx);
-  return button(this, this.ye(panelWidthPx, panelHeightPx), close.re_1 - 6.0 - 40.0);
+protoOf(TitleBar).df = function (panelWidthPx, panelHeightPx) {
+  var close = this.cf(panelWidthPx, panelHeightPx);
+  return button(this, this.bf(panelWidthPx, panelHeightPx), close.ue_1 - 6.0 - 40.0);
 };
-protoOf(TitleBar).bf = function (panelWidthPx, panelHeightPx) {
-  var bar = this.ye(panelWidthPx, panelHeightPx);
-  return button(this, bar, bar.re_1 + 38.0);
+protoOf(TitleBar).ef = function (panelWidthPx, panelHeightPx) {
+  var pin = this.df(panelWidthPx, panelHeightPx);
+  return button(this, this.bf(panelWidthPx, panelHeightPx), pin.ue_1 - 6.0 - 40.0);
 };
-protoOf(TitleBar).mc = function (panelWidthPx, panelHeightPx, x, y, back) {
-  return !this.ye(panelWidthPx, panelHeightPx).xe(x, y) ? null : back && this.bf(panelWidthPx, panelHeightPx).xe(x, y) ? HitPart_BACK_getInstance() : this.ze(panelWidthPx, panelHeightPx).xe(x, y) ? HitPart_CLOSE_getInstance() : this.af(panelWidthPx, panelHeightPx).xe(x, y) ? HitPart_PIN_getInstance() : HitPart_TITLE_BAR_getInstance();
+protoOf(TitleBar).ff = function (panelWidthPx, panelHeightPx) {
+  var bar = this.bf(panelWidthPx, panelHeightPx);
+  return button(this, bar, bar.ue_1 + 38.0);
+};
+protoOf(TitleBar).oc = function (panelWidthPx, panelHeightPx, x, y, back, shape) {
+  return !this.bf(panelWidthPx, panelHeightPx).af(x, y) ? null : back && this.ff(panelWidthPx, panelHeightPx).af(x, y) ? HitPart_BACK_getInstance() : this.cf(panelWidthPx, panelHeightPx).af(x, y) ? HitPart_CLOSE_getInstance() : this.df(panelWidthPx, panelHeightPx).af(x, y) ? HitPart_PIN_getInstance() : shape && this.ef(panelWidthPx, panelHeightPx).af(x, y) ? HitPart_SIZE_getInstance() : HitPart_TITLE_BAR_getInstance();
 };
 var TitleBar_instance;
 function TitleBar_getInstance() {
+  if (TitleBar_instance == null)
+    new TitleBar();
   return TitleBar_instance;
 }
 function HitPart_CONTENT_getInstance() {
@@ -2566,6 +2588,10 @@ function HitPart_BACK_getInstance() {
 function HitPart_PIN_getInstance() {
   HitPart_initEntries();
   return HitPart_PIN_instance;
+}
+function HitPart_SIZE_getInstance() {
+  HitPart_initEntries();
+  return HitPart_SIZE_instance;
 }
 function HitPart_CLOSE_getInstance() {
   HitPart_initEntries();
@@ -2617,7 +2643,7 @@ function formatFixed(value, decimals, positivePrefix) {
 }
 function Companion_3() {
   Companion_instance_3 = this;
-  this.cf_1 = new Vec3(0.0, 0.0, 0.0);
+  this.gf_1 = new Vec3(0.0, 0.0, 0.0);
 }
 var Companion_instance_3;
 function Companion_getInstance_3() {
@@ -2630,26 +2656,26 @@ function Vec3$toString$lambda(it) {
 }
 function Vec3(x, y, z) {
   Companion_getInstance_3();
-  this.zb_1 = x;
-  this.ac_1 = y;
-  this.bc_1 = z;
+  this.ac_1 = x;
+  this.bc_1 = y;
+  this.cc_1 = z;
 }
-protoOf(Vec3).vc = function (s) {
-  return new Vec3(this.zb_1 * s, this.ac_1 * s, this.bc_1 * s);
+protoOf(Vec3).xc = function (s) {
+  return new Vec3(this.ac_1 * s, this.bc_1 * s, this.cc_1 * s);
 };
 protoOf(Vec3).a = function () {
   // Inline function 'kotlin.math.sqrt' call
-  var x = this.zb_1 * this.zb_1 + this.ac_1 * this.ac_1 + this.bc_1 * this.bc_1;
+  var x = this.ac_1 * this.ac_1 + this.bc_1 * this.bc_1 + this.cc_1 * this.cc_1;
   return Math.sqrt(x);
 };
 protoOf(Vec3).toString = function () {
-  var tmp = listOf([this.zb_1, this.ac_1, this.bc_1]);
+  var tmp = listOf([this.ac_1, this.bc_1, this.cc_1]);
   return joinToString(tmp, ' ', VOID, VOID, VOID, VOID, Vec3$toString$lambda);
 };
 protoOf(Vec3).hashCode = function () {
-  var result = getNumberHashCode(this.zb_1);
-  result = imul(result, 31) + getNumberHashCode(this.ac_1) | 0;
+  var result = getNumberHashCode(this.ac_1);
   result = imul(result, 31) + getNumberHashCode(this.bc_1) | 0;
+  result = imul(result, 31) + getNumberHashCode(this.cc_1) | 0;
   return result;
 };
 protoOf(Vec3).equals = function (other) {
@@ -2657,11 +2683,11 @@ protoOf(Vec3).equals = function (other) {
     return true;
   if (!(other instanceof Vec3))
     return false;
-  if (!equals(this.zb_1, other.zb_1))
-    return false;
   if (!equals(this.ac_1, other.ac_1))
     return false;
   if (!equals(this.bc_1, other.bc_1))
+    return false;
+  if (!equals(this.cc_1, other.cc_1))
     return false;
   return true;
 };
@@ -2686,19 +2712,19 @@ function OverlayState(id, yawDegrees, pitchDegrees, opacity, shown) {
   this.opacity = opacity;
   this.shown = shown;
 }
-protoOf(OverlayState).df = function () {
+protoOf(OverlayState).hf = function () {
   return this.id;
 };
-protoOf(OverlayState).ef = function () {
+protoOf(OverlayState).if = function () {
   return this.yawDegrees;
 };
-protoOf(OverlayState).ff = function () {
+protoOf(OverlayState).jf = function () {
   return this.pitchDegrees;
 };
-protoOf(OverlayState).gf = function () {
+protoOf(OverlayState).kf = function () {
   return this.opacity;
 };
-protoOf(OverlayState).hf = function () {
+protoOf(OverlayState).lf = function () {
   return this.shown;
 };
 function PanelState(id, yawDegrees, pitchDegrees, slotDegrees, pinned, placedByHand) {
@@ -2709,22 +2735,22 @@ function PanelState(id, yawDegrees, pitchDegrees, slotDegrees, pinned, placedByH
   this.pinned = pinned;
   this.placedByHand = placedByHand;
 }
-protoOf(PanelState).df = function () {
+protoOf(PanelState).hf = function () {
   return this.id;
 };
-protoOf(PanelState).ef = function () {
+protoOf(PanelState).if = function () {
   return this.yawDegrees;
 };
-protoOf(PanelState).ff = function () {
+protoOf(PanelState).jf = function () {
   return this.pitchDegrees;
 };
-protoOf(PanelState).if = function () {
+protoOf(PanelState).mf = function () {
   return this.slotDegrees;
 };
-protoOf(PanelState).jf = function () {
+protoOf(PanelState).nf = function () {
   return this.pinned;
 };
-protoOf(PanelState).kf = function () {
+protoOf(PanelState).of = function () {
   return this.placedByHand;
 };
 function panelOf($this, id, widthPx, heightPx) {
@@ -2732,10 +2758,10 @@ function panelOf($this, id, widthPx, heightPx) {
   return new SimulatorPanel(id, widthPx, heightPx, pose);
 }
 function overlayState($this, panel, opacity, shown) {
-  return new OverlayState(panel.aa_1, Companion_instance_4.mf(panel.da_1.la_1), Companion_instance_4.mf(panel.da_1.ma_1), opacity, shown);
+  return new OverlayState(panel.ba_1, Companion_instance_4.qf(panel.ea_1.ma_1), Companion_instance_4.qf(panel.ea_1.na_1), opacity, shown);
 }
 function panel($this, id) {
-  var tmp0_elvis_lhs = $this.of_1.hd(id);
+  var tmp0_elvis_lhs = $this.sf_1.jd(id);
   var tmp;
   if (tmp0_elvis_lhs == null) {
     throw IllegalArgumentException_init_$Create$('no such panel: ' + id);
@@ -2745,20 +2771,20 @@ function panel($this, id) {
   return tmp;
 }
 function metres($this, px) {
-  return 4.0 * px / $this.nf_1;
+  return 4.0 * px / $this.rf_1;
 }
 function Companion_4() {
-  this.lf_1 = 4.0;
+  this.pf_1 = 4.0;
 }
-protoOf(Companion_4).pf = function (degrees) {
+protoOf(Companion_4).tf = function (degrees) {
   return toRadians(degrees);
 };
-protoOf(Companion_4).mf = function (radians) {
+protoOf(Companion_4).qf = function (radians) {
   return toDegrees(radians);
 };
-protoOf(Companion_4).qf = function (yawDegrees, pitchDegrees) {
-  var yaw = this.pf(yawDegrees);
-  var pitch = this.pf(pitchDegrees);
+protoOf(Companion_4).uf = function (yawDegrees, pitchDegrees) {
+  var yaw = this.tf(yawDegrees);
+  var pitch = this.tf(pitchDegrees);
   // Inline function 'kotlin.math.cos' call
   var tmp = -Math.cos(pitch);
   // Inline function 'kotlin.math.sin' call
@@ -2776,25 +2802,25 @@ function Companion_getInstance_4() {
   return Companion_instance_4;
 }
 function SimulatorScene(panelDistancePx) {
-  this.nf_1 = panelDistancePx;
-  this.of_1 = new PanelScene();
+  this.rf_1 = panelDistancePx;
+  this.sf_1 = new PanelScene();
 }
-protoOf(SimulatorScene).rf = function () {
-  return Companion_instance_4.mf(this.of_1.zc());
+protoOf(SimulatorScene).vf = function () {
+  return Companion_instance_4.qf(this.sf_1.bd());
 };
-protoOf(SimulatorScene).sf = function () {
-  return this.of_1.ad();
+protoOf(SimulatorScene).wf = function () {
+  return this.sf_1.cd();
 };
-protoOf(SimulatorScene).tf = function () {
-  var tmp0_safe_receiver = this.of_1.v7_1;
-  return tmp0_safe_receiver == null ? null : tmp0_safe_receiver.aa_1;
+protoOf(SimulatorScene).xf = function () {
+  var tmp0_safe_receiver = this.sf_1.v7_1;
+  return tmp0_safe_receiver == null ? null : tmp0_safe_receiver.ba_1;
 };
-protoOf(SimulatorScene).uf = function () {
-  var tmp0_safe_receiver = this.of_1.a8_1;
-  return tmp0_safe_receiver == null ? null : tmp0_safe_receiver.aa_1;
+protoOf(SimulatorScene).yf = function () {
+  var tmp0_safe_receiver = this.sf_1.a8_1;
+  return tmp0_safe_receiver == null ? null : tmp0_safe_receiver.ba_1;
 };
 protoOf(SimulatorScene).setCollisionPolicy = function (policy) {
-  var tmp = this.of_1;
+  var tmp = this.sf_1;
   switch (policy) {
     case 'overlap':
       tmp.b7_1 = CollisionPolicy_OVERLAP_getInstance();
@@ -2808,56 +2834,56 @@ protoOf(SimulatorScene).setCollisionPolicy = function (policy) {
   }
 };
 protoOf(SimulatorScene).setFollowMarginDegrees = function (degrees) {
-  this.of_1.s7_1 = degrees;
+  this.sf_1.s7_1 = degrees;
 };
 protoOf(SimulatorScene).setCatchUpSeconds = function (seconds) {
-  this.of_1.p7_1 = seconds;
+  this.sf_1.p7_1 = seconds;
 };
 protoOf(SimulatorScene).setFollowsHead = function (follows) {
-  this.of_1.r7_1 = follows;
+  this.sf_1.r7_1 = follows;
 };
 protoOf(SimulatorScene).setHeadPitchDegrees = function (degrees) {
-  this.of_1.x8_1 = Companion_instance_4.pf(degrees);
+  this.sf_1.y8_1 = Companion_instance_4.tf(degrees);
 };
 protoOf(SimulatorScene).setDockAutoHide = function (autoHide) {
-  this.of_1.l8_1 = autoHide ? DockVisibility_AUTO_HIDE_getInstance() : DockVisibility_ALWAYS_getInstance();
+  this.sf_1.l8_1 = autoHide ? DockVisibility_AUTO_HIDE_getInstance() : DockVisibility_ALWAYS_getInstance();
 };
 protoOf(SimulatorScene).setWindowsAutoHide = function (autoHide, delaySeconds) {
-  this.of_1.q8_1 = autoHide;
-  this.of_1.r8_1 = delaySeconds;
+  this.sf_1.q8_1 = autoHide;
+  this.sf_1.s8_1 = delaySeconds;
 };
-protoOf(SimulatorScene).vf = function () {
-  return this.of_1.t8_1;
+protoOf(SimulatorScene).zf = function () {
+  return this.sf_1.u8_1;
 };
-protoOf(SimulatorScene).wf = function (value) {
-  this.of_1.m8_1 = value;
+protoOf(SimulatorScene).ag = function (value) {
+  this.sf_1.m8_1 = value;
 };
-protoOf(SimulatorScene).xf = function () {
-  return this.of_1.m8_1;
+protoOf(SimulatorScene).bg = function () {
+  return this.sf_1.m8_1;
 };
-protoOf(SimulatorScene).xb = function () {
-  return this.of_1.xb();
+protoOf(SimulatorScene).yb = function () {
+  return this.sf_1.yb();
 };
 protoOf(SimulatorScene).openOverlays = function (dockId, dockWidthPx, dockHeightPx, launcherId, launcherWidthPx, launcherHeightPx) {
-  this.of_1.de(panelOf(this, dockId, dockWidthPx, dockHeightPx), panelOf(this, launcherId, launcherWidthPx, launcherHeightPx));
+  this.sf_1.ge(panelOf(this, dockId, dockWidthPx, dockHeightPx), panelOf(this, launcherId, launcherWidthPx, launcherHeightPx));
 };
 protoOf(SimulatorScene).overlays = function () {
-  var tmp0_safe_receiver = this.of_1.j8_1;
+  var tmp0_safe_receiver = this.sf_1.j8_1;
   var tmp;
   if (tmp0_safe_receiver == null) {
     tmp = null;
   } else {
     // Inline function 'kotlin.let' call
-    tmp = overlayState(this, tmp0_safe_receiver, this.of_1.o8_1, this.of_1.n8_1);
+    tmp = overlayState(this, tmp0_safe_receiver, this.sf_1.o8_1, this.sf_1.n8_1);
   }
   var tmp_0 = tmp;
-  var tmp1_safe_receiver = this.of_1.k8_1;
+  var tmp1_safe_receiver = this.sf_1.k8_1;
   var tmp_1;
   if (tmp1_safe_receiver == null) {
     tmp_1 = null;
   } else {
     // Inline function 'kotlin.let' call
-    tmp_1 = overlayState(this, tmp1_safe_receiver, this.of_1.p8_1, this.of_1.xb());
+    tmp_1 = overlayState(this, tmp1_safe_receiver, this.sf_1.p8_1, this.sf_1.yb());
   }
   // Inline function 'kotlin.collections.toTypedArray' call
   var this_0 = listOfNotNull([tmp_0, tmp_1]);
@@ -2865,110 +2891,109 @@ protoOf(SimulatorScene).overlays = function () {
 };
 protoOf(SimulatorScene).focusAndCentre = function (id, headYawDegrees) {
   var panel_0 = panel(this, id);
-  this.of_1.ee(panel_0);
-  this.of_1.fe(panel_0, Companion_instance_4.pf(headYawDegrees));
+  this.sf_1.he(panel_0);
+  this.sf_1.ie(panel_0, Companion_instance_4.tf(headYawDegrees));
 };
 protoOf(SimulatorScene).setSlotSpacingDegrees = function (degrees) {
-  if (!(degrees === this.of_1.c7_1)) {
-    this.of_1.md(degrees, false);
+  if (!(degrees === this.sf_1.c7_1)) {
+    this.sf_1.od(degrees, false);
   }
 };
 protoOf(SimulatorScene).open = function (id, widthPx, heightPx) {
-  this.of_1.qd(panelOf(this, id, widthPx, heightPx));
+  this.sf_1.sd(panelOf(this, id, widthPx, heightPx));
 };
 protoOf(SimulatorScene).resize = function (id, widthPx, heightPx, draggedCorner) {
   var panel_0 = panel(this, id);
-  var oldWidth = panel_0.gg_1;
-  var oldHeight = panel_0.hg_1;
-  panel_0.gg_1 = widthPx;
-  panel_0.hg_1 = heightPx;
-  this.of_1.yd(panel_0, oldWidth, oldHeight, valueOf(draggedCorner).ie());
+  var oldWidth = panel_0.kg_1;
+  var oldHeight = panel_0.lg_1;
+  panel_0.kg_1 = widthPx;
+  panel_0.lg_1 = heightPx;
+  this.sf_1.fe(panel_0, oldWidth, oldHeight, valueOf(draggedCorner).le());
 };
 protoOf(SimulatorScene).close = function (id) {
-  this.of_1.cd(panel(this, id));
-  this.of_1.md(VOID, false);
+  this.sf_1.ed(panel(this, id));
+  this.sf_1.od(VOID, false);
 };
 protoOf(SimulatorScene).setPinned = function (id, pinned) {
   var panel_0 = panel(this, id);
-  if (panel_0.ea_1.qa_1 === pinned) {
-    this.of_1.nd(panel_0, panel_0.ea_1.ne(!pinned));
+  if (panel_0.fa_1.ra_1 === pinned) {
+    this.sf_1.pd(panel_0, panel_0.fa_1.qe(!pinned));
   }
 };
 protoOf(SimulatorScene).bringIntoView = function (id, headYawDegrees) {
-  return this.of_1.od(panel(this, id), Companion_instance_4.pf(headYawDegrees));
+  return this.sf_1.qd(panel(this, id), Companion_instance_4.tf(headYawDegrees));
 };
 protoOf(SimulatorScene).recentre = function () {
-  return this.of_1.id();
+  return this.sf_1.kd();
 };
 protoOf(SimulatorScene).advance = function (headYawDegrees, dt) {
-  return this.of_1.wd(Companion_instance_4.pf(headYawDegrees), dt);
+  return this.sf_1.yd(Companion_instance_4.tf(headYawDegrees), dt);
 };
 protoOf(SimulatorScene).hitTest = function (yawDegrees, pitchDegrees) {
-  var tmp0_safe_receiver = this.of_1.he(Companion_instance_4.qf(yawDegrees, pitchDegrees));
+  var tmp0_safe_receiver = this.sf_1.ke(Companion_instance_4.uf(yawDegrees, pitchDegrees));
   var tmp1_safe_receiver = tmp0_safe_receiver == null ? null : tmp0_safe_receiver.u6_1;
-  return tmp1_safe_receiver == null ? null : tmp1_safe_receiver.aa_1;
+  return tmp1_safe_receiver == null ? null : tmp1_safe_receiver.ba_1;
 };
 protoOf(SimulatorScene).beginGrab = function (id, aimYawDegrees, aimPitchDegrees) {
-  return this.of_1.rd(panel(this, id), Companion_instance_4.qf(aimYawDegrees, aimPitchDegrees));
+  return this.sf_1.td(panel(this, id), Companion_instance_4.uf(aimYawDegrees, aimPitchDegrees));
 };
 protoOf(SimulatorScene).updateGrab = function (aimYawDegrees, aimPitchDegrees) {
-  return this.of_1.td(Companion_instance_4.qf(aimYawDegrees, aimPitchDegrees));
+  return this.sf_1.vd(Companion_instance_4.uf(aimYawDegrees, aimPitchDegrees));
 };
 protoOf(SimulatorScene).endGrab = function (headYawDegrees) {
-  this.of_1.ud(Companion_instance_4.pf(headYawDegrees));
+  this.sf_1.wd(Companion_instance_4.tf(headYawDegrees));
 };
 protoOf(SimulatorScene).cancelGrab = function () {
-  return this.of_1.sd();
+  return this.sf_1.ud();
 };
 protoOf(SimulatorScene).titleBar = function (widthPx, heightPx) {
   // Inline function 'kotlin.let' call
-  var it = TitleBar_instance.ye(widthPx, heightPx);
+  var it = TitleBar_getInstance().bf(widthPx, heightPx);
   // Inline function 'kotlin.arrayOf' call
   // Inline function 'kotlin.js.unsafeCast' call
   // Inline function 'kotlin.js.asDynamic' call
-  return [it.re_1, it.se_1, it.te_1, it.ue_1];
+  return [it.ue_1, it.ve_1, it.we_1, it.xe_1];
 };
 protoOf(SimulatorScene).panels = function () {
   // Inline function 'kotlin.collections.map' call
-  var this_0 = this.of_1.yc();
+  var this_0 = this.sf_1.ad();
   // Inline function 'kotlin.collections.mapTo' call
   var destination = ArrayList_init_$Create$_0(collectionSizeOrDefault(this_0, 10));
   var _iterator__ex2g4s = this_0.g();
   while (_iterator__ex2g4s.h()) {
     var item = _iterator__ex2g4s.i();
-    var tmp$ret$2 = new PanelState(item.aa_1, Companion_instance_4.mf(item.da_1.la_1), Companion_instance_4.mf(item.da_1.ma_1), Companion_instance_4.mf(item.fa_1), !item.ea_1.qa_1, item.ga_1);
+    var tmp$ret$2 = new PanelState(item.ba_1, Companion_instance_4.qf(item.ea_1.ma_1), Companion_instance_4.qf(item.ea_1.na_1), Companion_instance_4.qf(item.ga_1), !item.fa_1.ra_1, item.ha_1);
     destination.e(tmp$ret$2);
   }
   // Inline function 'kotlin.collections.toTypedArray' call
   return copyToArray(destination);
 };
 protoOf(SimulatorScene).describe = function (headYawDegrees) {
-  return this.of_1.xd(Companion_instance_4.pf(headYawDegrees));
+  return this.sf_1.zd(Companion_instance_4.tf(headYawDegrees));
 };
 function SimulatorPanel(id, widthPx, heightPx, pose) {
   ScenePanel.call(this, id, pose);
-  this.gg_1 = widthPx;
-  this.hg_1 = heightPx;
+  this.kg_1 = widthPx;
+  this.lg_1 = heightPx;
 }
-protoOf(SimulatorPanel).eb = function () {
-  return this.gg_1;
-};
 protoOf(SimulatorPanel).fb = function () {
-  return this.hg_1;
+  return this.kg_1;
+};
+protoOf(SimulatorPanel).gb = function () {
+  return this.lg_1;
 };
 //region block: post-declaration
-defineProp(protoOf(SimulatorScene), 'anchorYawDegrees', protoOf(SimulatorScene).rf);
-defineProp(protoOf(SimulatorScene), 'returning', protoOf(SimulatorScene).sf);
-defineProp(protoOf(SimulatorScene), 'focusedId', protoOf(SimulatorScene).tf);
-defineProp(protoOf(SimulatorScene), 'grabbedId', protoOf(SimulatorScene).uf);
-defineProp(protoOf(SimulatorScene), 'windowsOpacity', protoOf(SimulatorScene).vf);
-defineProp(protoOf(SimulatorScene), 'launcherRequested', protoOf(SimulatorScene).xf, protoOf(SimulatorScene).wf);
-defineProp(protoOf(SimulatorScene), 'launcherShown', protoOf(SimulatorScene).xb);
+defineProp(protoOf(SimulatorScene), 'anchorYawDegrees', protoOf(SimulatorScene).vf);
+defineProp(protoOf(SimulatorScene), 'returning', protoOf(SimulatorScene).wf);
+defineProp(protoOf(SimulatorScene), 'focusedId', protoOf(SimulatorScene).xf);
+defineProp(protoOf(SimulatorScene), 'grabbedId', protoOf(SimulatorScene).yf);
+defineProp(protoOf(SimulatorScene), 'windowsOpacity', protoOf(SimulatorScene).zf);
+defineProp(protoOf(SimulatorScene), 'launcherRequested', protoOf(SimulatorScene).bg, protoOf(SimulatorScene).ag);
+defineProp(protoOf(SimulatorScene), 'launcherShown', protoOf(SimulatorScene).yb);
 //endregion
 //region block: init
 ResizeHandles_instance = new ResizeHandles();
 Companion_instance_2 = new Companion_2();
-TitleBar_instance = new TitleBar();
 Companion_instance_4 = new Companion_4();
 //endregion
 //region block: exports

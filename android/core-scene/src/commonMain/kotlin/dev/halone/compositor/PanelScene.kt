@@ -1343,6 +1343,9 @@ open class PanelScene<P : ScenePanel> {
      */
     var windowsAutoHide = false
 
+    /** Whether title bars carry the button that cycles a window through preset shapes. */
+    var shapeButtons = false
+
     var windowsHideDelaySeconds = 1f
 
     var windowsShown = true
@@ -1624,7 +1627,7 @@ open class PanelScene<P : ScenePanel> {
         val y = v * panel.heightPx
         val part = if (u in 0f..1f && v in 0f..1f) HitPart.CONTENT
         else if (chrome) {
-            TitleBar.partAt(panel.widthPx, panel.heightPx, x, y, panel.backButton)
+            TitleBar.partAt(panel.widthPx, panel.heightPx, x, y, panel.backButton, shapeButtons)
                 ?: ResizeHandles.cornerAt(panel.widthPx, panel.heightPx, x, y)?.let(HitPart::resizing)
                 ?: return null
         } else return null

@@ -559,7 +559,8 @@ class MainActivity : AppCompatActivity() {
      * purpose (Home, another app) closed no window, so is left alone.
      */
     private fun reclaimFromClosedApp() {
-        if (isFinishing || shellSession == null) return
+        val shell = shellSession ?: return
+        if (isFinishing || !shell.shell.settings.boolean(ShellSettings.WINDOWS_RECLAIM_PHONE)) return
         val closedAt = stereoSession?.lastPanelClosedAt ?: return
         if (android.os.SystemClock.uptimeMillis() - closedAt > RECLAIM_AFTER_CLOSE_MS) return
         logLine("  an app window closed and took the phone; bringing Halone back")
