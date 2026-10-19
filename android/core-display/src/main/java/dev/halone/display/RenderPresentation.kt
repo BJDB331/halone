@@ -36,9 +36,16 @@ class RenderPresentation(
     fun show(display: Display, renderer: GLSurfaceView.Renderer) {
         dismiss()
 
-        val wide = widestStereoMode(display) ?: fastestMode(display)
+        val stereo = widestStereoMode(display)
+        val wide = stereo ?: fastestMode(display)
         refreshHz = wide?.refreshRate ?: display.refreshRate
 
+        // Only for a 2D display left as the glasses have it (RayNeo GT
+        // series): asking for its fastest rate. A side-by-side mode is pinned
+        // by id alone, as before: **[suspected]** an XREAL Air switched to
+        // 3D and then never came up once the rate was forced as well, the
+        // non-seamless switch it asks for resetting the glasses' own mode.
+        val forceRate = stereo == null && wide != null
         val rate = refreshHz
         val view = object : GLSurfaceView(context) {}.apply {
             setEGLContextClientVersion(3)
@@ -49,6 +56,7 @@ class RenderPresentation(
             // rate is what tells it a 60 Hz mode would drop frames.
             holder.addCallback(object : SurfaceHolder.Callback {
                 override fun surfaceCreated(holder: SurfaceHolder) {
+                    if (!forceRate) return
                     // ALWAYS, not the default only-if-seamless: on a GT Max over
                     // USB-C the display offered 60 and 120 Hz yet stayed at 60,
                     // and a switch from 60 to 120 on an external link is not
@@ -74,7 +82,7 @@ class RenderPresentation(
                 wide?.let { mode ->
                     w.attributes = w.attributes.apply {
                         preferredDisplayModeId = mode.modeId
-                        preferredRefreshRate = mode.refreshRate
+                        if (forceRate) preferredRefreshRate = mode.refreshRate
                     }
                 }
                 w.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -85,7 +93,7 @@ class RenderPresentation(
             // And again once the window exists: a request made before the
             // window is attached has been seen not to take on external
             // displays, and asking twice costs nothing.
-            wide?.let { mode ->
+            wide?.takeIf { forceRate }?.let { mode ->
                 view.postDelayed({
                     shown.window?.let { w ->
                         w.attributes = w.attributes.apply {
