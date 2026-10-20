@@ -32,11 +32,7 @@ class GlassesDisplaySession(
 
     /** Switches the glasses to stereo, waiting out the display churn it causes. */
     suspend fun enterStereo(device: GlassesDevice, mode: DisplayMode? = null): Display? {
-        val control = device.display
-        if (control == null) {
-            log("  this device has no display control; cannot switch to stereo")
-            return null
-        }
+        val control = device.display ?: return currentGlassesDisplay(device)
 
         val stereo = mode ?: control.preferredStereoMode()
         if (stereo == null) {
@@ -70,9 +66,32 @@ class GlassesDisplaySession(
 
     /** Returns the glasses to a mono mode so the phone is usable again. */
     fun leaveStereo(device: GlassesDevice) {
-        val control = device.display ?: return
+        val control = device.display ?: run {
+            log("  the glasses choose their own mode; switch them back to 2D with their controls")
+            return
+        }
         val mono = control.preferredMonoMode() ?: return
         log("  restoring $mono: ${control.setMode(mono)}")
+    }
+
+    /**
+     * For glasses the host cannot switch (RayNeo GT series): the wearer
+     * chooses 2D or 3D with the glasses' own controls, so use the display in
+     * whichever mode it is. The compositor draws side by side on a 3840x1080
+     * mode and a single image on a 1920x1080 one, and follows a switch made
+     * while it runs.
+     */
+    private fun currentGlassesDisplay(device: GlassesDevice): Display? {
+        val display = findGlassesDisplay(device)
+        if (display == null) {
+            log("  no glasses display found")
+            return null
+        }
+        log(
+            "  using display ${display.displayId} \"${display.name}\" as the glasses have it: " +
+                if (display.hasSideBySideMode()) "3D (side by side)" else "2D (one image for both eyes)"
+        )
+        return display
     }
 
     fun findGlassesDisplay(device: GlassesDevice): Display? {
@@ -88,15 +107,24 @@ class GlassesDisplaySession(
      * race with the removal of the display we were just using.
      */
     private suspend fun awaitNewPresentationDisplay(previousId: Int?): Display? =
+        awaitDisplay(DISPLAY_SETTLE_MS) { it.displayId != previousId }
+
+    /**
+     * Waits up to [timeoutMs] for a presentation display, added or changed,
+     * that [accept] takes; at the timeout, settles for any current one it
+     * takes, since the display may have arrived before the listener existed.
+     */
+    private suspend fun awaitDisplay(timeoutMs: Long, accept: (Display) -> Boolean): Display? =
         suspendCancellableCoroutine { continuation ->
             val handler = Handler(Looper.getMainLooper())
             var settled = false
 
             val listener = object : DisplayManager.DisplayListener {
                 private fun consider(displayId: Int, reason: String) {
-                    if (settled || displayId == previousId) return
+                    if (settled) return
                     val display = displayManager.getDisplay(displayId) ?: return
                     if (display.flags and Display.FLAG_PRESENTATION == 0) return
+                    if (!accept(display)) return
                     settled = true
                     displayManager.unregisterDisplayListener(this)
                     log("  display $displayId $reason")
@@ -117,14 +145,17 @@ class GlassesDisplaySession(
                 if (settled) return@postDelayed
                 settled = true
                 displayManager.unregisterDisplayListener(listener)
-                // The glasses may have re-appeared before the listener existed.
                 continuation.resume(
                     displayManager
                         .getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION)
-                        .firstOrNull { it.displayId != previousId }
+                        .firstOrNull(accept)
                 )
-            }, DISPLAY_SETTLE_MS)
+            }, timeoutMs)
         }
+
+    /** Shaped like two 16:9 halves glued together — the test `RenderPresentation` picks modes by. */
+    private fun Display.hasSideBySideMode(): Boolean =
+        supportedModes.any { it.physicalWidth >= 2 * it.physicalHeight }
 
     private companion object {
         const val DISPLAY_SETTLE_MS = 4_000L

@@ -33,4 +33,11 @@ interface HidTransport : Closeable {
 interface HidTransportProvider {
     /** @param interfaceId the USB `bInterfaceNumber`, not an enumeration index. */
     fun open(interfaceId: Int): Result<HidTransport>
+
+    /**
+     * The `bInterfaceNumber` of every HID-class interface on the device, for
+     * drivers whose hardware moves its interfaces around between
+     * configurations. Empty when the provider cannot tell, as under test.
+     */
+    fun hidInterfaceIds(): List<Int> = emptyList()
 }

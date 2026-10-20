@@ -345,7 +345,28 @@ class StereoCompositor(
      * sweep the same question either way.
      */
     @Volatile
-    var scanoutCompensation = 1.0f
+    var scanoutCompensation = optics.scanoutCompensation
+
+    /**
+     * The display's refresh rate, for when the glasses do not report their
+     * timing ([displayClock] is null). It sets the frame time the prediction
+     * horizon counts and the span the scanout correction spreads across.
+     *
+     * Assumed 60 Hz before this existed. At 120 Hz (RayNeo GT glasses in 2D)
+     * that doubled the scanout span, so every head movement was warped across
+     * twice the time the panel actually takes to light — a smear while
+     * looking around — and added a frame of over-prediction on top.
+     */
+    @Volatile
+    var refreshHz: Float = 60f
+        set(value) {
+            field = if (value.isFinite() && value > 1f) value else 60f
+            projectionDirty = true
+        }
+
+    private val frameTimeMs: Float get() = 1000f / refreshHz
+
+    private val scanoutSeconds: Float get() = 1f / refreshHz
 
     /**
      * Rendered vertical field of view per eye.
@@ -387,7 +408,18 @@ class StereoCompositor(
      */
     var showChrome = true
 
-    /** Off by default: panels should look nailed to the world, not follow you. */
+    /**
+     * Off by default: panels should look nailed to the world, not follow you.
+     *
+     * Also what glasses that world-lock the image themselves need (RayNeo's
+     * on-board "pinned" mode): the scene is drawn fixed to the face and the
+     * glasses move the whole image. Everything that would turn the scene with
+     * the head — the view, the late warp, the scanout shear, following — then
+     * stands still, or the head's motion is compensated twice. The gaze still
+     * follows the head, since that is where the wearer is looking within the
+     * image the glasses have moved.
+     */
+    @Volatile
     var lockToHead = false
 
     /**
@@ -498,6 +530,20 @@ class StereoCompositor(
 
     private var frameWidth = 0
     private var frameHeight = 0
+
+    /**
+     * True when the surface is not two eyes side by side but one image the
+     * glasses show to both — a 2D mode, such as RayNeo glasses offer without
+     * a host command for 3D. One centred eye is drawn across the whole frame:
+     * no depth, but no squashed pair of half-images in each eye either, and
+     * these modes often run faster than the side-by-side one.
+     */
+    private var mono = false
+
+    /** Width of what one rendered eye covers: half the frame, or all of it in [mono]. */
+    private val eyeWidth: Int get() = if (mono) frameWidth else frameWidth / 2
+
+    private val eyeCount: Int get() = if (mono) 1 else 2
     private var clipPerRadianX = 0f
     private var clipPerRadianY = 0f
 
@@ -569,9 +615,13 @@ class StereoCompositor(
         presentTimingAvailable = FrameTimestamps.enable()
         frameWidth = width
         frameHeight = height
+        mono = width < 2 * height
         projectionDirty = true
         rebuildProjection()
-        log("  compositor: frame ${width}x$height, per-eye ${width / 2}x$height")
+        log(
+            if (mono) "  compositor: frame ${width}x$height, mono (one image for both eyes)"
+            else "  compositor: frame ${width}x$height, per-eye ${width / 2}x$height"
+        )
     }
 
     override fun onDrawFrame(gl: GL10?) {
@@ -595,7 +645,7 @@ class StereoCompositor(
         lastAim = aim
         scene.updateGrab(aim)
         scene.updateResize(aim)
-        advanceFrameClock(pose.orientation)
+        advanceFrameClock(if (lockToHead) Quaternion.IDENTITY else pose.orientation)
 
         quaternionToMatrix(if (lockToHead) Quaternion.IDENTITY else pose.orientation, headMatrix)
         lastHit = scene.hitTest(aim)
@@ -604,12 +654,12 @@ class StereoCompositor(
         // Yaw about canonical +Y moves content horizontally; pitch about +X
         // moves it vertically. Zero when the warp is doing this properly at the
         // end of the frame, or the same rotation is applied twice.
-        val warping = reprojection && distortionReady
-        val scanSeconds = if (warping) 0f else SCANOUT_SECONDS
+        val warping = reprojection && distortionReady && !lockToHead
+        val scanSeconds = if (warping || lockToHead) 0f else scanoutSeconds
         val scanYaw = -pose.angularVelocity.y * scanSeconds * scanoutCompensation
         val scanPitch = pose.angularVelocity.x * scanSeconds * scanoutCompensation
 
-        val halfWidth = frameWidth / 2
+        val halfWidth = eyeWidth
         val panels = scene.panels
 
         val overlays = listOfNotNull(scene.dock, scene.launcher, scene.popup)
@@ -622,7 +672,7 @@ class StereoCompositor(
         titleBars.forget(panels.mapTo(HashSet()) { it.id }).forEach { abandonedTextures += it }
         val stacked = scene.drawOrder()
 
-        for (eye in 0 until 2) {
+        for (eye in 0 until eyeCount) {
             if (distortionReady) {
                 // Everything below now draws into an offscreen image that is
                 // slightly wider than the eye, and is warped onto the display
@@ -671,7 +721,7 @@ class StereoCompositor(
             // there is, and rendering the second eye is more of the delay it
             // exists to absorb.
             updateReprojection(pose, photon, warping)
-            for (eye in 0 until 2) {
+            for (eye in 0 until eyeCount) {
                 distortion[eye].drawTo(eye * halfWidth, 0, halfWidth, frameHeight)
             }
         }
@@ -1072,7 +1122,7 @@ class StereoCompositor(
     /** The pill under the panel, in the panel's own plane. */
     private fun drawTitleBar(panel: Panel, viewProjection: FloatArray, active: Boolean, opacity: Float) {
         val hit = lastHit
-        val texture = titleBars.texture(panel, hovered = hit?.part?.takeIf { hit.panel === panel })
+        val texture = titleBars.texture(panel, hovered = hit?.part?.takeIf { hit.panel === panel }, shape = scene.shapeButtons)
         val pose = panel.pose
         val metresPerPx = pose.widthMetres / panel.widthPx
         val bar = TitleBar.bar(panel.widthPx, panel.heightPx)
@@ -1260,8 +1310,8 @@ class StereoCompositor(
 
     private fun rebuildProjection() {
         if (frameWidth == 0 || frameHeight == 0) return
-        // Per eye the frame is half as wide.
-        val eyeAspect = (frameWidth / 2f) / frameHeight
+        // Per eye the frame is half as wide, unless one image serves both.
+        val eyeAspect = eyeWidth.toFloat() / frameHeight
 
         rebuildDistortion()
 
@@ -1347,7 +1397,6 @@ class StereoCompositor(
         }
         overfill = maxOf(lensNeeded, reprojectionOverfill())
 
-        val eyeWidth = frameWidth / 2
         val textureWidth = (eyeWidth * (1f + 2f * overfill)).toInt()
         val textureHeight = (frameHeight * (1f + 2f * overfill)).toInt()
 
@@ -1375,12 +1424,12 @@ class StereoCompositor(
      */
     private fun reprojectionOverfill(): Float {
         if (!reprojection) return 0f
-        val eyeAspect = (frameWidth / 2f) / frameHeight
+        val eyeAspect = eyeWidth.toFloat() / frameHeight
         val frustum = frustumFor(Eye.LEFT, eyeAspect).scaledBy(fovScale)
         return Reprojection.overfillFor(
             frustum,
             Math.toRadians(reprojectionRateDegreesPerSecond.toDouble()).toFloat(),
-            SCANOUT_SECONDS,
+            scanoutSeconds,
         )
     }
 
@@ -1420,7 +1469,7 @@ class StereoCompositor(
      */
     private fun renderPose(photonDeviceNs: Long?): HeadPose {
         val clock = displayClock
-        if (photonDeviceNs == null || clock == null) return tracker.predictedPose(FRAME_TIME_MS)
+        if (photonDeviceNs == null || clock == null) return tracker.predictedPose(frameTimeMs)
         val latest = tracker.pose
         val midScanoutNs = photonDeviceNs + (clock.periodNs * scanoutCompensation / 2.0).toLong()
         return tracker.poseAfterMs((midScanoutNs - latest.timestampNs) / 1e6f)
@@ -1459,7 +1508,7 @@ class StereoCompositor(
         } else {
             // A reconnected stream can restart its clock, which would otherwise
             // buy an arbitrary amount of freshness and warp the frame to nothing.
-            val horizonMs = tracker.predictionHorizonMs(FRAME_TIME_MS)
+            val horizonMs = tracker.predictionHorizonMs(frameTimeMs)
             val freshenedMs = ((latest.timestampNs - renderPose.timestampNs) / 1_000_000f)
                 .coerceIn(0f, maxOf(horizonMs, 0f))
             firstRowMs = horizonMs - freshenedMs - scanSpanMs
@@ -1494,7 +1543,7 @@ class StereoCompositor(
      * where it will not.
      */
     private fun scanoutSpanMs(clock: DisplayClock?): Float =
-        if (clock != null) (clock.periodNs / 1e6).toFloat() else SCANOUT_SECONDS * 1000f
+        if (clock != null) (clock.periodNs / 1e6).toFloat() else scanoutSeconds * 1000f
 
     private fun angleBetweenDegrees(a: Quaternion, b: Quaternion): Float {
         val cosHalf = Math.abs(a.dot(b)).coerceAtMost(1f)
@@ -1529,7 +1578,8 @@ class StereoCompositor(
 
         if (left == null || right == null) {
             for (index in 0 until 2) {
-                val sign = if (index == 0) -1f else 1f
+                // In mono the one image is seen from between the eyes.
+                val sign = if (mono) 0f else if (index == 0) -1f else 1f
                 Matrix.setIdentityM(eyePose[index], 0)
                 Matrix.translateM(eyePose[index], 0, sign * ipdMetres / 2f, 0f, 0f)
                 eyeRotationQuaternion[index] = Quaternion.IDENTITY
@@ -1550,6 +1600,8 @@ class StereoCompositor(
             Matrix.translateM(eyePose[index], 0, offset.x, offset.y, offset.z)
             Matrix.multiplyMM(eyePose[index], 0, eyePose[index].copyOf(), 0, eyeRotation, 0)
         }
+        // In mono the one image is seen from between the eyes.
+        if (mono) for (i in 12..14) eyePose[0][i] = 0f
     }
 
     /** Forward in the canonical frame is -Z: the negated third column. */
@@ -1560,7 +1612,6 @@ class StereoCompositor(
 
     companion object {
 
-        private const val FRAME_TIME_MS = 16.6f
         private const val CURSOR_METRES = 0.03f
 
         /** The arrow's picture, which leaves room around the arrow itself, in panel pixels. */
@@ -1589,12 +1640,6 @@ class StereoCompositor(
 
         private const val NEAR_PLANE_M = 0.5f
         private const val FAR_PLANE_M = 200f
-
-        /**
-         * One frame at 60 Hz; the panel is lit progressively over this period.
-         * Only a fallback now — the glasses report the real figure.
-         */
-        private const val SCANOUT_SECONDS = 1f / 60f
 
         /**
          * Beyond this the beacons have stopped and the refresh grid is a guess,

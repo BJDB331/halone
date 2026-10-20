@@ -1,6 +1,9 @@
 package dev.halone.app.stereo
 
 import android.content.Context
+import android.hardware.display.DisplayManager
+import android.os.Handler
+import android.os.Looper
 import android.view.Display
 import dev.halone.compositor.Panel
 import dev.halone.compositor.PanelEngine
@@ -39,6 +42,14 @@ class GlassesStereoSession(
 
     private var optics: Optics? = null
 
+    /** Latch pacing as this session would choose it, for the `auto` frame-pacing setting. */
+    var autoPaceOnLatch = true
+        private set
+
+    /** The glasses' display the compositor was last shown on. */
+    var display: Display? = null
+        private set
+
     suspend fun enterStereo(device: GlassesDevice, mode: DisplayMode? = null): Display? =
         displays.enterStereo(device, mode)
 
@@ -51,6 +62,7 @@ class GlassesStereoSession(
     ) {
         dismiss()
         this.optics = optics
+        this.display = display
         compositor = StereoCompositor(tracker, optics, scene, log).also {
             // The tracker already loaded it, and the two must agree: the head
             // frame the tracker publishes is defined by the same eye rotations
@@ -58,6 +70,18 @@ class GlassesStereoSession(
             it.calibration = tracker.calibration
             it.displayClock = displayClock
             presentation.show(display, it)
+            // The rate the display actually runs at, not the one asked for:
+            // **[measured]** a OnePlus 12 accepts the request for 120 Hz on a
+            // GT Max all the way down to SurfaceFlinger and still drives the
+            // link at 60, and timing a 60 Hz panel as 120 under-predicts by a
+            // frame and halves the scanout span.
+            it.refreshHz = display.refreshRate
+            watchRate(display, it)
+            // Latch pacing waits on frame timestamps that arrive a beat late;
+            // tuned at XREAL's 60 Hz it fits, but at 120 Hz without a display
+            // clock (RayNeo GT series, measured) it halved the frame rate.
+            autoPaceOnLatch = !(displayClock == null && presentation.refreshHz > 90f)
+            it.paceOnLatch = autoPaceOnLatch
         }
     }
 
@@ -108,7 +132,13 @@ class GlassesStereoSession(
         }
     }
 
+    /** When a panel was last closed, on the uptime clock; 0 for never. */
+    @Volatile
+    var lastPanelClosedAt = 0L
+        private set
+
     fun closePanel(panel: Panel) {
+        lastPanelClosedAt = android.os.SystemClock.uptimeMillis()
         scene.remove(panel)
         compositor?.detach(panel) ?: panel.engine.close()
         // A drift, not a jump: closing a panel is a layout change like any
@@ -117,7 +147,35 @@ class GlassesStereoSession(
         log("  closed panel '${panel.id}'")
     }
 
+    private var rateListener: DisplayManager.DisplayListener? = null
+
+    /** Follows the display if the system does switch its rate later. */
+    private fun watchRate(display: Display, compositor: StereoCompositor) {
+        unwatchRate()
+        val manager = context.getSystemService(DisplayManager::class.java) ?: return
+        val listener = object : DisplayManager.DisplayListener {
+            override fun onDisplayChanged(displayId: Int) {
+                if (displayId != display.displayId) return
+                val hz = manager.getDisplay(displayId)?.refreshRate ?: return
+                if (kotlin.math.abs(hz - compositor.refreshHz) > 1f) {
+                    compositor.refreshHz = hz
+                    log("  display ${displayId} now at ${"%.0f".format(hz)} Hz")
+                }
+            }
+            override fun onDisplayAdded(displayId: Int) = Unit
+            override fun onDisplayRemoved(displayId: Int) = Unit
+        }
+        manager.registerDisplayListener(listener, Handler(Looper.getMainLooper()))
+        rateListener = listener
+    }
+
+    private fun unwatchRate() {
+        rateListener?.let { context.getSystemService(DisplayManager::class.java)?.unregisterDisplayListener(it) }
+        rateListener = null
+    }
+
     fun dismiss() {
+        unwatchRate()
         // The presentation goes first: it stops the render thread, so nothing is
         // mid-draw against a texture we are about to release.
         presentation.dismiss()

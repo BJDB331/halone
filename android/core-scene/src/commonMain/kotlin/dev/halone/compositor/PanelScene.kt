@@ -1229,7 +1229,7 @@ open class PanelScene<P : ScenePanel> {
      * was. The window eases from its old size to the new rather than jumping;
      * a follower gets there through its slot, as anything else it does.
      */
-    fun resized(panel: P, oldWidthPx: Int, oldHeightPx: Int, fixed: Corner) {
+    fun resized(panel: P, oldWidthPx: Int, oldHeightPx: Int, fixed: Corner, keepCentreX: Boolean = false) {
         if (panel !in mutable) return
         val pose = panel.pose
         val metresPerPx = pose.widthMetres / oldWidthPx
@@ -1239,7 +1239,8 @@ open class PanelScene<P : ScenePanel> {
         // A window's edges are at its heading plus and minus half its angle, so
         // keeping one where it was is a matter of the change in that half-angle.
         fun halfAngle(metres: Float) = atan(metres / 2f / distance)
-        val yawShift = -fixed.sx * (halfAngle(pose.widthMetres) - halfAngle(width))
+        // Or, for a change of shape rather than a drag, the horizontal centre.
+        val yawShift = if (keepCentreX) 0f else -fixed.sx * (halfAngle(pose.widthMetres) - halfAngle(width))
         val pitchShift = fixed.sy * (halfAngle(pose.heightMetres) - halfAngle(height))
         resizeAnimations[panel] = ResizeAnimation(
             fromWidth = pose.widthMetres,
@@ -1341,6 +1342,9 @@ open class PanelScene<P : ScenePanel> {
      * and the overlays are not windows.
      */
     var windowsAutoHide = false
+
+    /** Whether title bars carry the button that cycles a window through preset shapes. */
+    var shapeButtons = false
 
     var windowsHideDelaySeconds = 1f
 
@@ -1623,7 +1627,7 @@ open class PanelScene<P : ScenePanel> {
         val y = v * panel.heightPx
         val part = if (u in 0f..1f && v in 0f..1f) HitPart.CONTENT
         else if (chrome) {
-            TitleBar.partAt(panel.widthPx, panel.heightPx, x, y, panel.backButton)
+            TitleBar.partAt(panel.widthPx, panel.heightPx, x, y, panel.backButton, shapeButtons)
                 ?: ResizeHandles.cornerAt(panel.widthPx, panel.heightPx, x, y)?.let(HitPart::resizing)
                 ?: return null
         } else return null

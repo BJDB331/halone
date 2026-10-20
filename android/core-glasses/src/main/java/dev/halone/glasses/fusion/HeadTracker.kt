@@ -195,14 +195,86 @@ class HeadTracker(
     private fun publish(raw: Quaternion, angularVelocity: Vec3, timestampNs: Long) {
         val corrected = (raw * mountingCorrection).normalized()
         gravityOrientation = corrected
+        // The rate was measured about the IMU's axes; prediction turns the head
+        // about its own.
+        val rate = mountingCorrection.conjugate().rotate(angularVelocity)
+        val live = (worldReference * corrected).normalized()
+        val held = stabilise(live, rate, timestampNs)
         published.set(
             HeadPose(
-                orientation = (worldReference * corrected).normalized(),
-                angularVelocity = mountingCorrection.conjugate().rotate(angularVelocity),
+                orientation = held ?: live,
+                // A held pose is not moving, so nothing may extrapolate it.
+                angularVelocity = if (held != null) Vec3.ZERO else rate,
                 timestampNs = timestampNs,
                 sampleCount = samples,
             )
         )
+    }
+
+    /**
+     * Degrees the published pose may hold still at rest; see
+     * [dev.halone.glasses.api.Optics.restDeadbandDegrees]. Live-tunable.
+     */
+    @Volatile
+    var restDeadbandDegrees: Float = optics.restDeadbandDegrees
+
+    private var heldPose: Quaternion? = null
+    private var lastStabiliseNs = 0L
+
+    /** Set from any thread; the reader thread drops the hold on its next sample. */
+    @Volatile
+    private var holdReset = false
+
+    /**
+     * The rest hold: while the head turns slower than [REST_DEGREES_PER_SECOND]
+     * and stays within [restDeadbandDegrees] of where the pose was held, the
+     * held pose is published unchanged, so sensor noise at rest never reaches
+     * the screen. A slow creep past the band is followed gently; any real
+     * movement releases the hold at once and the live pose goes out untouched,
+     * so turning carries no added lag.
+     *
+     * Returns the pose to publish instead of [live], or null to publish live.
+     */
+    private fun stabilise(live: Quaternion, rate: Vec3, timestampNs: Long): Quaternion? {
+        val band = restDeadbandDegrees
+        val dt = if (lastStabiliseNs == 0L) 0f else ((timestampNs - lastStabiliseNs).coerceAtLeast(0L) / 1e9f)
+        lastStabiliseNs = timestampNs
+        if (holdReset) {
+            holdReset = false
+            heldPose = null
+        }
+        if (band <= 0f) {
+            heldPose = null
+            return null
+        }
+        val speed = Math.toDegrees(rate.length.toDouble()).toFloat()
+        val held = heldPose
+        if (held == null || speed > REST_DEGREES_PER_SECOND) {
+            heldPose = live
+            return null
+        }
+        val apart = angleBetweenDegrees(held, live)
+        if (apart <= band) return held
+        // Drifting past the band at rest: close the excess gently, not in a step.
+        val alpha = (1f - kotlin.math.exp(-dt / REST_CATCH_UP_SECONDS)).coerceIn(0f, 1f)
+        val next = nlerp(held, live, alpha)
+        heldPose = next
+        return next
+    }
+
+    private fun angleBetweenDegrees(a: Quaternion, b: Quaternion): Float {
+        val cosHalf = kotlin.math.abs(a.dot(b)).coerceAtMost(1f)
+        return Math.toDegrees(2.0 * kotlin.math.acos(cosHalf.toDouble())).toFloat()
+    }
+
+    private fun nlerp(a: Quaternion, b: Quaternion, t: Float): Quaternion {
+        val to = if (a.dot(b) < 0f) b.negated() else b
+        return Quaternion(
+            a.w + (to.w - a.w) * t,
+            a.x + (to.x - a.x) * t,
+            a.y + (to.y - a.y) * t,
+            a.z + (to.z - a.z) * t,
+        ).normalized()
     }
 
     /**
@@ -246,6 +318,8 @@ class HeadTracker(
         val previous = worldReference
         bedFrame = bed
         worldReference = (yawOf(current).conjugate() * tilt).normalized()
+        // A pose held in the old world frame means nothing in the new one.
+        holdReset = true
         return (worldReference * previous.conjugate()).normalized()
     }
 
@@ -429,6 +503,15 @@ class HeadTracker(
          * turns and was never picked; 0 ms won once but stuttered on slow turns.
          */
         const val DEFAULT_VELOCITY_SMOOTHING_MS = 15f
+
+        /**
+         * Below this the head counts as at rest for the hold. Above a GT
+         * series' resting noise (~0.7 °/s) and well below a deliberate glance.
+         */
+        const val REST_DEGREES_PER_SECOND = 4f
+
+        /** How quickly a held pose closes a creep past its band. */
+        const val REST_CATCH_UP_SECONDS = 0.25f
 
         /** Beyond this the stream stalled, so the estimate restarts. */
         const val MAX_RATE_GAP_SECONDS = 0.1f

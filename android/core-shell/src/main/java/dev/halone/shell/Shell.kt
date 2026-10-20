@@ -3,6 +3,7 @@ package dev.halone.shell
 import dev.halone.compositor.Corner
 import dev.halone.compositor.Panel
 import dev.halone.compositor.Scene
+import dev.halone.compositor.TitleBar
 import dev.halone.compositor.SizeLimits
 import dev.halone.compositor.StereoRegion
 import org.json.JSONObject
@@ -147,6 +148,18 @@ class ShellWindow(
 
     /** Where `apps.launch` last asked the window to go. */
     var route: String? = null
+
+    /** Set once the window has its remembered size, or the wearer chose one. */
+    internal var sizeSettled = false
+}
+
+/**
+ * The size the wearer last chose for each app's windows, so an app that opens
+ * portrait comes back at the shape it was given.
+ */
+interface WindowSizeStore {
+    fun load(key: String): Pair<Int, Int>?
+    fun save(key: String, widthPx: Int, heightPx: Int)
 }
 
 /**
@@ -704,6 +717,52 @@ class Shell(
         notifyWindows()
     }
 
+    /** Remembers each app's chosen window size; null, as under test, forgets. */
+    var windowSizes: WindowSizeStore? = null
+
+    /**
+     * What a chosen size is remembered under. Plugin windows go by title as
+     * well, because one plugin can show many apps — the Android apps plugin
+     * opens every Android app as a window of its own, named after it.
+     */
+    private fun sizeKey(window: ShellWindow): String? {
+        val app = window.appId ?: return null
+        return if (window.kind == WindowKind.NATIVE) "$app|${window.title}" else app
+    }
+
+    /**
+     * The wearer's size button: the next preset shape, kept for the next time
+     * this app opens. Not bound by the window's limits, which an app that
+     * declares only portrait sizes would otherwise use to refuse landscape.
+     */
+    fun cycleSize(id: String): Pair<Int, Int> {
+        val window = find(id)
+        val (width, height) = TitleBar.nextSize(window.panel.widthPx, window.panel.heightPx)
+        applySize(window, width, height)
+        window.sizeSettled = true
+        sizeKey(window)?.let { windowSizes?.save(it, width, height) }
+        return width to height
+    }
+
+    private fun restoreSize(window: ShellWindow) {
+        if (window.sizeSettled) return
+        val key = sizeKey(window) ?: return
+        val (width, height) = windowSizes?.load(key) ?: return
+        window.sizeSettled = true
+        applySize(window, width, height)
+    }
+
+    /** About the bottom centre, so the title bar under the window stays put. */
+    private fun applySize(window: ShellWindow, width: Int, height: Int) {
+        val panel = window.panel
+        val oldWidth = panel.widthPx
+        val oldHeight = panel.heightPx
+        if (width == oldWidth && height == oldHeight) return
+        panel.engine.resize(width, height)
+        scene.resized(panel, oldWidth, oldHeight, Corner.BOTTOM_LEFT, keepCentreX = true)
+        notifyWindows()
+    }
+
     /** Resizes a window at its own request, within its limits, keeping its top or bottom edge where it is. */
     fun resize(id: String, widthPx: Int, heightPx: Int, keepTop: Boolean = true): Pair<Int, Int> {
         val panel = find(id).panel
@@ -740,6 +799,8 @@ class Shell(
         val window = find(id)
         window.title = title.take(MAX_TITLE)
         window.panel.title = window.title
+        // A plugin window is known by its title, which arrives after it opens.
+        if (window.kind == WindowKind.NATIVE) restoreSize(window)
         notifyWindows()
     }
 
@@ -810,6 +871,7 @@ class Shell(
         window.panel.title = window.title
         window.panel.tag = if (window.kind == WindowKind.WEB) "web" else null
         windows[window.id] = window
+        if (window.kind != WindowKind.NATIVE) restoreSize(window)
         scene.launcherRequested = false
         notifyWindows()
         checkLauncher()

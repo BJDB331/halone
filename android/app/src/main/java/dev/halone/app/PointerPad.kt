@@ -56,6 +56,20 @@ class PointerPad(
     private var record: TextView? = null
     private var switchMode: View? = null
     private var follow: TextView? = null
+    private var stats: TextView? = null
+
+    /** Everything the pad shows, hidden together while the phone screen is off. */
+    private val visibleParts = mutableListOf<View>()
+    private var wakeStrip: View? = null
+    private var screenOff = false
+    private var lastStats = ""
+
+    /** Whether the bottom line shows display diagnostics: a developer setting, off by default. */
+    var showStats: Boolean = false
+        set(value) {
+            field = value
+            activity.runOnUiThread { applyStats() }
+        }
 
     /** When set, the pad is a touchpad and every touch goes here instead. */
     @Volatile
@@ -85,6 +99,7 @@ class PointerPad(
                 record = button("radio_button_checked", "Record") { actions.toggleRecording() }.also { addView(it) }
                 switchMode = button("swap_horiz", "Switch pointer mode") { actions.nextPointerMode() }.also { addView(it) }
                 follow = button("moving", "World lock or follow") { actions.toggleFollow() }.also { addView(it) }
+                addView(button("brightness_6", "Turn the phone screen off") { setScreenOff(true) })
             }
 
             val pad = object : FrameLayout(activity) {
@@ -125,7 +140,7 @@ class PointerPad(
             }.apply {
                 setBackgroundColor(Color.BLACK)
                 isClickable = true
-                addView(Grid(activity), FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+                addView(Grid(activity).also { visibleParts += it }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
                 val centre = LinearLayout(activity).apply {
                     orientation = LinearLayout.VERTICAL
                     gravity = Gravity.CENTER_HORIZONTAL
@@ -134,6 +149,26 @@ class PointerPad(
                 }
                 addView(centre, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER))
                 addView(bar, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP))
+                visibleParts += centre
+                visibleParts += bar
+                // While the screen is off, a tap along the top edge is the way
+                // back; everywhere else stays a working pad, in the dark.
+                wakeStrip = View(activity).apply {
+                    visibility = View.GONE
+                    isClickable = true
+                    contentDescription = "Turn the phone screen back on"
+                    setOnClickListener { setScreenOff(false) }
+                }.also {
+                    addView(it, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, dp(96), Gravity.TOP))
+                }
+                stats = TextView(activity).apply {
+                    textSize = 12f
+                    setTextColor(Color.argb(0x66, 0xff, 0xff, 0xff))
+                    gravity = Gravity.CENTER
+                    setPadding(0, dp(12), 0, dp(12))
+                }.also {
+                    addView(it, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM).apply { bottomMargin = dp(12) })
+                }
                 ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
                     val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
                     bar.setPadding(bars.left + dp(8), bars.top + dp(8), bars.right + dp(8), dp(8))
@@ -145,6 +180,7 @@ class PointerPad(
             pad.bringToFront()
             ViewCompat.requestApplyInsets(pad)
             view = pad
+            applyStats()
             refresh()
         }
     }
@@ -158,6 +194,18 @@ class PointerPad(
     fun setRecording(recording: Boolean) = activity.runOnUiThread {
         this.recording = recording
         refresh()
+    }
+
+    /** Not one of [visibleParts]: it has its own setting, and stays dark with the screen. */
+    private fun applyStats() {
+        stats?.text = lastStats
+        stats?.visibility = if (showStats && !screenOff) View.VISIBLE else View.GONE
+    }
+
+    /** A line of display diagnostics along the bottom: refresh rate and frames drawn. */
+    fun setStats(text: String) = activity.runOnUiThread {
+        lastStats = text
+        if (showStats) stats?.text = text
     }
 
     fun setFollowing(following: Boolean) = activity.runOnUiThread {
@@ -198,11 +246,38 @@ class PointerPad(
                 null,
             )
             setOnClickListener { onClick() }
-            layoutParams = LinearLayout.LayoutParams(dp(48), dp(48)).apply {
-                leftMargin = dp(6)
-                rightMargin = dp(6)
+            // Eight buttons in gyro mode: at 48 + 12 dp each they ran past a
+            // phone's width and the last ones were cut off.
+            layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply {
+                leftMargin = dp(2)
+                rightMargin = dp(2)
             }
         }
+
+    /**
+     * The phone screen "off" while the glasses stay on: every pixel black
+     * and the backlight as low as the window may set it. On an OLED phone
+     * (OnePlus 12) black pixels are unlit, so the screen is dark and draws
+     * next to nothing — but the phone is awake, so the glasses' display, the
+     * tracking and the pad all keep working. Really sleeping the phone would
+     * lock it and take the glasses' picture with it.
+     *
+     * The pad still takes gestures in the dark; a tap along the top edge,
+     * where the buttons were, turns the screen back on.
+     */
+    fun setScreenOff(off: Boolean) = activity.runOnUiThread {
+        if (off == screenOff) return@runOnUiThread
+        screenOff = off
+        visibleParts.forEach { it.visibility = if (off) View.INVISIBLE else View.VISIBLE }
+        applyStats()
+        wakeStrip?.visibility = if (off) View.VISIBLE else View.GONE
+        activity.window.attributes = activity.window.attributes.apply {
+            screenBrightness =
+                if (off) android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_OFF
+                else android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+        }
+        tick()
+    }
 
     /** A long-press tick in the hand holding the phone, for something the wearer cannot see start. */
     fun tick() {
@@ -210,7 +285,10 @@ class PointerPad(
     }
 
     fun hide() {
+        setScreenOff(false)
         activity.runOnUiThread {
+            visibleParts.clear()
+            wakeStrip = null
             view?.let { (it.parent as? ViewGroup)?.removeView(it) }
             view = null
             modeIcon = null

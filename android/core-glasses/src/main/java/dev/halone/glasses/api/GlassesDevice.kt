@@ -39,6 +39,13 @@ interface GlassesDevice : Closeable {
      */
     val scanout: ScanoutSource? get() = null
 
+    /**
+     * Non-null when the glasses can world-lock the image themselves, in their
+     * own hardware (RayNeo's "pinned" mode). Defaulted for the same reason as
+     * [calibration].
+     */
+    val onboardPinning: OnboardPinning? get() = null
+
     fun addEventListener(listener: DeviceEventListener)
     fun removeEventListener(listener: DeviceEventListener)
 
@@ -65,6 +72,21 @@ interface DisplayControl {
      * callers must be ready to rebuild rather than assuming a seamless switch.
      */
     val modeChangeRecreatesDisplay: Boolean
+}
+
+/**
+ * The glasses' own world-locking. While [enabled], the glasses move the image
+ * against the head themselves, with their own tracker and at their own
+ * latency, so the host must draw the scene head-locked. One screen's worth of
+ * scene, and no reprojection of Halone's own — but nothing between the
+ * sensor and the panel but the glasses' own chip.
+ *
+ * Changes made on the glasses themselves arrive as
+ * [DeviceEvent.OnboardPinningChanged].
+ */
+interface OnboardPinning {
+    val enabled: Boolean
+    fun setEnabled(enabled: Boolean): Result<Unit>
 }
 
 interface BrightnessControl {

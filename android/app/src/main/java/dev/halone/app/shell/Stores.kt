@@ -18,6 +18,19 @@ internal class FileStore(context: Context, name: String, private val writer: jav
     }
 }
 
+/** Each app's chosen window size, as `WIDTHxHEIGHT` under its key. */
+internal class PreferencesWindowSizes(context: Context) : dev.halone.shell.WindowSizeStore {
+    private val preferences = context.getSharedPreferences("window-sizes", Context.MODE_PRIVATE)
+
+    override fun load(key: String): Pair<Int, Int>? {
+        val (width, height) = preferences.getString(key, null)?.split('x')?.takeIf { it.size == 2 } ?: return null
+        return (width.toIntOrNull() ?: return null) to (height.toIntOrNull() ?: return null)
+    }
+
+    override fun save(key: String, widthPx: Int, heightPx: Int) =
+        preferences.edit().putString(key, "${widthPx}x$heightPx").apply()
+}
+
 internal class PreferencesStore(context: Context) : SettingsStore {
     private val preferences = context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
     override fun load(): String? = preferences.getString(KEY, null)

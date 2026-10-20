@@ -62,6 +62,7 @@ import dev.halone.app.tap.TapRecorder
 import dev.halone.app.tap.TapScript
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -546,6 +547,29 @@ class MainActivity : AppCompatActivity() {
         lifecycle("stopped")
         super.onStop()
         if (android.os.Build.VERSION.SDK_INT >= 34) screenCaptured?.let { unregisterScreenCaptureCallback(it) }
+        reclaimFromClosedApp()
+    }
+
+    /**
+     * Closing an Android app's window can hand the phone to that app: when
+     * the app's virtual display goes away, Android moves its activity onto
+     * the phone's own screen, in front of Halone — which then loses the pad.
+     * If Halone is pushed back just after a window closed while the
+     * environment runs, it brings itself back. A wearer leaving Halone on
+     * purpose (Home, another app) closed no window, so is left alone.
+     */
+    private fun reclaimFromClosedApp() {
+        val shell = shellSession ?: return
+        if (isFinishing || !shell.shell.settings.boolean(ShellSettings.WINDOWS_RECLAIM_PHONE)) return
+        val closedAt = stereoSession?.lastPanelClosedAt ?: return
+        if (android.os.SystemClock.uptimeMillis() - closedAt > RECLAIM_AFTER_CLOSE_MS) return
+        logLine("  an app window closed and took the phone; bringing Halone back")
+        runCatching {
+            startActivity(
+                Intent(this, MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            )
+        }.onFailure { logLine("  could not come back: ${it.message}") }
     }
 
     private var projectionResult: ((android.media.projection.MediaProjection?) -> Unit)? = null
@@ -706,10 +730,21 @@ class MainActivity : AppCompatActivity() {
                         return@launch
                     }
                 }
+                // Every start begins with Halone holding the scene; the
+                // glasses' own button hands it over again.
+                connection.device?.onboardPinning?.takeIf { it.enabled }?.let { pinning ->
+                    withContext(Dispatchers.IO) { pinning.setEnabled(false) }
+                }
                 if (stereoSession?.compositor == null) {
                     logLine("▶ entering stereo")
-                    enterStereo()
-                    if (!waitUntil(STEREO_TIMEOUT_MS) { stereoSession?.compositor != null }) {
+                    val attempt = enterStereo()
+                    // Stops early when the attempt gives up, rather than
+                    // sitting out the whole timeout after a failure it has
+                    // already logged.
+                    waitUntil(STEREO_TIMEOUT_MS) {
+                        stereoSession?.compositor != null || attempt?.isActive != true
+                    }
+                    if (stereoSession?.compositor == null) {
                         logLine("  stereo did not start")
                         return@launch
                     }
@@ -773,6 +808,13 @@ class MainActivity : AppCompatActivity() {
                         device.addEventListener { event ->
                             logOnMain("  event: $event")
                             if (event is DeviceEvent.Disconnected) runOnUiThread { glassesGone() }
+                            // The wearer handed world-locking to the glasses with their
+                            // own button (or it came back): draw head-locked while
+                            // they hold the image, so it is not stabilised twice.
+                            if (event is DeviceEvent.OnboardPinningChanged) runOnUiThread {
+                                stereoSession?.compositor?.lockToHead = event.enabled
+                                if (event.enabled) recenterView()
+                            }
                         }
                         // It pauses the sensor stream, so it happens once here
                         // rather than lazily later.
@@ -815,6 +857,7 @@ class MainActivity : AppCompatActivity() {
 
         val head = HeadTracker(device.optics, calibration = calibration)
         tracker = head
+        applyTrackingSettings()
         // One sink, fanned out: the tracker drives the pose while the
         // development actions keep the last raw sample for axis identification.
         device.tracking.start { sample ->
@@ -1329,6 +1372,96 @@ class MainActivity : AppCompatActivity() {
     private fun showPad() {
         startHitHistory()
         if (pointerPad == null) pointerPad = PointerPad(this, padGestures, padActions).also { it.show() }
+        applyTrackingSettings()
+        startPadStats()
+    }
+
+    /**
+     * Tracking tuning and the pad's stats line, from the Developer settings.
+     *
+     * Kept in the shell's settings rather than anywhere of the pad's own, so
+     * a value set once stays set: it is saved when it changes and read back
+     * here on every connect, every compositor and every change. With custom
+     * tuning off, each pair of glasses gets its driver's tuning back.
+     */
+    private fun applyTrackingSettings() {
+        val settings = shellSession?.shell?.settings
+        val custom = settings?.bool(ShellSettings.TRACKING_CUSTOM) == true
+        tracker?.let { head ->
+            val optics = connection.device?.optics
+            if (custom) {
+                head.predictionOverrideMs = settings!!.num(ShellSettings.TRACKING_PREDICTION_MS)?.toFloat()
+                settings.num(ShellSettings.TRACKING_STEADINESS_DEGREES)?.let { head.restDeadbandDegrees = it.toFloat() }
+            } else {
+                head.predictionOverrideMs = null
+                optics?.let { head.restDeadbandDegrees = it.restDeadbandDegrees }
+            }
+        }
+        stereoSession?.let { session ->
+            val compositor = session.compositor ?: return@let
+            compositor.paceOnLatch = when (settings?.str(ShellSettings.TRACKING_FRAME_PACING)) {
+                "wait" -> true
+                "free" -> false
+                else -> session.autoPaceOnLatch
+            }
+        }
+        pointerPad?.showStats = settings?.bool(ShellSettings.DEVELOPER_DISPLAY_STATS) == true
+    }
+
+    // Lenient reads: a settings file from an older build lacks the newer keys.
+    private fun ShellSettings.bool(key: String) = runCatching { boolean(key) }.getOrNull()
+    private fun ShellSettings.num(key: String) = runCatching { number(key) }.getOrNull()
+    private fun ShellSettings.str(key: String) = runCatching { string(key) }.getOrNull()
+
+    private var padStatsJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * Once a second along the bottom of the pad: the mode the glasses' display
+     * is actually in, the rates it offers at that size, and how many frames
+     * the compositor really drew. The only way to check a refresh rate without
+     * adb, and the two numbers disagree in useful ways — a 120 Hz mode drawn
+     * at 60 fps is a rendering problem, a 60 Hz mode is a mode-selection one.
+     */
+    private fun startPadStats() {
+        padStatsJob?.cancel()
+        padStatsJob = lifecycleScope.launch {
+            var lastFrames = -1L
+            var lastAt = 0L
+            while (isActive && pointerPad != null) {
+                val compositor = stereoSession?.compositor
+                val display = stereoSession?.display
+                val now = android.os.SystemClock.elapsedRealtime()
+                if (compositor != null && display != null) {
+                    val frames = compositor.framesDrawn
+                    val fps = if (lastFrames >= 0 && now > lastAt) (frames - lastFrames) * 1000f / (now - lastAt) else null
+                    lastFrames = frames
+                    lastAt = now
+                    val mode = display.mode
+                    val offered = display.supportedModes
+                        .filter { it.physicalWidth == mode.physicalWidth && it.physicalHeight == mode.physicalHeight }
+                        .map { it.refreshRate.roundToInt() }
+                        .distinct().sorted().joinToString("/")
+                    // The user's frame-rate matching preference decides whether
+                    // a non-seamless switch, which 60 -> 120 on USB-C is, is
+                    // allowed at all; worth seeing beside the mode.
+                    val switching = if (android.os.Build.VERSION.SDK_INT >= 31) {
+                        when (getSystemService(android.hardware.display.DisplayManager::class.java).matchContentFrameRateUserPreference) {
+                            android.hardware.display.DisplayManager.MATCH_CONTENT_FRAMERATE_NEVER -> "never"
+                            android.hardware.display.DisplayManager.MATCH_CONTENT_FRAMERATE_SEAMLESSS_ONLY -> "seamless only"
+                            android.hardware.display.DisplayManager.MATCH_CONTENT_FRAMERATE_ALWAYS -> "always"
+                            else -> "unknown"
+                        }
+                    } else {
+                        "n/a"
+                    }
+                    pointerPad?.setStats(
+                        "Glasses ${mode.physicalWidth}×${mode.physicalHeight} @ ${mode.refreshRate.roundToInt()} Hz " +
+                            "(offers $offered, switching: $switching) · drawing ${fps?.roundToInt() ?: "–"} fps"
+                    )
+                }
+                delay(1_000)
+            }
+        }
     }
 
     /** A gesture's action from the shell's settings, or the shipped default when no shell is running. */
@@ -1709,6 +1842,20 @@ class MainActivity : AppCompatActivity() {
                 stereoSession?.scene?.setFollow(panel, panel.follow.copy(enabled = !pinned))
             }
             HitPart.BACK -> panel.engine.dispatchBack()
+            HitPart.SIZE -> {
+                if (shell != null && runCatching { shell.cycleSize(panel.id) }
+                        .onSuccess { (w, h) -> logLine("  resized '${panel.id}' to ${w}x$h, remembered for next time") }
+                        .isSuccess
+                ) return
+                val session = stereoSession ?: return
+                val oldWidth = panel.widthPx
+                val oldHeight = panel.heightPx
+                val (width, height) = dev.halone.compositor.TitleBar.nextSize(oldWidth, oldHeight)
+                panel.engine.resize(width, height)
+                // About its bottom centre, so the bar under it stays put.
+                session.scene.resized(panel, oldWidth, oldHeight, dev.halone.compositor.Corner.BOTTOM_LEFT, keepCentreX = true)
+                logLine("  resized '${panel.id}' ${oldWidth}x$oldHeight -> ${width}x$height")
+            }
             HitPart.CLOSE -> {
                 if (shell != null && runCatching { shell.close(panel.id) }.isSuccess) return
                 stereoSession?.closePanel(panel)
@@ -1754,18 +1901,18 @@ class MainActivity : AppCompatActivity() {
      * The first wearable milestone: a live web panel sitting in world space,
      * rendered once per eye, with the glasses' own IMU driving the camera.
      */
-    private fun enterStereo(modeKey: String? = null) {
-        val device = requireDevice() ?: return
-        val head = tracker ?: run { logLine("no head tracker — run 'connect' first"); return }
+    private fun enterStereo(modeKey: String? = null): Job? {
+        val device = requireDevice() ?: return null
+        val head = tracker ?: run { logLine("no head tracker — run 'connect' first"); return null }
         val mode = modeKey?.let { key ->
             device.display?.supportedModes?.firstOrNull { it.key == key }
-                ?: run { logLine("  $key is not a mode this device lists"); return }
+                ?: run { logLine("  $key is not a mode this device lists"); return null }
         }
 
         val session = stereoSession ?: GlassesStereoSession(this) { logOnMain(it) }
         stereoSession = session
 
-        lifecycleScope.launch {
+        return lifecycleScope.launch {
             val display = session.enterStereo(device, mode)
             if (display == null) {
                 logLine("  could not enter stereo")
@@ -1773,6 +1920,9 @@ class MainActivity : AppCompatActivity() {
             }
 
             session.show(display, head, device.optics, displayClock)
+            // A compositor built while the glasses pin the image must draw head-locked.
+            session.compositor?.lockToHead = device.onboardPinning?.enabled == true
+            applyTrackingSettings()
 
             // Whatever the wearer happens to be facing becomes forward. This
             // also papers over the unverified IMU axis convention: the constant
@@ -2023,8 +2173,10 @@ class MainActivity : AppCompatActivity() {
 
             override fun onSettingsChanged() {
                 pointerPad?.setFollowing(shell.shell.settings.boolean(ShellSettings.FOLLOW_ENABLED))
+                applyTrackingSettings()
             }
         })
+        applyTrackingSettings()
         pointerPad?.setFollowing(shell.shell.settings.boolean(ShellSettings.FOLLOW_ENABLED))
         phoneSettings?.hide()
         logLine("  shell started with ${shell.shell.apps.size} apps")
@@ -2376,6 +2528,9 @@ class MainActivity : AppCompatActivity() {
         const val CONNECT_TIMEOUT_MS = 60_000L
         const val LINK_RETURN_TIMEOUT_MS = 20_000L
         const val STEREO_TIMEOUT_MS = 20_000L
+
+        /** How soon after a window closes losing the phone counts as caused by it. */
+        const val RECLAIM_AFTER_CLOSE_MS = 3_000L
         const val TAP_RECORD_SECONDS = 240
         const val TAP_AIM_LEAD_MS = 30L
         const val HIT_HISTORY = 64

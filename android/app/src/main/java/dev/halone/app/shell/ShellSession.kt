@@ -128,7 +128,7 @@ class ShellSession(
         webApps = webApps,
         packageApps = packageApps,
         nativeApps = nativeApps,
-    )
+    ).also { it.windowSizes = PreferencesWindowSizes(context) }
 
     private val files = SharedFiles(::storageRoots, AllFilesAccess(context)).also { files ->
         files.onWritten = { paths ->
@@ -783,6 +783,7 @@ class ShellSession(
             DockVisibility.ALWAYS
         }
         scene.windowsHideDelaySeconds = settings.number(ShellSettings.WINDOWS_AUTO_HIDE_DELAY_SECONDS).toFloat()
+        scene.shapeButtons = settings.boolean(ShellSettings.WINDOWS_SHAPE_BUTTON)
         val spacing = settings.number(ShellSettings.SLOT_SPACING_DEGREES).toFloat()
         if (spacing != scene.slotSpacingDegrees) scene.layOutCylindrical(spacing, immediate = false)
 

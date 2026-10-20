@@ -10,6 +10,7 @@ import PluginsPanel from './PluginsPanel.vue'
 import AboutPanel from './AboutPanel.vue'
 import { onPhone, onRoute, useHost, useSettings } from '../shared/host'
 
+
 type Rule = { type: 'boolean' } | { type: 'number'; min: number; max: number } | { type: 'enum'; values: string[] }
 
 type Item =
@@ -191,6 +192,23 @@ const allSections: Section[] = [
             help: 'How long the pointer has to be off your windows before they go.',
             step: 0.1,
             format: (v) => `${v.toFixed(1)} s`,
+          },
+        ],
+      },
+      {
+        title: 'Window buttons',
+        items: [
+          {
+            kind: 'toggle',
+            key: 'windows.shapeButton',
+            label: 'Shape button',
+            help: 'A button on every title bar that switches the window between landscape, portrait and 4:3.',
+          },
+          {
+            kind: 'toggle',
+            key: 'windows.reclaimPhone',
+            label: 'Keep the pad after closing an app',
+            help: 'Closing an Android app’s window can move the app onto the phone’s screen, in front of the pad. With this on, Halone comes straight back.',
           },
         ],
       },
@@ -437,7 +455,49 @@ const allSections: Section[] = [
             label: 'Developer mode',
             help: 'Lets the halone command line install apps over adb and run apps from your computer while you build them, with no prompt. Turning it off removes those apps.',
           },
+          {
+            kind: 'toggle',
+            key: 'developer.displayStats',
+            label: 'Show display stats',
+            help: 'The glasses’ refresh rate and the frames actually drawn, along the bottom of the phone pad.',
+          },
         ],
+      },
+      {
+        title: 'Head tracking',
+        items: [
+          {
+            kind: 'toggle',
+            key: 'tracking.custom',
+            label: 'Custom tracking tuning',
+            help: 'Off uses the tuning made for your glasses. On uses the two settings below instead.',
+          },
+          {
+            kind: 'slider',
+            key: 'tracking.predictionMs',
+            label: 'Prediction',
+            help: 'How far ahead of your head the view is drawn. More is less lag; too much wobbles and turns sensor noise into jitter.',
+            step: 1,
+            format: (v) => `${v} ms`,
+          },
+          {
+            kind: 'slider',
+            key: 'tracking.steadinessDegrees',
+            label: 'Steadiness',
+            help: 'How still the view holds while your head is still. More is stiller; too much feels sticky when you start to move.',
+            step: 0.1,
+            format: (v) => `${v.toFixed(1)}°`,
+          },
+          {
+            kind: 'choice',
+            key: 'tracking.framePacing',
+            label: 'Frame pacing',
+            help: 'Waiting for each frame to reach the display cuts lag on some glasses and halves the frame rate on others.',
+            labels: { auto: 'Auto', wait: 'Wait for each frame', free: 'Don’t wait' },
+            style: 'segmented',
+          },
+        ],
+        note: 'Changes apply straight away, so you can tune them while wearing the glasses.',
       },
     ],
   },

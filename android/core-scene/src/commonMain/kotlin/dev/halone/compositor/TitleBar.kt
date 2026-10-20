@@ -8,6 +8,8 @@ enum class HitPart(val corner: Corner? = null) {
     TITLE_BAR,
     BACK,
     PIN,
+    /** Cycles the window through preset shapes: landscape, portrait, square. */
+    SIZE,
     CLOSE,
     RESIZE_TOP_LEFT(Corner.TOP_LEFT),
     RESIZE_TOP_RIGHT(Corner.TOP_RIGHT),
@@ -35,7 +37,7 @@ data class PanelRect(val left: Float, val top: Float, val width: Float, val heig
 
 /**
  * The pill under every window: a grip, Back when the window asks for it, the
- * title, pin and close.
+ * title, the shape button when it is turned on, pin and close.
  *
  * Its geometry lives here because three things have to agree on it: the
  * compositor that draws it, the hit test that decides what a click on it does,
@@ -68,6 +70,25 @@ object TitleBar {
         return button(bar(panelWidthPx, panelHeightPx), close.left - BUTTON_GAP_PX - BUTTON_PX)
     }
 
+    /** Left of pin: cycles the window through preset shapes. */
+    fun size(panelWidthPx: Int, panelHeightPx: Int): PanelRect {
+        val pin = pin(panelWidthPx, panelHeightPx)
+        return button(bar(panelWidthPx, panelHeightPx), pin.left - BUTTON_GAP_PX - BUTTON_PX)
+    }
+
+    /**
+     * The shapes the size button cycles through, in pixels: landscape 16:9,
+     * portrait 9:16 and 4:3. Android apps that start landscape open portrait
+     * by default, which is what this is for.
+     */
+    val SIZE_PRESETS: List<Pair<Int, Int>> = listOf(1280 to 720, 720 to 1280, 1024 to 768)
+
+    /** The preset after the one [widthPx] x [heightPx] is, or the first. */
+    fun nextSize(widthPx: Int, heightPx: Int): Pair<Int, Int> {
+        val at = SIZE_PRESETS.indexOf(widthPx to heightPx)
+        return SIZE_PRESETS[(at + 1) % SIZE_PRESETS.size]
+    }
+
     /** Right after the grip, where a window that asks for one has its Back button. */
     fun back(panelWidthPx: Int, panelHeightPx: Int): PanelRect {
         val bar = bar(panelWidthPx, panelHeightPx)
@@ -75,11 +96,12 @@ object TitleBar {
     }
 
     /** Which part of the bar is at ([x], [y]) in panel pixels, or null if none. */
-    fun partAt(panelWidthPx: Int, panelHeightPx: Int, x: Float, y: Float, back: Boolean = false): HitPart? = when {
+    fun partAt(panelWidthPx: Int, panelHeightPx: Int, x: Float, y: Float, back: Boolean = false, shape: Boolean = false): HitPart? = when {
         !bar(panelWidthPx, panelHeightPx).contains(x, y) -> null
         back && back(panelWidthPx, panelHeightPx).contains(x, y) -> HitPart.BACK
         close(panelWidthPx, panelHeightPx).contains(x, y) -> HitPart.CLOSE
         pin(panelWidthPx, panelHeightPx).contains(x, y) -> HitPart.PIN
+        shape && size(panelWidthPx, panelHeightPx).contains(x, y) -> HitPart.SIZE
         else -> HitPart.TITLE_BAR
     }
 

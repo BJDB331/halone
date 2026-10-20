@@ -6,4 +6,6 @@
     <usb-device vendor-id="13080" product-id="1062" />
     <usb-device vendor-id="13080" product-id="1078" />
     <usb-device vendor-id="13080" product-id="1080" />
+    <!-- RayNeo GT and GT Max: 0x3941:0xAF50 -->
+    <usb-device vendor-id="14657" product-id="44880" />
 </resources>
