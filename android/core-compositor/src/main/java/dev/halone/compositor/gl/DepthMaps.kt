@@ -84,12 +84,6 @@ internal class DepthMaps {
          * a dome over the middle plus a ramp toward the bottom, averaging the
          * window's own distance so that turning it on does not move the window.
          */
-        fun framingDepth(u: Float, v: Float): Float {
-            val dx = u - 0.5f
-            val dy = v - 0.5f
-            val dome = 1f - (dx * dx + dy * dy) * 2f // 1 at the middle, 0 at the corners
-            val ramp = v - 0.5f // -0.5 at the top, 0.5 at the bottom
-            return (0.5f + 0.35f * (dome - 2f / 3f) + 0.25f * ramp).coerceIn(0f, 1f)
-        }
+        fun framingDepth(u: Float, v: Float): Float = dev.halone.compositor.DepthPost.framingDepth(u, v)
     }
 }
