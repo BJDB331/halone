@@ -1914,6 +1914,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val session = stereoSession ?: GlassesStereoSession(this) { logOnMain(it) }
+        session.depthEstimator = depthEstimator
         stereoSession = session
 
         return lifecycleScope.launch {
@@ -2252,6 +2253,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val cursorInput by lazy { CursorInput({ stereoSession?.compositor }, { stereoSession?.scene }, cursorActions) }
+
+    /** For 2D-to-3D conversion; loads its model the first time a window is converted. */
+    private val depthEstimator by lazy {
+        dev.halone.app.depth.LiteRtDepthEstimator(applicationContext, ::logOnMain) { message ->
+            runOnUiThread { shellSession?.notice(message) ?: logLine("  $message") }
+        }
+    }
 
     private fun settingNumber(key: String, default: Double): Float =
         (shellSession?.shell?.settings?.let { runCatching { it.number(key) }.getOrNull() } ?: default).toFloat()

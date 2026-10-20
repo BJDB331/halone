@@ -46,6 +46,13 @@ class GlassesStereoSession(
     var autoPaceOnLatch = true
         private set
 
+    /** Estimates converted windows' depth; handed to every compositor this session builds. */
+    var depthEstimator: dev.halone.compositor.DepthEstimator? = null
+        set(value) {
+            field = value
+            compositor?.depthEstimator = value
+        }
+
     /** The glasses' display the compositor was last shown on. */
     var display: Display? = null
         private set
@@ -68,6 +75,7 @@ class GlassesStereoSession(
             // frame the tracker publishes is defined by the same eye rotations
             // the compositor renders with.
             it.calibration = tracker.calibration
+            it.depthEstimator = depthEstimator
             it.displayClock = displayClock
             presentation.show(display, it)
             // The rate the display actually runs at, not the one asked for:
@@ -156,6 +164,7 @@ class GlassesStereoSession(
         val listener = object : DisplayManager.DisplayListener {
             override fun onDisplayChanged(displayId: Int) {
                 if (displayId != display.displayId) return
+                manager.getDisplay(displayId)?.let { presentation.followModes(it) }
                 val hz = manager.getDisplay(displayId)?.refreshRate ?: return
                 if (kotlin.math.abs(hz - compositor.refreshHz) > 1f) {
                     compositor.refreshHz = hz
@@ -163,7 +172,13 @@ class GlassesStereoSession(
                 }
             }
             override fun onDisplayAdded(displayId: Int) = Unit
-            override fun onDisplayRemoved(displayId: Int) = Unit
+            override fun onDisplayRemoved(displayId: Int) {
+                // Some glasses re-create their display to switch between 2D
+                // and 3D rather than changing its modes; following that needs
+                // the windows' pictures moved to a new GL context, which is
+                // not done yet. Logged, so it can be told apart.
+                if (displayId == display.displayId) log("  the glasses' display $displayId went away")
+            }
         }
         manager.registerDisplayListener(listener, Handler(Looper.getMainLooper()))
         rateListener = listener
