@@ -86,6 +86,19 @@ jobs:
       - name: Unit tests
         run: ./gradlew --stacktrace test
 
+      # Failed tests as annotations, which can be read without the logs.
+      - name: Report failed tests
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          for path in glob.glob('android/**/build/test-results/**/*.xml', recursive=True):
+              for case in ET.parse(path).getroot().iter('testcase'):
+                  for bad in list(case.findall('failure')) + list(case.findall('error')):
+                      text = (bad.get('message') or bad.text or '').replace('\n', ' ')[:900]
+                      print(f"::error title={case.get('classname')}.{case.get('name')}::{text}")
+          PY
+
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
