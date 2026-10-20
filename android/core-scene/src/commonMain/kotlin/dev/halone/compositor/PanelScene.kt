@@ -1346,6 +1346,9 @@ open class PanelScene<P : ScenePanel> {
     /** Whether title bars carry the button that cycles a window through preset shapes. */
     var shapeButtons = false
 
+    /** Whether title bars carry the button that turns 2D-to-3D conversion on for a window. */
+    var depthButtons = false
+
     var windowsHideDelaySeconds = 1f
 
     var windowsShown = true
@@ -1627,7 +1630,7 @@ open class PanelScene<P : ScenePanel> {
         val y = v * panel.heightPx
         val part = if (u in 0f..1f && v in 0f..1f) HitPart.CONTENT
         else if (chrome) {
-            TitleBar.partAt(panel.widthPx, panel.heightPx, x, y, panel.backButton, shapeButtons)
+            TitleBar.partAt(panel.widthPx, panel.heightPx, x, y, panel.backButton, shapeButtons, depthButtons)
                 ?: ResizeHandles.cornerAt(panel.widthPx, panel.heightPx, x, y)?.let(HitPart::resizing)
                 ?: return null
         } else return null

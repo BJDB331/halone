@@ -10,6 +10,8 @@ enum class HitPart(val corner: Corner? = null) {
     PIN,
     /** Cycles the window through preset shapes: landscape, portrait, square. */
     SIZE,
+    /** Turns 2D-to-3D conversion on or off for the window. */
+    DEPTH,
     CLOSE,
     RESIZE_TOP_LEFT(Corner.TOP_LEFT),
     RESIZE_TOP_RIGHT(Corner.TOP_RIGHT),
@@ -37,7 +39,7 @@ data class PanelRect(val left: Float, val top: Float, val width: Float, val heig
 
 /**
  * The pill under every window: a grip, Back when the window asks for it, the
- * title, the shape button when it is turned on, pin and close.
+ * title, the 3D and shape buttons when they are turned on, pin and close.
  *
  * Its geometry lives here because three things have to agree on it: the
  * compositor that draws it, the hit test that decides what a click on it does,
@@ -76,6 +78,12 @@ object TitleBar {
         return button(bar(panelWidthPx, panelHeightPx), pin.left - BUTTON_GAP_PX - BUTTON_PX)
     }
 
+    /** Left of the shape button when that is shown, else left of pin: 2D-to-3D conversion. */
+    fun depth(panelWidthPx: Int, panelHeightPx: Int, shape: Boolean): PanelRect {
+        val right = if (shape) size(panelWidthPx, panelHeightPx) else pin(panelWidthPx, panelHeightPx)
+        return button(bar(panelWidthPx, panelHeightPx), right.left - BUTTON_GAP_PX - BUTTON_PX)
+    }
+
     /**
      * The shapes the size button cycles through, in pixels: landscape 16:9,
      * portrait 9:16 and 4:3. Android apps that start landscape open portrait
@@ -96,12 +104,21 @@ object TitleBar {
     }
 
     /** Which part of the bar is at ([x], [y]) in panel pixels, or null if none. */
-    fun partAt(panelWidthPx: Int, panelHeightPx: Int, x: Float, y: Float, back: Boolean = false, shape: Boolean = false): HitPart? = when {
+    fun partAt(
+        panelWidthPx: Int,
+        panelHeightPx: Int,
+        x: Float,
+        y: Float,
+        back: Boolean = false,
+        shape: Boolean = false,
+        depth: Boolean = false,
+    ): HitPart? = when {
         !bar(panelWidthPx, panelHeightPx).contains(x, y) -> null
         back && back(panelWidthPx, panelHeightPx).contains(x, y) -> HitPart.BACK
         close(panelWidthPx, panelHeightPx).contains(x, y) -> HitPart.CLOSE
         pin(panelWidthPx, panelHeightPx).contains(x, y) -> HitPart.PIN
         shape && size(panelWidthPx, panelHeightPx).contains(x, y) -> HitPart.SIZE
+        depth && depth(panelWidthPx, panelHeightPx, shape).contains(x, y) -> HitPart.DEPTH
         else -> HitPart.TITLE_BAR
     }
 

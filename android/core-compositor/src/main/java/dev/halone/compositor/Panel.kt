@@ -29,6 +29,14 @@ class Panel(
     @Volatile
     var stereoRegion: StereoRegion? = null
 
+    /**
+     * Whether the window is shown converted to 3D: each eye sees its picture
+     * shifted by a depth estimate, near parts more than far. Ignored while
+     * the window shows its own stereo picture.
+     */
+    @Volatile
+    var depth3D: Boolean = false
+
     /** Set by the compositor once phase one of the engine handshake has run. */
     @Volatile
     internal var textureId: Int = 0

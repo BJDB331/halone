@@ -594,10 +594,21 @@ class StereoCompositor(
     /** Texture names whose panels have gone; only the render thread may free them. */
     private val abandonedTextures = java.util.concurrent.ConcurrentLinkedQueue<Int>()
 
+    private val depthMaps = dev.halone.compositor.gl.DepthMaps()
+
+    /**
+     * How strongly windows converted to 3D are shaped: the most each eye's
+     * picture moves, as a share of the window's width. Only felt with the
+     * glasses in 3D; in 2D both eyes see one picture.
+     */
+    @Volatile
+    var depthStrength = 0.006f
+
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
         quad.initialise()
+        depthMaps.initialise()
         immersivePass.initialise()
         frame.initialise()
         bitmapQuad.initialise()
@@ -999,7 +1010,8 @@ class StereoCompositor(
         val band = layer?.visibleHeightPx?.toFloat() ?: 0f
         texture.getTransformMatrix(texTransform)
         val stereo = panel.stereoRegion.takeIf { layer == null }
-        drawPart(panel, viewProjection, panel.textureId, band, height - band, 1f, scanYaw, scanPitch, alpha, stereo, eye)
+        val depthPx = if (panel.depth3D && !mono && layer == null && stereo == null) depthStrength * panel.widthPx else 0f
+        drawPart(panel, viewProjection, panel.textureId, band, height - band, 1f, scanYaw, scanPitch, alpha, stereo, eye, depthPx)
         if (band > 0f && layer != null && layerTexture != null) {
             layerTexture.getTransformMatrix(texTransform)
             val crop = band / layer.engine.heightPx
@@ -1023,6 +1035,7 @@ class StereoCompositor(
         alpha: Float,
         stereo: StereoRegion? = null,
         eye: Int = 0,
+        depthPx: Float = 0f,
     ) {
         val pose = panel.pose
         val width = panel.widthPx.toFloat()
@@ -1049,6 +1062,8 @@ class StereoCompositor(
             cropV = cropV,
             stereo = stereo,
             eye = eye,
+            depthPx = depthPx,
+            depthTexture = depthMaps.framing,
         )
     }
 
@@ -1122,7 +1137,7 @@ class StereoCompositor(
     /** The pill under the panel, in the panel's own plane. */
     private fun drawTitleBar(panel: Panel, viewProjection: FloatArray, active: Boolean, opacity: Float) {
         val hit = lastHit
-        val texture = titleBars.texture(panel, hovered = hit?.part?.takeIf { hit.panel === panel }, shape = scene.shapeButtons)
+        val texture = titleBars.texture(panel, hovered = hit?.part?.takeIf { hit.panel === panel }, shape = scene.shapeButtons, depth = scene.depthButtons)
         val pose = panel.pose
         val metresPerPx = pose.widthMetres / panel.widthPx
         val bar = TitleBar.bar(panel.widthPx, panel.heightPx)
