@@ -66,10 +66,14 @@ class DepthPostTest {
     }
 
     @Test
-    fun `a flat picture, like a page of text, gets no depth instead of stretched noise`() {
+    fun `a flat picture, like a page of text, keeps the gentle framing shape instead of stretched noise`() {
         val page = FloatArray(n * n) { 1f + ((it * 7919) % 13) * 0.002f }
         val map = DepthPost.normalise(page, n)
-        map.forEach { assertEquals(0.5f, (it.toInt() and 0xFF) / 255f, 0.02f) }
+        val s = DepthPost.OUTPUT_SIZE
+        // Blurred, so compare away from the edges.
+        for ((x, y) in listOf(s / 2 to s / 2, s / 4 to s / 3, 3 * s / 4 to 2 * s / 3)) {
+            assertEquals(DepthPost.framingDepth((x + 0.5f) / s, (y + 0.5f) / s), at(map, x, y), 0.03f)
+        }
     }
 
     @Test
