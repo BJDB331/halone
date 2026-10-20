@@ -70,6 +70,10 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.webkit)
     implementation(libs.geckoview)
+    // 2D-to-3D conversion: on-device depth estimation.
+    implementation(libs.litert)
+    implementation(libs.litert.gpu)
+    implementation(libs.litert.gpu.api)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.junit)

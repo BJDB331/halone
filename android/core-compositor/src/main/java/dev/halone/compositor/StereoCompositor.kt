@@ -604,6 +604,47 @@ class StereoCompositor(
     @Volatile
     var depthStrength = 0.006f
 
+    /**
+     * Estimates each converted window's depth from its picture; null draws
+     * them all with the framing guess.
+     */
+    @Volatile
+    var depthEstimator: DepthEstimator? = null
+
+    private val depthCapture = dev.halone.compositor.gl.DepthCapture()
+    private var depthInput: java.nio.ByteBuffer? = null
+    private val depthArrived = java.util.concurrent.ConcurrentHashMap<String, DepthMap>()
+    private val depthAskedAt = HashMap<String, Long>()
+    private var depthNext = 0
+
+    /**
+     * Once a frame, after drawing: puts arrived estimates in place, and when
+     * the estimator is free hands it the converted window whose map is
+     * oldest. One read-back at most per frame, at most every
+     * [DEPTH_INTERVAL_NS] per window.
+     */
+    private fun updateDepth() {
+        val converted = scene.panels.filter { it.depth3D && it.textureId != 0 && it.stereoRegion == null }
+        depthArrived.keys.toList().forEach { id -> depthArrived.remove(id)?.let { depthMaps.upload(id, it.size, it.texels) } }
+        depthMaps.retain(converted.mapTo(HashSet()) { it.id })
+        depthAskedAt.keys.retainAll(converted.mapTo(HashSet()) { it.id })
+        val estimator = depthEstimator ?: return
+        if (converted.isEmpty() || mono || !estimator.ready()) return
+        val now = System.nanoTime()
+        val panel = converted.minByOrNull { depthAskedAt[it.id] ?: Long.MIN_VALUE } ?: return
+        if (now - (depthAskedAt[panel.id] ?: Long.MIN_VALUE / 2) < DEPTH_INTERVAL_NS) return
+        val texture = panel.surfaceTexture ?: return
+        val size = estimator.inputSize
+        if (!depthCapture.initialised || depthCapture.size != size) depthCapture.initialise(size)
+        val input = depthInput?.takeIf { it.capacity() == size * size * 4 }
+            ?: java.nio.ByteBuffer.allocateDirect(size * size * 4).order(java.nio.ByteOrder.nativeOrder()).also { depthInput = it }
+        texture.getTransformMatrix(texTransform)
+        depthCapture.grab(panel.textureId, texTransform, input)
+        depthAskedAt[panel.id] = now
+        val id = panel.id
+        estimator.estimate(id, input) { map -> depthArrived[id] = map }
+    }
+
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
@@ -744,6 +785,7 @@ class StereoCompositor(
         }
         recordFrame(leftEye)
 
+        updateDepth()
         if (presentTimingAvailable) recordPresentTiming(drawNs, photon)
         framesDrawn++
     }
@@ -1063,7 +1105,7 @@ class StereoCompositor(
             stereo = stereo,
             eye = eye,
             depthPx = depthPx,
-            depthTexture = depthMaps.framing,
+            depthTexture = depthMaps.forPanel(panel.id),
         )
     }
 
@@ -1662,6 +1704,9 @@ class StereoCompositor(
          * since on this hardware they are 4.3 s apart.
          */
         private const val MAX_BEACON_AGE_NS = 20_000_000_000L
+
+        /** How often one converted window has its depth re-estimated, at most. */
+        private const val DEPTH_INTERVAL_NS = 100_000_000L
 
         /** Two refreshes at 60 Hz: past this the latch is not coming and waiting only drops frames. */
         private const val LATCH_WAIT_LIMIT_NS = 33_000_000L

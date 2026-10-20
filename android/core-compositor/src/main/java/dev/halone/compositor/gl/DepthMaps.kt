@@ -11,7 +11,7 @@ import kotlin.math.roundToInt
  * texel: 255 nearest, 128 at the window's own distance, 0 farthest. Rows run
  * top down, as window pixels do. Render thread only.
  *
- * For now there is one map, a guess that needs no look at the picture: the
+ * Until a window's own estimate arrives it is drawn with a guess that needs no look at the picture: the
  * middle of a window nearer than its edges, and its bottom nearer than its
  * top, the way most photos and scenes are framed. It is smooth, so text stays
  * whole and readable — the window reads as gently shaped rather than as a
@@ -41,6 +41,39 @@ internal class DepthMaps {
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
         framing = ids[0]
+    }
+
+    /** Each converted window's estimated map, once one has arrived. */
+    private val estimated = HashMap<String, Int>()
+
+    /** The map to draw [panelId] with: its estimate, or the framing guess until there is one. */
+    fun forPanel(panelId: String): Int = estimated[panelId] ?: framing
+
+    /** Uploads [texels] ([size] squared, rows top down) as [panelId]'s map. */
+    fun upload(panelId: String, size: Int, texels: ByteArray) {
+        val texture = estimated.getOrPut(panelId) {
+            val ids = IntArray(1)
+            GLES20.glGenTextures(1, ids, 0)
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, ids[0])
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+            ids[0]
+        }
+        val buffer = ByteBuffer.allocateDirect(texels.size).order(ByteOrder.nativeOrder()).put(texels)
+        buffer.position(0)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texture)
+        GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, 1)
+        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES30.GL_R8, size, size, 0, GLES30.GL_RED, GLES20.GL_UNSIGNED_BYTE, buffer)
+        GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, 4)
+    }
+
+    /** Frees the maps of windows not in [keep]. */
+    fun retain(keep: Set<String>) {
+        val gone = estimated.keys.filter { it !in keep }
+        if (gone.isEmpty()) return
+        GLES20.glDeleteTextures(gone.size, gone.map { estimated.remove(it)!! }.toIntArray(), 0)
     }
 
     companion object {
