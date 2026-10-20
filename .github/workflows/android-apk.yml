@@ -1,0 +1,93 @@
+name: Android APK
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # To commit the regenerated scene package back; see below.
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      # AGP does not support JDKs newer than 17 here (see README).
+      - uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: 17
+
+      # The runner image ships the Android SDK with ANDROID_HOME set and its
+      # licenses accepted; AGP fetches the platform it needs on first use.
+      - name: Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # The simulator and system apps import the scene compiled to JS from
+      # web/packages/scene, which is committed with a hash of its Kotlin
+      # sources and checked by SimulatorPackageTest. Regenerate it here, and
+      # on a push commit it back when the sources changed, so a change to
+      # core-scene needs no local Kotlin/JS toolchain.
+      - name: Sync the scene package
+        run: ./gradlew --stacktrace :core-scene:syncWebPackage
+
+      - name: Commit the scene package if it changed
+        if: github.event_name == 'push'
+        run: |
+          if [ -n "$(git status --porcelain web/packages/scene/dist)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add web/packages/scene/dist
+            git commit -m "Sync web/packages/scene with core-scene"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
+
+      # The APK bundles the system web apps from web/apps/system/dist.
+      - name: Build the web apps
+        working-directory: web
+        run: |
+          pnpm run sdk
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Build debug APK
+        run: ./gradlew --stacktrace :app:assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: halone-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Unit tests
+        run: ./gradlew --stacktrace test
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-reports
+          path: android/**/build/reports/tests/
