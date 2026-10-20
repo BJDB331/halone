@@ -75,11 +75,14 @@ class DepthPostTest {
     @Test
     fun `successive frames are blended so depth does not flicker, but a scene cut replaces the last`() {
         val first = DepthPost.normalise(scene(3f, 0.5f), n)
-        val swapped = FloatArray(n * n) { i -> if (scene(1f, 0f)[i] > 0.5f) 0.5f else 3f }
         val s = DepthPost.OUTPUT_SIZE
-        val cut = DepthPost.normalise(swapped, n, previous = first)
-        val fresh = DepthPost.normalise(swapped, n)
-        assertEquals(at(fresh, s / 2, (s * 0.67f).toInt()), at(cut, s / 2, (s * 0.67f).toInt()), 0.01f)
+        // A new shot: depth running across the whole picture the other way.
+        val leftNear = FloatArray(n * n) { i -> 0.5f + 3f * (1f - (i % n) / (n - 1f)) }
+        val rightNear = FloatArray(n * n) { i -> 0.5f + 3f * ((i % n) / (n - 1f)) }
+        val before = DepthPost.normalise(leftNear, n)
+        val cut = DepthPost.normalise(rightNear, n, previous = before)
+        val fresh = DepthPost.normalise(rightNear, n)
+        assertEquals(at(fresh, s / 10, s / 2), at(cut, s / 10, s / 2), 0.01f)
 
         val again = DepthPost.normalise(scene(3.2f, 0.5f), n, previous = first)
         assertEquals(at(first, s / 2, (s * 0.67f).toInt()), at(again, s / 2, (s * 0.67f).toInt()), 0.05f)
