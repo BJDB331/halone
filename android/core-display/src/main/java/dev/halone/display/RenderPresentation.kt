@@ -33,12 +33,44 @@ class RenderPresentation(
     var refreshHz: Float = 60f
         private set
 
+    /** The mode the window last asked for. */
+    private var requestedModeId: Int? = null
+
+    /**
+     * Follows the glasses into 3D or back to 2D when the wearer switches them
+     * with their own controls: a side-by-side mode appearing (or going) shows
+     * up as the same display changing its modes, and asking for the new one
+     * resizes this window's surface — the compositor sees the new frame size
+     * and draws one image per eye, or one for both. The GL context, and with
+     * it every window's picture, stays as it is. True if it asked.
+     */
+    fun followModes(display: Display): Boolean {
+        val shown = presentation ?: return false
+        val stereo = widestStereoMode(display)
+        val wanted = stereo ?: fastestMode(display) ?: return false
+        if (wanted.modeId == requestedModeId) return false
+        requestedModeId = wanted.modeId
+        refreshHz = wanted.refreshRate
+        shown.window?.let { w ->
+            w.attributes = w.attributes.apply {
+                preferredDisplayModeId = wanted.modeId
+                preferredRefreshRate = if (stereo == null) wanted.refreshRate else 0f
+            }
+        }
+        log(
+            "  glasses now offer ${if (stereo != null) "3D" else "2D"}: asking for " +
+                "${wanted.physicalWidth}x${wanted.physicalHeight} @ ${"%.0f".format(wanted.refreshRate)} Hz"
+        )
+        return true
+    }
+
     fun show(display: Display, renderer: GLSurfaceView.Renderer) {
         dismiss()
 
         val stereo = widestStereoMode(display)
         val wide = stereo ?: fastestMode(display)
         refreshHz = wide?.refreshRate ?: display.refreshRate
+        requestedModeId = wide?.modeId
 
         // Only for a 2D display left as the glasses have it (RayNeo GT
         // series): asking for its fastest rate. A side-by-side mode is pinned

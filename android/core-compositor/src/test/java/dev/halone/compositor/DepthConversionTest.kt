@@ -43,3 +43,45 @@ class DepthConversionTest {
         assertEquals(HitPart.TITLE_BAR, TitleBar.partAt(w, h, x, y, depth = false))
     }
 }
+
+class DepthPostTest {
+    private val n = 64
+
+    private fun scene(near: Float, far: Float) = FloatArray(n * n) { i ->
+        val y = i / n
+        val x = i % n
+        if (x in 24 until 40 && y in 30 until 56) near else far
+    }
+
+    private fun at(map: ByteArray, x: Int, y: Int, size: Int = DepthPost.OUTPUT_SIZE) = (map[y * size + x].toInt() and 0xFF) / 255f
+
+    @Test
+    fun `nearer parts come out nearer, around the window's own distance`() {
+        val map = DepthPost.normalise(scene(near = 3f, far = 0.5f), n)
+        val s = DepthPost.OUTPUT_SIZE
+        val box = at(map, s / 2, (s * 0.67f).toInt())
+        val background = at(map, s / 10, s / 10)
+        assertTrue("box $box should be nearer than background $background", box > background + 0.2f)
+        assertTrue(background in 0.3f..0.6f)
+    }
+
+    @Test
+    fun `a flat picture, like a page of text, gets no depth instead of stretched noise`() {
+        val page = FloatArray(n * n) { 1f + ((it * 7919) % 13) * 0.002f }
+        val map = DepthPost.normalise(page, n)
+        map.forEach { assertEquals(0.5f, (it.toInt() and 0xFF) / 255f, 0.02f) }
+    }
+
+    @Test
+    fun `successive frames are blended so depth does not flicker, but a scene cut replaces the last`() {
+        val first = DepthPost.normalise(scene(3f, 0.5f), n)
+        val swapped = FloatArray(n * n) { i -> if (scene(1f, 0f)[i] > 0.5f) 0.5f else 3f }
+        val s = DepthPost.OUTPUT_SIZE
+        val cut = DepthPost.normalise(swapped, n, previous = first)
+        val fresh = DepthPost.normalise(swapped, n)
+        assertEquals(at(fresh, s / 2, (s * 0.67f).toInt()), at(cut, s / 2, (s * 0.67f).toInt()), 0.01f)
+
+        val again = DepthPost.normalise(scene(3.2f, 0.5f), n, previous = first)
+        assertEquals(at(first, s / 2, (s * 0.67f).toInt()), at(again, s / 2, (s * 0.67f).toInt()), 0.05f)
+    }
+}
