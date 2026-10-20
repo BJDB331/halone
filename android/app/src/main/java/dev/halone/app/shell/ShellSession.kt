@@ -128,7 +128,7 @@ class ShellSession(
         webApps = webApps,
         packageApps = packageApps,
         nativeApps = nativeApps,
-    )
+    ).also { it.windowSizes = PreferencesWindowSizes(context) }
 
     private val files = SharedFiles(::storageRoots, AllFilesAccess(context)).also { files ->
         files.onWritten = { paths ->

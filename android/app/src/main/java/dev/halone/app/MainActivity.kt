@@ -1843,6 +1843,10 @@ class MainActivity : AppCompatActivity() {
             }
             HitPart.BACK -> panel.engine.dispatchBack()
             HitPart.SIZE -> {
+                if (shell != null && runCatching { shell.cycleSize(panel.id) }
+                        .onSuccess { (w, h) -> logLine("  resized '${panel.id}' to ${w}x$h, remembered for next time") }
+                        .isSuccess
+                ) return
                 val session = stereoSession ?: return
                 val oldWidth = panel.widthPx
                 val oldHeight = panel.heightPx
