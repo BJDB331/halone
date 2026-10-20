@@ -38,6 +38,10 @@ class LiteRtDepthEstimator(
     override val inputSize = SIZE
 
     private val dir = File(context.filesDir, "depth")
+    /** Where the last picture and its depth are saved now and then, for `adb pull`. */
+    private val debugDir = context.getExternalFilesDir("depth-debug")
+    private var lastDebugAt = 0L
+    private var estimates = 0L
     private val modelFile = File(dir, MODEL_NAME)
     private val worker = Executors.newSingleThreadExecutor { Thread(it, "depth").apply { priority = Thread.NORM_PRIORITY - 1 } }
     private val busy = AtomicBoolean(false)
@@ -55,6 +59,11 @@ class LiteRtDepthEstimator(
     var lastMs = 0L
         private set
 
+    /** One line on how conversion is going, for the stats line and the log. */
+    @Volatile
+    var summary: String? = null
+        private set
+
     override fun ready(): Boolean {
         if (interpreter == null) {
             start()
@@ -70,11 +79,16 @@ class LiteRtDepthEstimator(
                 val model = interpreter ?: return@execute
                 rgba.position(0)
                 input.position(0)
+                var brightness = 0L
                 for (i in 0 until SIZE * SIZE) {
-                    input.putFloat((rgba.get().toInt() and 0xFF) / 255f)
-                    input.putFloat((rgba.get().toInt() and 0xFF) / 255f)
-                    input.putFloat((rgba.get().toInt() and 0xFF) / 255f)
+                    val r = rgba.get().toInt() and 0xFF
+                    val g = rgba.get().toInt() and 0xFF
+                    val b = rgba.get().toInt() and 0xFF
                     rgba.get()
+                    brightness += r + g + b
+                    input.putFloat(r / 255f)
+                    input.putFloat(g / 255f)
+                    input.putFloat(b / 255f)
                 }
                 input.position(0)
                 output.position(0)
@@ -83,7 +97,28 @@ class LiteRtDepthEstimator(
                 lastMs = (System.nanoTime() - started) / 1_000_000
                 output.position(0)
                 output.asFloatBuffer().get(raw)
+                if (raw.any { !it.isFinite() }) {
+                    // Half precision on the GPU can overflow inside the
+                    // model's attention and come back as NaN — a map of
+                    // nothing, which looked like conversion switching off.
+                    // Full precision next, then the CPU.
+                    log("  depth: the model returned non-finite values on the ${if (gpu != null) "GPU" else "CPU"}")
+                    fallBack()
+                    return@execute
+                }
                 val map = DepthPost.normalise(raw, SIZE, previous[panelId])
+                var low = Float.MAX_VALUE
+                var high = -Float.MAX_VALUE
+                for (v in raw) { if (v < low) low = v; if (v > high) high = v }
+                summary = "3D ${lastMs} ms ${if (gpu != null) "GPU" else "CPU"}, picture %d%%, depth %.2f..%.2f, relief %.2f, used %d%%".format(
+                    (brightness * 100 / (SIZE * SIZE * 3L * 255L)).toInt(), low, high, DepthPost.lastRelief, (DepthPost.lastGain * 100).toInt(),
+                )
+                if (estimates++ % LOG_EVERY == 0L) log("  depth: $summary")
+                val now = System.currentTimeMillis()
+                if (debugDir != null && now - lastDebugAt > DEBUG_EVERY_MS) {
+                    lastDebugAt = now
+                    saveDebug(rgba, map)
+                }
                 previous[panelId] = map
                 if (previous.size > MAX_REMEMBERED) previous.keys.firstOrNull { it != panelId }?.let(previous::remove)
                 done(DepthMap(DepthPost.OUTPUT_SIZE, map))
@@ -93,6 +128,22 @@ class LiteRtDepthEstimator(
                 busy.set(false)
             }
         }
+    }
+
+    /** The picture as the model saw it and the depth it gave, as PNGs; overwritten each time. */
+    private fun saveDebug(rgba: ByteBuffer, map: ByteArray) {
+        runCatching {
+            val picture = android.graphics.Bitmap.createBitmap(SIZE, SIZE, android.graphics.Bitmap.Config.ARGB_8888)
+            rgba.position(0)
+            picture.copyPixelsFromBuffer(rgba)
+            File(debugDir, "picture.png").outputStream().use { picture.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+            picture.recycle()
+            val size = DepthPost.OUTPUT_SIZE
+            val pixels = IntArray(map.size) { val v = map[it].toInt() and 0xFF; (0xFF shl 24) or (v shl 16) or (v shl 8) or v }
+            val depth = android.graphics.Bitmap.createBitmap(pixels, size, size, android.graphics.Bitmap.Config.ARGB_8888)
+            File(debugDir, "depth.png").outputStream().use { depth.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+            depth.recycle()
+        }.onFailure { log("  depth: could not save debug images: $it") }
     }
 
     /** Downloads the model if it is missing, then loads it; once. */
@@ -145,18 +196,31 @@ class LiteRtDepthEstimator(
         log("  depth: model downloaded")
     }
 
+    /** 0: GPU allowed half precision; 1: GPU in full precision; 2: CPU. */
+    private var tier = 0
+
+    private fun fallBack() {
+        interpreter?.close()
+        interpreter = null
+        gpu?.close()
+        gpu = null
+        tier++
+        runCatching { load() }.onFailure { log("  depth: reload failed: $it") }
+    }
+
     private fun load() {
         val compatibility = CompatibilityList()
-        val loaded = if (compatibility.isDelegateSupportedOnThisDevice) {
+        val loaded = if (tier < 2 && compatibility.isDelegateSupportedOnThisDevice) {
             runCatching {
-                val delegate = GpuDelegate(compatibility.bestOptionsForThisDevice)
+                val options = compatibility.bestOptionsForThisDevice.apply { if (tier == 1) setPrecisionLossAllowed(false) }
+                val delegate = GpuDelegate(options)
                 Interpreter(modelFile, Interpreter.Options().addDelegate(delegate)).also { gpu = delegate }
             }.onFailure { log("  depth: GPU unavailable ($it), using the CPU") }.getOrNull()
         } else null
         val model = loaded ?: Interpreter(modelFile, Interpreter.Options().setNumThreads(CPU_THREADS))
         interpreter = model
-        log("  depth: model loaded on the ${if (gpu != null) "GPU" else "CPU"}")
-        notice("3D conversion ready")
+        log("  depth: model loaded on the ${if (gpu == null) "CPU" else if (tier == 0) "GPU" else "GPU (full precision)"}")
+        if (tier == 0) notice("3D conversion ready")
     }
 
     fun close() {
@@ -173,6 +237,8 @@ class LiteRtDepthEstimator(
         const val SIZE = 518
         const val CPU_THREADS = 4
         const val MAX_REMEMBERED = 8
+        const val LOG_EVERY = 50L
+        const val DEBUG_EVERY_MS = 5_000L
         const val MODEL_NAME = "depth_anything_v2_small.tflite"
         const val MODEL_URL =
             "https://huggingface.co/qualcomm/Depth-Anything-V2/resolve/3388c56142d6ea92507a2456155fada5a019edc7/Depth-Anything-V2.tflite"

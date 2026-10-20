@@ -1456,7 +1456,8 @@ class MainActivity : AppCompatActivity() {
                     }
                     pointerPad?.setStats(
                         "Glasses ${mode.physicalWidth}×${mode.physicalHeight} @ ${mode.refreshRate.roundToInt()} Hz " +
-                            "(offers $offered, switching: $switching) · drawing ${fps?.roundToInt() ?: "–"} fps"
+                            "(offers $offered, switching: $switching) · drawing ${fps?.roundToInt() ?: "–"} fps"+
+                            (depthSummary()?.let { "\n$it" } ?: "")
                     )
                 }
                 delay(1_000)
@@ -1844,6 +1845,7 @@ class MainActivity : AppCompatActivity() {
             HitPart.BACK -> panel.engine.dispatchBack()
             HitPart.DEPTH -> {
                 panel.depth3D = !panel.depth3D
+                depthStarted = true
                 logLine("  3D conversion ${if (panel.depth3D) "on" else "off"} for '${panel.id}'")
             }
             HitPart.SIZE -> {
@@ -2253,6 +2255,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val cursorInput by lazy { CursorInput({ stereoSession?.compositor }, { stereoSession?.scene }, cursorActions) }
+
+    private var depthStarted = false
+
+    /** The 3D conversion line for the stats, once a window has been converted. */
+    private fun depthSummary(): String? = if (depthStarted) depthEstimator.summary else null
 
     /** For 2D-to-3D conversion; loads its model the first time a window is converted. */
     private val depthEstimator by lazy {

@@ -36,10 +36,33 @@ class DepthMap(val size: Int, val texels: ByteArray)
  * comfortable rather than literal: the map is blurred, because the renderer
  * shifts whole regions and a sharp depth edge through text would split
  * letters; and a picture with little depth in it (a page of text, a settings
- * screen) gets proportionally little, instead of its noise being stretched to
- * full depth.
+ * screen) leans on the gentle framing guess instead, rather than having its
+ * noise stretched to full depth — or going flat, which read as the
+ * conversion switching itself off.
  */
 object DepthPost {
+    /** What the last [normalise] found, for diagnostics. */
+    @Volatile
+    var lastRelief = 0f
+        private set
+
+    @Volatile
+    var lastGain = 0f
+        private set
+
+    /**
+     * The guess that needs no look at the picture, at ([u], [v]) across the
+     * window, 0..1 with v down: a dome over the middle plus a ramp toward the
+     * bottom, averaging the window's own distance.
+     */
+    fun framingDepth(u: Float, v: Float): Float {
+        val dx = u - 0.5f
+        val dy = v - 0.5f
+        val dome = 1f - (dx * dx + dy * dy) * 2f
+        val ramp = v - 0.5f
+        return (0.5f + 0.35f * (dome - 2f / 3f) + 0.25f * ramp).coerceIn(0f, 1f)
+    }
+
     const val OUTPUT_SIZE = 128
 
     /** Of the new frame, against the last; the rest is the last, so depth does not flicker. */
@@ -63,9 +86,15 @@ object DepthPost {
         // near zero for a flat page, around one or more for a scene.
         val relief = if (median > 1e-6f) spread / median else if (spread > 1e-6f) 1f else 0f
         val gain = ((relief - RELIEF_FLAT) / (RELIEF_FULL - RELIEF_FLAT)).coerceIn(0f, 1f)
-        val scale = if (spread > 1e-9f) gain / spread else 0f
+        val scale = if (spread > 1e-9f) 1f / spread else 0f
+        lastRelief = relief
+        lastGain = gain
 
-        var depth = FloatArray(small.size) { (0.5f + (small[it] - median) * scale).coerceIn(0f, 1f) }
+        var depth = FloatArray(small.size) {
+            val estimated = (0.5f + (small[it] - median) * scale).coerceIn(0f, 1f)
+            val framing = framingDepth(((it % outSize) + 0.5f) / outSize, ((it / outSize) + 0.5f) / outSize)
+            framing + (estimated - framing) * gain
+        }
         repeat(BLUR_PASSES) { depth = boxBlur(depth, outSize) }
 
         if (previous != null && previous.size == depth.size) {
