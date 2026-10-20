@@ -26,6 +26,8 @@ internal class TitleBarPainter {
         val pinned: Boolean,
         val back: Boolean,
         val shape: Boolean,
+        val depth: Boolean,
+        val depthOn: Boolean,
         val hovered: HitPart?,
         val widthPx: Int,
     )
@@ -35,14 +37,18 @@ internal class TitleBarPainter {
     private val painted = HashMap<String, Painted>()
 
     /** The texture for [panel]'s bar as it should look now, painting it if needed. */
-    fun texture(panel: Panel, hovered: HitPart?, shape: Boolean): Int {
+    fun texture(panel: Panel, hovered: HitPart?, shape: Boolean, depth: Boolean = false): Int {
         val look = Look(
             title = panel.title,
             tag = panel.tag,
             pinned = !panel.follow.enabled,
             back = panel.backButton,
             shape = shape,
-            hovered = hovered?.takeIf { it == HitPart.PIN || it == HitPart.CLOSE || it == HitPart.BACK || it == HitPart.SIZE },
+            depth = depth,
+            depthOn = panel.depth3D,
+            hovered = hovered?.takeIf {
+                it == HitPart.PIN || it == HitPart.CLOSE || it == HitPart.BACK || it == HitPart.SIZE || it == HitPart.DEPTH
+            },
             widthPx = panel.widthPx,
         )
         painted[panel.id]?.let { if (it.look == look) return it.texture }
@@ -93,7 +99,8 @@ internal class TitleBarPainter {
         val pin = TitleBar.pin(panel.widthPx, panel.heightPx).relativeTo(bar)
         val close = TitleBar.close(panel.widthPx, panel.heightPx).relativeTo(bar)
         val size = TitleBar.size(panel.widthPx, panel.heightPx).relativeTo(bar)
-        var textEnd = (if (look.shape) size.left else pin.left) - GAP_PX
+        val depth = TitleBar.depth(panel.widthPx, panel.heightPx, look.shape).relativeTo(bar)
+        var textEnd = (if (look.depth) depth.left else if (look.shape) size.left else pin.left) - GAP_PX
 
         look.tag?.let { tag ->
             val tagPaint = textPaint(15f, MUTED)
@@ -122,6 +129,10 @@ internal class TitleBarPainter {
         if (look.shape) {
             button(canvas, size, active = false, hovered = look.hovered == HitPart.SIZE)
             drawSize(canvas, size, iconColor(look.hovered == HitPart.SIZE), landscape = panel.widthPx < panel.heightPx)
+        }
+        if (look.depth) {
+            button(canvas, depth, active = look.depthOn, hovered = look.hovered == HitPart.DEPTH)
+            drawDepth(canvas, depth, iconColor(look.depthOn || look.hovered == HitPart.DEPTH))
         }
         button(canvas, pin, active = look.pinned, hovered = look.hovered == HitPart.PIN)
         drawPin(canvas, pin, filled = look.pinned, color = iconColor(look.pinned || look.hovered == HitPart.PIN))
@@ -178,6 +189,15 @@ internal class TitleBarPainter {
             style = Paint.Style.STROKE
         }
         canvas.drawRoundRect(RectF(cx - hw, cy - hh, cx + hw, cy + hh), 2.5f, 2.5f, paint)
+    }
+
+    /** "3D", bold while conversion is on. */
+    private fun drawDepth(canvas: Canvas, rect: PanelRect, color: Int) {
+        val paint = textPaint(15f, color).apply {
+            typeface = Typeface.DEFAULT_BOLD
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText("3D", rect.left + rect.width / 2f, baseline(paint, rect.top + rect.height / 2f), paint)
     }
 
     private fun drawClose(canvas: Canvas, rect: PanelRect, color: Int) {
