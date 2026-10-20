@@ -1,0 +1,44 @@
+name: Probe depth model
+on: push
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Inspect
+        run: |
+          pip install -q ai-edge-litert numpy
+          URL=https://huggingface.co/qualcomm/Depth-Anything-V2/resolve/3388c56142d6ea92507a2456155fada5a019edc7/Depth-Anything-V2.tflite
+          curl -sSL -o m.tflite "$URL"
+          ls -l m.tflite
+          echo "::notice title=size::$(stat -c %s m.tflite) bytes, sha256 $(sha256sum m.tflite | cut -c1-64)"
+          python3 - <<'PY'
+          import numpy as np, time
+          from ai_edge_litert.interpreter import Interpreter
+          it = Interpreter(model_path='m.tflite', num_threads=4)
+          it.allocate_tensors()
+          for d in it.get_input_details():
+              print(f"::notice title=input::{d['name']} {d['shape'].tolist()} {d['dtype'].__name__} q={d['quantization']}")
+          for d in it.get_output_details():
+              print(f"::notice title=output::{d['name']} {d['shape'].tolist()} {d['dtype'].__name__} q={d['quantization']}")
+          inp = it.get_input_details()[0]
+          shape = inp['shape']
+          # A synthetic scene: bright sky at the top, a near dark box low in the middle.
+          h, w = (shape[1], shape[2]) if shape[-1] == 3 else (shape[2], shape[3])
+          img = np.zeros((h, w, 3), np.float32)
+          img[: h // 2] = [0.5, 0.7, 1.0]
+          img[h // 2 :] = [0.4, 0.35, 0.3]
+          img[int(h * .55): int(h * .9), int(w * .35): int(w * .65)] = [0.8, 0.1, 0.1]
+          for scale, name in [(1.0, '0..1'), (255.0, '0..255')]:
+              x = img * scale
+              if shape[-1] != 3: x = x.transpose(2, 0, 1)
+              it.set_tensor(inp['index'], x[None].astype(np.float32))
+              t = time.time(); it.invoke(); ms = (time.time() - t) * 1000
+              out = it.get_tensor(it.get_output_details()[0]['index']).squeeze()
+              oh, ow = out.shape[-2:]
+              box = out[int(oh * .6): int(oh * .85), int(ow * .4): int(ow * .6)].mean()
+              sky = out[: oh // 5].mean()
+              print(f"::notice title=run {name}::{ms:.0f} ms cpu, out {out.shape} min {out.min():.3f} max {out.max():.3f} mean {out.mean():.3f} box {box:.3f} sky {sky:.3f}")
+          PY
