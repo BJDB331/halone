@@ -1842,6 +1842,10 @@ class MainActivity : AppCompatActivity() {
                 stereoSession?.scene?.setFollow(panel, panel.follow.copy(enabled = !pinned))
             }
             HitPart.BACK -> panel.engine.dispatchBack()
+            HitPart.DEPTH -> {
+                panel.depth3D = !panel.depth3D
+                logLine("  3D conversion ${if (panel.depth3D) "on" else "off"} for '${panel.id}'")
+            }
             HitPart.SIZE -> {
                 if (shell != null && runCatching { shell.cycleSize(panel.id) }
                         .onSuccess { (w, h) -> logLine("  resized '${panel.id}' to ${w}x$h, remembered for next time") }

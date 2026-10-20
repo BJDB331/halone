@@ -206,6 +206,13 @@ const allSections: Section[] = [
           },
           {
             kind: 'toggle',
+            // Not in the published SDK's settings yet.
+            key: 'windows.depthButton' as SettingKey,
+            label: '3D button',
+            help: 'A button on every title bar that converts the window from 2D to 3D. Needs the glasses in 3D mode.',
+          },
+          {
+            kind: 'toggle',
             key: 'windows.reclaimPhone',
             label: 'Keep the pad after closing an app',
             help: 'Closing an Android app’s window can move the app onto the phone’s screen, in front of the pad. With this on, Halone comes straight back.',
@@ -289,6 +296,14 @@ const allSections: Section[] = [
             help: 'How far away windows feel. Their size in your view stays the same.',
             step: 0.5,
             format: (v) => `${v.toFixed(1)} m`,
+          },
+          {
+            kind: 'slider',
+            key: 'display.depthStrength' as SettingKey,
+            label: '3D strength',
+            help: 'How much depth a window converted to 3D gets. More is deeper; too much is tiring to look at.',
+            step: 0.1,
+            format: (v) => `${v.toFixed(1)}`,
           },
         ],
       },
