@@ -4,6 +4,7 @@ import android.content.Context
 import dev.halone.compositor.DepthEstimator
 import dev.halone.compositor.DepthMap
 import dev.halone.compositor.DepthPost
+import dev.halone.compositor.DepthStabiliser
 import org.tensorflow.lite.Interpreter
 import org.tensorflow.lite.gpu.CompatibilityList
 import org.tensorflow.lite.gpu.GpuDelegate
@@ -53,7 +54,16 @@ class LiteRtDepthEstimator(
     private val input = ByteBuffer.allocateDirect(SIZE * SIZE * 3 * 4).order(ByteOrder.nativeOrder())
     private val output = ByteBuffer.allocateDirect(SIZE * SIZE * 4).order(ByteOrder.nativeOrder())
     private val raw = FloatArray(SIZE * SIZE)
-    private val previous = HashMap<String, ByteArray>()
+    private val luma = FloatArray(SIZE * SIZE)
+    private val stabilisers = LinkedHashMap<String, DepthStabiliser>()
+
+    /** How much of the last depth is kept where a window's picture is unchanged, 0..0.9. */
+    @Volatile
+    var smoothing = DepthStabiliser.DEFAULT_SMOOTHING
+
+    override fun setSmoothing(amount: Float) {
+        smoothing = amount
+    }
 
     @Volatile
     var lastMs = 0L
@@ -86,6 +96,7 @@ class LiteRtDepthEstimator(
                     val b = rgba.get().toInt() and 0xFF
                     rgba.get()
                     brightness += r + g + b
+                    luma[i] = (0.299f * r + 0.587f * g + 0.114f * b) / 255f
                     input.putFloat(r / 255f)
                     input.putFloat(g / 255f)
                     input.putFloat(b / 255f)
@@ -106,22 +117,26 @@ class LiteRtDepthEstimator(
                     fallBack()
                     return@execute
                 }
-                val map = DepthPost.normalise(raw, SIZE, previous[panelId])
+                val stabiliser = stabilisers.getOrPut(panelId) { DepthStabiliser() }
+                stabiliser.smoothing = smoothing
+                val map = stabiliser.next(raw, SIZE, luma, SIZE)
+                // Most recently used last; forget the oldest beyond a few windows.
+                stabilisers.remove(panelId)
+                stabilisers[panelId] = stabiliser
+                if (stabilisers.size > MAX_REMEMBERED) stabilisers.remove(stabilisers.keys.first())
                 var low = Float.MAX_VALUE
                 var high = -Float.MAX_VALUE
                 for (v in raw) { if (v < low) low = v; if (v > high) high = v }
-                summary = "3D ${lastMs} ms ${if (gpu != null) "GPU" else "CPU"}, picture %d%%, depth %.2f..%.2f, relief %.2f, used %d%%".format(
-                    (brightness * 100 / (SIZE * SIZE * 3L * 255L)).toInt(), low, high, DepthPost.lastRelief, (DepthPost.lastGain * 100).toInt(),
+                summary = "3D ${lastMs} ms ${if (gpu != null) "GPU" else "CPU"}, picture %d%%, depth %.2f..%.2f, relief %.2f, used %d%%${if (stabiliser.lastCut) ", cut" else ""}".format(
+                    (brightness * 100 / (SIZE * SIZE * 3L * 255L)).toInt(), low, high, stabiliser.lastRelief, (stabiliser.lastGain * 100).toInt(),
                 )
                 if (estimates++ % LOG_EVERY == 0L) log("  depth: $summary")
                 val now = System.currentTimeMillis()
                 if (debugDir != null && now - lastDebugAt > DEBUG_EVERY_MS) {
                     lastDebugAt = now
-                    saveDebug(rgba, map)
+                    saveDebug(rgba, map.texels)
                 }
-                previous[panelId] = map
-                if (previous.size > MAX_REMEMBERED) previous.keys.firstOrNull { it != panelId }?.let(previous::remove)
-                done(DepthMap(DepthPost.OUTPUT_SIZE, map))
+                done(map)
             } catch (e: Throwable) {
                 log("  depth: estimate failed: $e")
             } finally {

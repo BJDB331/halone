@@ -610,6 +610,22 @@ class StereoCompositor(
      */
     @Volatile
     var depthEstimator: DepthEstimator? = null
+        set(value) {
+            field = value
+            value?.setSmoothing(depthSmoothing)
+        }
+
+    /** Which depth, 0..1, sits at a converted window's own distance; see `TexturedQuad3D`. */
+    @Volatile
+    var depthConvergence = 0.5f
+
+    /** How steady converted windows' depth is held where their picture does not change. */
+    @Volatile
+    var depthSmoothing = 0.35f
+        set(value) {
+            field = value
+            depthEstimator?.setSmoothing(value)
+        }
 
     private val depthCapture = dev.halone.compositor.gl.DepthCapture()
     private var depthInput: java.nio.ByteBuffer? = null
@@ -1106,6 +1122,7 @@ class StereoCompositor(
             eye = eye,
             depthPx = depthPx,
             depthTexture = depthMaps.forPanel(panel.id),
+            convergence = depthConvergence,
         )
     }
 
