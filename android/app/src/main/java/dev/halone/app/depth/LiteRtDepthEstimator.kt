@@ -59,10 +59,10 @@ class LiteRtDepthEstimator(
 
     /** How much of the last depth is kept where a window's picture is unchanged, 0..0.9. */
     @Volatile
-    var smoothing = DepthStabiliser.DEFAULT_SMOOTHING
+    private var smoothingAmount = DepthStabiliser.DEFAULT_SMOOTHING
 
     override fun setSmoothing(amount: Float) {
-        smoothing = amount
+        smoothingAmount = amount
     }
 
     @Volatile
@@ -118,7 +118,7 @@ class LiteRtDepthEstimator(
                     return@execute
                 }
                 val stabiliser = stabilisers.getOrPut(panelId) { DepthStabiliser() }
-                stabiliser.smoothing = smoothing
+                stabiliser.smoothing = smoothingAmount
                 val map = stabiliser.next(raw, SIZE, luma, SIZE)
                 // Most recently used last; forget the oldest beyond a few windows.
                 stabilisers.remove(panelId)
