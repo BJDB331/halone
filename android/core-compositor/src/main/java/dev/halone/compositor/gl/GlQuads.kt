@@ -77,6 +77,7 @@ internal class TexturedQuad3D {
     private var uStereoRect = 0
     private var uEye = 0
     private var uDepthPx = 0
+    private var uConvergence = 0
     private lateinit var vertices: FloatBuffer
 
     fun initialise() {
@@ -96,6 +97,7 @@ internal class TexturedQuad3D {
         uCropV = GLES20.glGetUniformLocation(program, "uCropV")
         uRadiusPx = GLES20.glGetUniformLocation(program, "uRadiusPx")
         uDepthPx = GLES20.glGetUniformLocation(program, "uDepthPx")
+        uConvergence = GLES20.glGetUniformLocation(program, "uConvergence")
         // The depth map lives on unit 1 for good: two sampler types sharing
         // unit 0 would fail every draw, converted or not.
         GLES20.glUseProgram(program)
@@ -135,6 +137,8 @@ internal class TexturedQuad3D {
         depthPx: Float = 0f,
         /** A `GL_TEXTURE_2D` depth map over the whole window, 1 nearest; read when [depthPx] is set. */
         depthTexture: Int = 0,
+        /** The depth, 0..1, drawn at the window's own distance: nearer comes out, farther goes in. */
+        convergence: Float = 0.5f,
     ) {
         GLES20.glUseProgram(program)
         if (depthPx > 0f && depthTexture != 0) {
@@ -142,6 +146,7 @@ internal class TexturedQuad3D {
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, depthTexture)
         }
         GLES20.glUniform1f(uDepthPx, if (depthTexture != 0 && stereo == null) depthPx else 0f)
+        GLES20.glUniform1f(uConvergence, convergence)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(Gl.TEXTURE_EXTERNAL_OES, textureId)
         GLES20.glUniformMatrix4fv(uMvp, 1, false, mvp, 0)
@@ -247,6 +252,7 @@ internal class TexturedQuad3D {
             // distance, 0 farthest), in opposite directions per eye. Zero is off.
             uniform sampler2D uDepth;
             uniform float uDepthPx;
+            uniform float uConvergence;
             in vec2 vTexCoord;
             in highp vec2 vLocal;
             out vec4 fragColor;
@@ -273,7 +279,7 @@ internal class TexturedQuad3D {
                     highp vec2 p = window;
                     for (int i = 0; i < 2; i++) {
                         float d = texture(uDepth, p / uSizePx).r;
-                        p = vec2(window.x - side * (d - 0.5) * 2.0 * uDepthPx, window.y);
+                        p = vec2(window.x - side * (d - uConvergence) * 2.0 * uDepthPx, window.y);
                     }
                     p = clamp(p, vec2(0.5), uSizePx - 0.5);
                     texCoord = (uTexTransform * vec4(p.x / uSizePx.x, 1.0 - p.y / uSizePx.y, 0.0, 1.0)).xy;
