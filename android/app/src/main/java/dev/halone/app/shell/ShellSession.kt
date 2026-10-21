@@ -785,7 +785,11 @@ class ShellSession(
         scene.windowsHideDelaySeconds = settings.number(ShellSettings.WINDOWS_AUTO_HIDE_DELAY_SECONDS).toFloat()
         scene.shapeButtons = settings.boolean(ShellSettings.WINDOWS_SHAPE_BUTTON)
         scene.depthButtons = settings.boolean(ShellSettings.WINDOWS_DEPTH_BUTTON)
-        stereo.compositor?.depthStrength = settings.number(ShellSettings.DISPLAY_DEPTH_STRENGTH).toFloat() / 100f
+        stereo.compositor?.let { compositor ->
+            compositor.depthStrength = settings.number(ShellSettings.DISPLAY_DEPTH_STRENGTH).toFloat() / 100f
+            compositor.depthConvergence = settings.number(ShellSettings.DISPLAY_DEPTH_CONVERGENCE).toFloat()
+            compositor.depthSmoothing = settings.number(ShellSettings.DISPLAY_DEPTH_SMOOTHING).toFloat()
+        }
         val spacing = settings.number(ShellSettings.SLOT_SPACING_DEGREES).toFloat()
         if (spacing != scene.slotSpacingDegrees) scene.layOutCylindrical(spacing, immediate = false)
 

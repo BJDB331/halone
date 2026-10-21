@@ -305,6 +305,22 @@ const allSections: Section[] = [
             step: 0.1,
             format: (v) => `${v.toFixed(1)}`,
           },
+          {
+            kind: 'slider',
+            key: 'display.depthConvergence' as SettingKey,
+            label: '3D focus',
+            help: 'Which depth sits at the window itself. Lower brings more of the picture out toward you; higher sets it back behind the window.',
+            step: 0.05,
+            format: (v) => `${v.toFixed(2)}`,
+          },
+          {
+            kind: 'slider',
+            key: 'display.depthSmoothing' as SettingKey,
+            label: '3D steadiness',
+            help: 'How steadily depth is held where the picture is still. More stops shimmer; too much makes depth slow to follow a change.',
+            step: 0.05,
+            format: (v) => `${v.toFixed(2)}`,
+          },
         ],
       },
       {

@@ -108,6 +108,10 @@ class ShellSettings(private val store: SettingsStore, schemaJson: String) {
         const val WINDOWS_DEPTH_BUTTON = "windows.depthButton"
         /** How far a converted window's picture moves per eye, in percent of its width. */
         const val DISPLAY_DEPTH_STRENGTH = "display.depthStrength"
+        /** Which depth, 0..1, sits at a converted window's own distance. */
+        const val DISPLAY_DEPTH_CONVERGENCE = "display.depthConvergence"
+        /** How much of the last depth is kept where a converted window's picture is unchanged. */
+        const val DISPLAY_DEPTH_SMOOTHING = "display.depthSmoothing"
         const val BROWSER_AUTO_HIDE_TOOLBAR = "browser.autoHideToolbar"
         const val BROWSER_USER_AGENT = "browser.userAgent"
         const val BROWSER_AD_BLOCKER = "browser.adBlocker"
