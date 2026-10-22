@@ -78,6 +78,7 @@ internal class TexturedQuad3D {
     private var uEye = 0
     private var uDepthPx = 0
     private var uConvergence = 0
+    private var uShowDepth = 0
     private lateinit var vertices: FloatBuffer
 
     fun initialise() {
@@ -98,6 +99,7 @@ internal class TexturedQuad3D {
         uRadiusPx = GLES20.glGetUniformLocation(program, "uRadiusPx")
         uDepthPx = GLES20.glGetUniformLocation(program, "uDepthPx")
         uConvergence = GLES20.glGetUniformLocation(program, "uConvergence")
+        uShowDepth = GLES20.glGetUniformLocation(program, "uShowDepth")
         // The depth map lives on unit 1 for good: two sampler types sharing
         // unit 0 would fail every draw, converted or not.
         GLES20.glUseProgram(program)
@@ -139,6 +141,8 @@ internal class TexturedQuad3D {
         depthTexture: Int = 0,
         /** The depth, 0..1, drawn at the window's own distance: nearer comes out, farther goes in. */
         convergence: Float = 0.5f,
+        /** Draws the depth map itself, white nearest, instead of the picture: to see what conversion is working with. */
+        showDepth: Boolean = false,
     ) {
         GLES20.glUseProgram(program)
         if (depthPx > 0f && depthTexture != 0) {
@@ -147,6 +151,7 @@ internal class TexturedQuad3D {
         }
         GLES20.glUniform1f(uDepthPx, if (depthTexture != 0 && stereo == null) depthPx else 0f)
         GLES20.glUniform1f(uConvergence, convergence)
+        GLES20.glUniform1i(uShowDepth, if (showDepth) 1 else 0)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(Gl.TEXTURE_EXTERNAL_OES, textureId)
         GLES20.glUniformMatrix4fv(uMvp, 1, false, mvp, 0)
@@ -253,6 +258,7 @@ internal class TexturedQuad3D {
             uniform sampler2D uDepth;
             uniform float uDepthPx;
             uniform float uConvergence;
+            uniform int uShowDepth;
             in vec2 vTexCoord;
             in highp vec2 vLocal;
             out vec4 fragColor;
@@ -283,6 +289,10 @@ internal class TexturedQuad3D {
                     }
                     p = clamp(p, vec2(0.5), uSizePx - 0.5);
                     texCoord = (uTexTransform * vec4(p.x / uSizePx.x, 1.0 - p.y / uSizePx.y, 0.0, 1.0)).xy;
+                }
+                if (uDepthPx > 0.0 && uShowDepth != 0) {
+                    fragColor = vec4(vec3(texture(uDepth, window / uSizePx).r), 1.0) * (coverage * uAlpha);
+                    return;
                 }
                 fragColor = texture(uTexture, texCoord) * (coverage * uAlpha);
             }

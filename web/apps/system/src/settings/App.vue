@@ -492,6 +492,12 @@ const allSections: Section[] = [
             label: 'Show display stats',
             help: 'The glasses’ refresh rate and the frames actually drawn, along the bottom of the phone pad.',
           },
+          {
+            kind: 'toggle',
+            key: 'developer.showDepthMap' as SettingKey,
+            label: 'Show 3D depth maps',
+            help: 'Windows converted to 3D show the depth they are given instead of their picture: white is near, black is far.',
+          },
         ],
       },
       {
