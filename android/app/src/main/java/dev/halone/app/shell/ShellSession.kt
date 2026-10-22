@@ -789,6 +789,7 @@ class ShellSession(
             compositor.depthStrength = settings.number(ShellSettings.DISPLAY_DEPTH_STRENGTH).toFloat() / 100f
             compositor.depthConvergence = settings.number(ShellSettings.DISPLAY_DEPTH_CONVERGENCE).toFloat()
             compositor.depthSmoothing = settings.number(ShellSettings.DISPLAY_DEPTH_SMOOTHING).toFloat()
+            compositor.depthShowMap = settings.boolean(ShellSettings.DEVELOPER_SHOW_DEPTH_MAP)
         }
         val spacing = settings.number(ShellSettings.SLOT_SPACING_DEGREES).toFloat()
         if (spacing != scene.slotSpacingDegrees) scene.layOutCylindrical(spacing, immediate = false)

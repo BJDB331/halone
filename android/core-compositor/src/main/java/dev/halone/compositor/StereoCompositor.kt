@@ -615,6 +615,10 @@ class StereoCompositor(
             value?.setSmoothing(depthSmoothing)
         }
 
+    /** Converted windows show their depth map instead of their picture, for diagnosis. */
+    @Volatile
+    var depthShowMap = false
+
     /** Which depth, 0..1, sits at a converted window's own distance; see `TexturedQuad3D`. */
     @Volatile
     var depthConvergence = 0.5f
@@ -1123,6 +1127,7 @@ class StereoCompositor(
             depthPx = depthPx,
             depthTexture = depthMaps.forPanel(panel.id),
             convergence = depthConvergence,
+            showDepth = depthShowMap,
         )
     }
 
@@ -1723,7 +1728,9 @@ class StereoCompositor(
         private const val MAX_BEACON_AGE_NS = 20_000_000_000L
 
         /** How often one converted window has its depth re-estimated, at most. */
-        private const val DEPTH_INTERVAL_NS = 100_000_000L
+        // Five a second: the model shares the GPU with drawing, and at ten
+        // the frame rate visibly dropped.
+        private const val DEPTH_INTERVAL_NS = 200_000_000L
 
         /** Two refreshes at 60 Hz: past this the latch is not coming and waiting only drops frames. */
         private const val LATCH_WAIT_LIMIT_NS = 33_000_000L
