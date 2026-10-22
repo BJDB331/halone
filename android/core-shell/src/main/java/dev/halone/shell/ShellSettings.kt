@@ -112,6 +112,8 @@ class ShellSettings(private val store: SettingsStore, schemaJson: String) {
         const val DISPLAY_DEPTH_CONVERGENCE = "display.depthConvergence"
         /** How much of the last depth is kept where a converted window's picture is unchanged. */
         const val DISPLAY_DEPTH_SMOOTHING = "display.depthSmoothing"
+        /** Converted windows show their depth map instead of their picture. */
+        const val DEVELOPER_SHOW_DEPTH_MAP = "developer.showDepthMap"
         const val BROWSER_AUTO_HIDE_TOOLBAR = "browser.autoHideToolbar"
         const val BROWSER_USER_AGENT = "browser.userAgent"
         const val BROWSER_AD_BLOCKER = "browser.adBlocker"
