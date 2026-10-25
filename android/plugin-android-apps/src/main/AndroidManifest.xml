@@ -2,6 +2,12 @@
 <!--
   The standalone plugin's manifest, less what belongs to an app of its own:
   its icon, label and launcher entry. Setup opens from Halone's settings.
+
+  Everything runs in a process of its own, ":apps", as it did as a separate
+  app. Not only for isolation: the plugin SDK checks every call's caller
+  permission, and Android refuses that check for a call that never left the
+  process, so in Halone's own process the shell could not even list the apps.
+  Shizuku's provider is in the same process as the code that uses it.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
@@ -30,6 +36,7 @@
     <application>
         <activity
             android:name="dev.halone.plugin.android.SetupActivity"
+            android:process=":apps"
             android:exported="true"
             android:label="@string/plugin_name"
             android:theme="@android:style/Theme.DeviceDefault.DayNight">
@@ -41,6 +48,7 @@
 
         <service
             android:name="dev.halone.plugin.android.AndroidAppsProvider"
+            android:process=":apps"
             android:exported="true"
             android:label="@string/plugin_name"
             android:permission="dev.halone.permission.BIND_PANEL_PROVIDER">
@@ -54,6 +62,7 @@
 
         <provider
             android:name="rikka.shizuku.ShizukuProvider"
+            android:process=":apps"
             android:authorities="${applicationId}.shizuku"
             android:enabled="true"
             android:exported="true"
