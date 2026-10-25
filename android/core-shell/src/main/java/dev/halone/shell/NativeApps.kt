@@ -64,7 +64,11 @@ data class PluginInfo(val plugin: PluginPackage, val state: PluginState, val app
  *
  * Call on one thread.
  */
-class NativeApps(private val store: SettingsStore) {
+class NativeApps(
+    private val store: SettingsStore,
+    /** Plugins that ship inside Halone: always enabled, never announced. */
+    private val builtIn: Set<String> = emptySet(),
+) {
     private class Record(var certificate: String?, var apps: List<ProvidedApp>)
 
     private val records = LinkedHashMap<String, Record>()
@@ -99,7 +103,7 @@ class NativeApps(private val store: SettingsStore) {
         gone.forEach { records.remove(it) }
         if (newcomers.isEmpty() && gone.isEmpty() && previous == found) return
         changed()
-        newcomers.forEach { onDiscovered?.invoke(it) }
+        newcomers.filter { it.packageName !in builtIn }.forEach { onDiscovered?.invoke(it) }
     }
 
     fun stateOf(packageName: String): PluginState? {
@@ -107,6 +111,7 @@ class NativeApps(private val store: SettingsStore) {
         val certificate = records[packageName]?.certificate
         return when {
             !plugin.compatible -> PluginState.INCOMPATIBLE
+            packageName in builtIn -> PluginState.ENABLED
             certificate == null -> PluginState.DISABLED
             certificate != plugin.certificate -> PluginState.CERTIFICATE_CHANGED
             else -> PluginState.ENABLED

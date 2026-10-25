@@ -228,4 +228,16 @@ class NativeAppsTest {
         val unknown = call("plugins.setEnabled", JSONObject().put("packageName", "dev.example.other").put("enabled", true))
         assertEquals("no-such-plugin", unknown.getJSONObject("error").getString("code"))
     }
+
+    @Test
+    fun `a built-in plugin is enabled from the start and never announced`() {
+        val builtIn = NativeApps(MemoryStore(), builtIn = setOf("dev.example.plugin"))
+        var announced = 0
+        builtIn.onDiscovered = { announced++ }
+        builtIn.update(listOf(plugin()))
+
+        assertEquals(PluginState.ENABLED, builtIn.stateOf("dev.example.plugin"))
+        assertEquals(listOf("dev.example.plugin"), builtIn.runnable().map { it.packageName })
+        assertEquals(0, announced)
+    }
 }

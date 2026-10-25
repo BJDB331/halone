@@ -61,6 +61,8 @@ dependencies {
     implementation(project(":engine-webview"))
     implementation(project(":engine-plugin"))
     implementation(project(":core-shell"))
+    // Android apps on the glasses, built in rather than a separate plugin install.
+    implementation(project(":plugin-android-apps"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
