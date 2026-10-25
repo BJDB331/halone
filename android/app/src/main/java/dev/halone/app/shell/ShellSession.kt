@@ -113,7 +113,7 @@ class ShellSession(
     private val pluginConnections = HashMap<String, PluginConnection>()
     private val pluginWindows = HashMap<String, PluginPanelEngine>()
     private val pluginIcons = PluginIcons(java.io.File(context.filesDir, "plugin-icons"), { pluginConnections[it] }, log)
-    private val nativeApps = NativeApps(FileStore(context, "plugins.json", hardware))
+    private val nativeApps = NativeApps(FileStore(context, "plugins.json", hardware), builtIn = setOf(context.packageName))
     private val mediaBackend = MediaPlayerBackend({ stereo.compositor }, log)
     private val notices = TransientNotice { stereo.compositor }
     private val volume = VolumeIndicator(context, notices)

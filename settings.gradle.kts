@@ -35,6 +35,7 @@ listOf(
     "engine-webview",
     "engine-plugin",
     "core-shell",
+    "plugin-android-apps",
     "app",
     "testkit",
 ).forEach { name ->

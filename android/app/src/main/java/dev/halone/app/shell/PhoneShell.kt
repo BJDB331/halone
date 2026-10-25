@@ -26,7 +26,7 @@ import java.util.concurrent.Executors
 class PhoneShell(private val context: Context, deviceName: String, log: (String) -> Unit) : ShellPlatform {
     private val handler = Handler(Looper.getMainLooper())
     private val io = Executors.newSingleThreadExecutor()
-    private val nativeApps = NativeApps(FileStore(context, "plugins.json", io))
+    private val nativeApps = NativeApps(FileStore(context, "plugins.json", io), builtIn = setOf(context.packageName))
     private val pluginDirectory = PluginDirectory(context, log)
 
     private val shell = Shell(

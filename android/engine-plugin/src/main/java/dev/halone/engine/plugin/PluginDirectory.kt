@@ -20,9 +20,16 @@ class PluginDirectory(private val context: Context, private val log: (String) ->
     fun scan(): List<PluginPackage> {
         val packages = context.packageManager
         val services = packages.queryIntentServices(Intent(PluginContract.ACTION_PANEL_PROVIDER), PackageManager.GET_META_DATA)
+        // Halone's own plugins (the built-in Android apps) are found the same
+        // way; the standalone copy of one is passed over so the apps are not
+        // listed twice.
+        val ownPlugin = services.any { it.serviceInfo?.packageName == context.packageName }
         return services.mapNotNull { resolved ->
             val service = resolved.serviceInfo ?: return@mapNotNull null
-            if (service.packageName == context.packageName) return@mapNotNull null
+            if (ownPlugin && service.packageName in BUILT_IN_STANDALONE) {
+                log("  plugins: ${service.packageName} skipped: Halone has it built in")
+                return@mapNotNull null
+            }
             if (service.permission != PluginContract.PERMISSION_BIND || !service.exported) {
                 log("  plugins: ${service.packageName} ignored: its service must be exported and require ${PluginContract.PERMISSION_BIND}")
                 return@mapNotNull null
@@ -66,6 +73,11 @@ class PluginDirectory(private val context: Context, private val log: (String) ->
     fun unwatch() {
         receiver?.let { runCatching { context.unregisterReceiver(it) } }
         receiver = null
+    }
+
+    companion object {
+        /** Standalone plugins that Halone now carries itself. */
+        val BUILT_IN_STANDALONE = setOf("dev.halone.plugin.android")
     }
 
     private fun sha256(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
