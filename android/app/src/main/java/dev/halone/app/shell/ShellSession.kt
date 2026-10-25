@@ -348,7 +348,15 @@ class ShellSession(
         )
     }
 
-    override fun openApp(windowId: String, app: AppInfo, url: String): Panel? {
+    /** How long a window took from opening to its first loaded page; once per window. */
+    private val readyLogged = java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap<Long, Boolean>())
+
+    private fun logReady(appId: String, openedAt: Long) {
+        if (!readyLogged.add(openedAt)) return
+        log("  '$appId' ready in ${android.os.SystemClock.uptimeMillis() - openedAt} ms")
+    }
+
+        override fun openApp(windowId: String, app: AppInfo, url: String): Panel? {
         val engine = WebViewEngine(context, app.widthPx, app.heightPx, url.removePrefix(Shell.ORIGIN + "/"), log, paths = shellPaths)
         engine.bridgeConnector = BridgeConnector { port -> bridge.connect(windowId, WebMessagePortChannel(port)) }
         engine.clipboard = textClipboard
@@ -358,7 +366,9 @@ class ShellSession(
             ?: return null
         val defaults = SizeLimits.defaultFor(app.widthPx, app.heightPx)
         panel.sizeLimits = defaults
+        val openedAt = android.os.SystemClock.uptimeMillis()
         engine.onLoaded = {
+            logReady(app.id, openedAt)
             engine.evaluate(DECLARED_LIMITS_JS) { result -> panel.sizeLimits = declaredLimits(result, defaults) }
         }
         return panel
@@ -528,7 +538,9 @@ class ShellSession(
             ?: return null
         val defaults = SizeLimits.defaultFor(app.manifest.widthPx, app.manifest.heightPx)
         panel.sizeLimits = defaults
+        val openedAt = android.os.SystemClock.uptimeMillis()
         engine.onLoaded = {
+            logReady(app.id, openedAt)
             engine.evaluate(DECLARED_LIMITS_JS) { result -> panel.sizeLimits = declaredLimits(result, defaults) }
         }
         return panel
