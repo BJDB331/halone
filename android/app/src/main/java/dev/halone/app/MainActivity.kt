@@ -719,6 +719,16 @@ class MainActivity : AppCompatActivity() {
             return
         }
         starting = lifecycleScope.launch {
+            // Each step's time, said on the glasses once the shell is up, so a
+            // slow start can be pinned on one step without adb.
+            val startedAt = android.os.SystemClock.uptimeMillis()
+            var stepAt = startedAt
+            val steps = mutableListOf<String>()
+            fun step(name: String) {
+                val now = android.os.SystemClock.uptimeMillis()
+                steps += "$name %.1f s".format((now - stepAt) / 1000f)
+                stepAt = now
+            }
             try {
                 refreshHome()
                 if (tracker == null) {
@@ -729,6 +739,7 @@ class MainActivity : AppCompatActivity() {
                         logLine("  the glasses did not connect: are they plugged in, and was USB access allowed?")
                         return@launch
                     }
+                    step("connect")
                 }
                 // Every start begins with Halone holding the scene; the
                 // glasses' own button hands it over again.
@@ -748,9 +759,25 @@ class MainActivity : AppCompatActivity() {
                         logLine("  stereo did not start")
                         return@launch
                     }
+                    step("display")
                 }
                 logLine("▶ starting the shell")
                 startShell()
+                step("shell")
+                val total = "Started in %.1f s".format((android.os.SystemClock.uptimeMillis() - startedAt) / 1000f)
+                val detail = "$total (${steps.joinToString(", ")})"
+                logLine("  $detail")
+                shellSession?.notice(detail)
+                // The browser engine starts in the background now, while
+                // nothing is waiting on it, rather than when the first web
+                // window opens and the wearer is.
+                window.decorView.postDelayed({
+                    if (shellSession != null) runCatching {
+                        val warmAt = android.os.SystemClock.uptimeMillis()
+                        dev.halone.app.panel.GeckoPanel.sharedRuntime(this@MainActivity)
+                        logLine("  browser engine warmed in ${android.os.SystemClock.uptimeMillis() - warmAt} ms")
+                    }.onFailure { logLine("  browser engine warm-up failed: $it") }
+                }, GECKO_WARM_DELAY_MS)
             } finally {
                 starting = null
                 refreshHome()
@@ -2528,6 +2555,9 @@ class MainActivity : AppCompatActivity() {
         const val CONNECT_TIMEOUT_MS = 60_000L
         const val LINK_RETURN_TIMEOUT_MS = 20_000L
         const val STEREO_TIMEOUT_MS = 20_000L
+
+        /** After the shell is up, before starting the browser engine: let the first frames through. */
+        const val GECKO_WARM_DELAY_MS = 2_500L
 
         /** How soon after a window closes losing the phone counts as caused by it. */
         const val RECLAIM_AFTER_CLOSE_MS = 3_000L
