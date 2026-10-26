@@ -211,14 +211,23 @@ object AdbSetup {
         )
     }
 
+    /**
+     * Listeners hear only real changes. They react by reading the state
+     * again, and reading it goes through here: announcing a non-change made
+     * an endless loop that kept the Android apps process busy and Halone,
+     * waiting on it, unresponsive.
+     */
+    @Synchronized
     private fun update(next: Phase, text: String?) {
-        phase = next
-        message = text ?: when (next) {
+        val nextMessage = text ?: when (next) {
             Phase.UNPAIRED -> "Not set up yet."
             Phase.PAIRED -> "Paired. Turn on Wireless debugging to start."
             Phase.READY -> "Ready. Android apps open on the glasses."
             Phase.WORKING, Phase.FAILED -> message
         }
+        if (next == phase && nextMessage == message) return
+        phase = next
+        message = nextMessage
         main.post { listeners.toList().forEach { it() } }
     }
 
