@@ -33,6 +33,7 @@ class HomeScreen(
     context: Context,
     private val onPrimary: (GlassesStatus) -> Unit,
     onSettings: () -> Unit,
+    onAndroidApps: () -> Unit,
     onShareReport: () -> Unit,
     onDismissReport: () -> Unit,
 ) {
@@ -80,6 +81,15 @@ class HomeScreen(
         isFocusable = true
         background = RippleDrawable(ColorStateList.valueOf(PRESSED), null, GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) })
         setOnClickListener { onSettings() }
+    }
+
+    /** Setting up Android apps on the glasses: Wireless debugging pairing, once. */
+    private val androidApps = Symbols.view(context, "apps", 28f, Color.WHITE).apply {
+        contentDescription = "Set up Android apps"
+        isClickable = true
+        isFocusable = true
+        background = RippleDrawable(ColorStateList.valueOf(PRESSED), null, GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) })
+        setOnClickListener { onAndroidApps() }
     }
 
     /** Shown after a crash, until shared or dismissed. */
@@ -132,6 +142,7 @@ class HomeScreen(
             bottomMargin = dp(80)
         })
         addView(settings, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.TOP or Gravity.END))
+        addView(androidApps, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.TOP or Gravity.START))
         addView(primary, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, dp(64), Gravity.BOTTOM))
         addView(crashRow, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
         val version = TextView(context).apply {
@@ -146,6 +157,10 @@ class HomeScreen(
             (settings.layoutParams as FrameLayout.LayoutParams).apply {
                 topMargin = bars.top + dp(12)
                 rightMargin = bars.right + dp(12)
+            }
+            (androidApps.layoutParams as FrameLayout.LayoutParams).apply {
+                topMargin = bars.top + dp(12)
+                leftMargin = bars.left + dp(12)
             }
             (primary.layoutParams as FrameLayout.LayoutParams).apply {
                 leftMargin = bars.left + dp(24)

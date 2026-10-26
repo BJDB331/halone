@@ -96,6 +96,7 @@ class MainActivity : AppCompatActivity() {
             this,
             onPrimary = ::onPrimary,
             onSettings = ::openSettings,
+            onAndroidApps = { startActivity(Intent(this, dev.halone.plugin.android.SetupActivity::class.java)) },
             onShareReport = ::shareCrashReport,
             onDismissReport = ::dismissCrashReport,
         )
