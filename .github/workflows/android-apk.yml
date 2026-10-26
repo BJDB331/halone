@@ -79,7 +79,7 @@ jobs:
           set -o pipefail
           ./gradlew --stacktrace :app:assembleDebug 2>&1 | tee build.log || {
             # Compile errors as annotations, which can be read without the logs.
-            grep -E '^e: |error:|What went wrong' -A2 build.log | head -40 | while IFS= read -r line; do echo "::error::${line}"; done
+            grep -E '^e: |error:|What went wrong|Could not find|Could not resolve' -A2 build.log | head -40 | while IFS= read -r line; do echo "::error::${line}"; done
             exit 1
           }
 
