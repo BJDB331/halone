@@ -96,7 +96,6 @@ class MainActivity : AppCompatActivity() {
             this,
             onPrimary = ::onPrimary,
             onSettings = ::openSettings,
-            onAndroidApps = { startActivity(Intent(this, dev.halone.plugin.android.SetupActivity::class.java)) },
             onShareReport = ::shareCrashReport,
             onDismissReport = ::dismissCrashReport,
         )
@@ -261,6 +260,40 @@ class MainActivity : AppCompatActivity() {
             help = setup?.linkOffHelp,
             notice = homeNotice,
             action = if (offerLink) "Turn on TCP/IP" to ::turnOnLink else null,
+        )
+        home.renderDetails(homeDetails(status, model))
+    }
+
+    /** The home screen's status card: the glasses, their display, and Android apps. */
+    private fun homeDetails(status: GlassesStatus, model: String?): List<StatusRow> {
+        val connected = status != GlassesStatus.DISCONNECTED
+        val display = getSystemService(android.hardware.display.DisplayManager::class.java)
+            .getDisplays(android.hardware.display.DisplayManager.DISPLAY_CATEGORY_PRESENTATION)
+            .firstOrNull { it.displayId != android.view.Display.DEFAULT_DISPLAY && (android.os.Build.VERSION.SDK_INT < 31 || it.deviceProductInfo != null) }
+        val displayValue = display?.mode?.let { mode ->
+            val stereo = mode.physicalWidth >= 2 * mode.physicalHeight
+            "${if (stereo) "3D" else "2D"} · ${mode.physicalWidth}×${mode.physicalHeight} @ ${mode.refreshRate.roundToInt()} Hz"
+        }
+        val helperReady = runCatching {
+            contentResolver.call(
+                android.net.Uri.parse("content://" + dev.halone.plugin.android.HelperBridge.authority(packageName)), "get", null, null,
+            )?.getBinder("binder") != null
+        }.getOrDefault(false)
+        val paired = dev.halone.plugin.android.adb.AdbSetup.pairedSeenFromElsewhere(this)
+        val openSetup = { startActivity(Intent(this, dev.halone.plugin.android.SetupActivity::class.java)) }
+        return listOf(
+            StatusRow("eyeglasses", "Glasses", model ?: "Not connected", good = if (connected) true else null),
+            StatusRow("visibility", "Display", displayValue ?: if (connected) "No picture yet" else "—", good = if (display != null) true else null),
+            StatusRow(
+                "apps", "Android apps",
+                when {
+                    helperReady -> "Ready"
+                    paired -> "Turn on Wireless debugging"
+                    else -> "Set up"
+                },
+                good = if (helperReady) true else false,
+                onClick = openSetup,
+            ),
         )
     }
 
@@ -1842,13 +1875,17 @@ class MainActivity : AppCompatActivity() {
         when (part) {
             HitPart.PIN -> {
                 val pinned = panel.follow.enabled
+                shellSession?.flash(if (pinned) "Pinned in place" else "Following you")
                 if (shell != null && runCatching { shell.setPinned(panel.id, pinned) }.isSuccess) return
                 stereoSession?.scene?.setFollow(panel, panel.follow.copy(enabled = !pinned))
             }
             HitPart.BACK -> panel.engine.dispatchBack()
             HitPart.SIZE -> {
                 if (shell != null && runCatching { shell.cycleSize(panel.id) }
-                        .onSuccess { (w, h) -> logLine("  resized '${panel.id}' to ${w}x$h, remembered for next time") }
+                        .onSuccess { (w, h) ->
+                            logLine("  resized '${panel.id}' to ${w}x$h, remembered for next time")
+                            shellSession?.flash(if (w > h) "Landscape" else if (w < h) "Portrait" else "Square")
+                        }
                         .isSuccess
                 ) return
                 val session = stereoSession ?: return

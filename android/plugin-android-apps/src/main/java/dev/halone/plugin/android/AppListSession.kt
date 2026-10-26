@@ -39,6 +39,7 @@ class AppListSession(private val provider: AndroidAppsProvider) : ViewPanelSessi
     private val onListChanged: () -> Unit = { filter() }
     private val previews = LruCache<String, Bitmap>(RecentApps.MAX)
     private lateinit var recentStrip: View
+    private lateinit var allTitle: TextView
     private lateinit var recentRow: LinearLayout
     private val onRecentsChanged: () -> Unit = { showRecents() }
 
@@ -48,6 +49,14 @@ class AppListSession(private val provider: AndroidAppsProvider) : ViewPanelSessi
 
         val search = EditText(context).apply {
             hint = context.getString(R.string.search_hint)
+            setTextColor(Color.WHITE)
+            setHintTextColor(Color.argb(0x80, 0xff, 0xff, 0xff))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            setPadding(SEARCH_PADDING, SEARCH_PADDING / 2, SEARCH_PADDING, SEARCH_PADDING / 2)
+            background = GradientDrawable().apply {
+                cornerRadius = SEARCH_RADIUS
+                setColor(Color.rgb(0x24, 0x27, 0x2e))
+            }
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
             setSingleLine()
             addTextChangedListener(object : TextWatcher {
@@ -76,6 +85,8 @@ class AppListSession(private val provider: AndroidAppsProvider) : ViewPanelSessi
             }
         }
 
+        allTitle = sectionTitle(context, "")
+
         empty = TextView(context).apply {
             text = context.getString(R.string.no_apps)
             gravity = Gravity.CENTER
@@ -84,12 +95,7 @@ class AppListSession(private val provider: AndroidAppsProvider) : ViewPanelSessi
         filter()
 
         recentRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
-        val recentTitle = TextView(context).apply {
-            text = context.getString(R.string.recent_title)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            setTextColor(Color.argb(0xB3, 0xff, 0xff, 0xff))
-            setPadding(0, SPACING, 0, SPACING / 2)
-        }
+        val recentTitle = sectionTitle(context, context.getString(R.string.recent_title))
         recentStrip = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             addView(recentTitle)
@@ -107,6 +113,7 @@ class AppListSession(private val provider: AndroidAppsProvider) : ViewPanelSessi
             setPadding(PADDING, PADDING, PADDING, 0)
             addView(search, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(recentStrip, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(allTitle, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(empty, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
             addView(grid, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         }
@@ -121,6 +128,15 @@ class AppListSession(private val provider: AndroidAppsProvider) : ViewPanelSessi
         super.onClose()
     }
 
+    private fun sectionTitle(context: Context, value: String) = TextView(context).apply {
+        text = value
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+        typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+        letterSpacing = 0.08f
+        setTextColor(Color.argb(0x99, 0xff, 0xff, 0xff))
+        setPadding(4, SPACING + 4, 0, SPACING / 2)
+    }
+
     /** Recents, newest first, each a still of its window; hidden while searching or when there are none. */
     private fun showRecents() {
         if (!::recentRow.isInitialized) return
@@ -130,12 +146,20 @@ class AppListSession(private val provider: AndroidAppsProvider) : ViewPanelSessi
         val context = recentRow.context
         entries.forEach { entry ->
             val image = ImageView(context).apply {
-                scaleType = ImageView.ScaleType.FIT_CENTER
+                scaleType = ImageView.ScaleType.CENTER_CROP
                 background = GradientDrawable().apply {
                     setColor(Color.rgb(0x22, 0x25, 0x2c))
                     cornerRadius = PREVIEW_RADIUS
                 }
                 clipToOutline = true
+            }
+            val badge = ImageView(context)
+            val frame = FrameLayout(context).apply {
+                addView(image, FrameLayout.LayoutParams(PREVIEW_WIDTH, PREVIEW_HEIGHT))
+                addView(badge, FrameLayout.LayoutParams(BADGE_SIZE, BADGE_SIZE, Gravity.BOTTOM or Gravity.START).apply {
+                    leftMargin = 6
+                    bottomMargin = 6
+                })
             }
             val card = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
@@ -143,7 +167,7 @@ class AppListSession(private val provider: AndroidAppsProvider) : ViewPanelSessi
                 setPadding(0, 0, SPACING, 0)
                 val value = TypedValue()
                 if (context.theme.resolveAttribute(android.R.attr.selectableItemBackground, value, true)) setBackgroundResource(value.resourceId)
-                addView(image, LinearLayout.LayoutParams(PREVIEW_WIDTH, PREVIEW_HEIGHT))
+                addView(frame, LinearLayout.LayoutParams(PREVIEW_WIDTH, PREVIEW_HEIGHT))
                 addView(TextView(context).apply {
                     text = entry.label
                     gravity = Gravity.CENTER
@@ -155,6 +179,7 @@ class AppListSession(private val provider: AndroidAppsProvider) : ViewPanelSessi
             }
             recentRow.addView(card)
             loadPreview(entry.id, image)
+            provider.catalog.find(entry.id)?.let { loadIcon(it, badge) }
         }
     }
 
@@ -178,6 +203,13 @@ class AppListSession(private val provider: AndroidAppsProvider) : ViewPanelSessi
         shown = if (query.isEmpty()) all else all.filter { it.label.contains(query, ignoreCase = true) }
         if (::adapter.isInitialized) adapter.notifyDataSetChanged()
         if (::empty.isInitialized) empty.visibility = if (shown.isEmpty()) View.VISIBLE else View.GONE
+        if (::allTitle.isInitialized) {
+            allTitle.text = if (query.isEmpty()) {
+                allTitle.context.getString(R.string.all_apps_title, all.size)
+            } else {
+                allTitle.context.getString(R.string.search_results_title, shown.size)
+            }
+        }
         showRecents()
     }
 
@@ -280,16 +312,19 @@ class AppListSession(private val provider: AndroidAppsProvider) : ViewPanelSessi
     private companion object {
         const val PADDING = 20
         const val SPACING = 12
-        const val CELL_WIDTH = 104
-        const val ICON_SIZE = 56
+        const val CELL_WIDTH = 124
+        const val ICON_SIZE = 72
         const val ICON_CACHE = 300
         const val MENU_WIDTH = 200
         const val MENU_PADDING = 8
         const val MENU_ITEM_PADDING = 32
         const val MENU_RADIUS = 12f
         const val MENU_ELEVATION = 8f
-        const val PREVIEW_WIDTH = 96
-        const val PREVIEW_HEIGHT = 150
-        const val PREVIEW_RADIUS = 10f
+        const val PREVIEW_WIDTH = 112
+        const val PREVIEW_HEIGHT = 176
+        const val PREVIEW_RADIUS = 14f
+        const val BADGE_SIZE = 32
+        const val SEARCH_PADDING = 28
+        const val SEARCH_RADIUS = 28f
     }
 }

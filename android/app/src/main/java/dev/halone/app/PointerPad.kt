@@ -56,6 +56,9 @@ class PointerPad(
     private var record: TextView? = null
     private var switchMode: View? = null
     private var follow: TextView? = null
+    private var recordLabel: TextView? = null
+    private var followLabel: TextView? = null
+    private var modeHint: TextView? = null
     private var stats: TextView? = null
 
     /** Everything the pad shows, hidden together while the phone screen is off. */
@@ -89,17 +92,37 @@ class PointerPad(
             }
             modeIcon = icon
             modeLabel = label
-
-            val bar = LinearLayout(activity).apply {
-                orientation = LinearLayout.HORIZONTAL
+            val hint = TextView(activity).apply {
+                textSize = 13f
+                setTextColor(Color.argb(0x66, 0xff, 0xff, 0xff))
                 gravity = Gravity.CENTER
-                addView(button("center_focus_strong", "Recenter view") { actions.recenterView() })
-                recenterPointer = button("my_location", "Recenter pointer") { actions.recenterPointer() }.also { addView(it) }
-                addView(button("photo_camera", "Screenshot") { actions.screenshot() })
-                record = button("radio_button_checked", "Record") { actions.toggleRecording() }.also { addView(it) }
-                switchMode = button("swap_horiz", "Switch pointer mode") { actions.nextPointerMode() }.also { addView(it) }
-                follow = button("moving", "World lock or follow") { actions.toggleFollow() }.also { addView(it) }
-                addView(button("brightness_6", "Turn the phone screen off") { setScreenOff(true) })
+            }
+            modeHint = hint
+
+            // Two labelled rows instead of seven bare icons: what the wearer
+            // does to the view, then capture and the phone itself. Labels,
+            // because the buttons are found by glancing down, not by memory.
+            val viewRow = group(
+                labelled("center_focus_strong", "Recenter", "Recenter view") { actions.recenterView() },
+                labelled("my_location", "Pointer", "Recenter pointer") { actions.recenterPointer() }.also { recenterPointer = it },
+                labelled("moving", "Follow", "World lock or follow") { actions.toggleFollow() }.also {
+                    follow = it.getChildAt(0) as TextView
+                    followLabel = it.getChildAt(1) as TextView
+                },
+                labelled("swap_horiz", "Mode", "Switch pointer mode") { actions.nextPointerMode() }.also { switchMode = it },
+            )
+            val captureRow = group(
+                labelled("photo_camera", "Screenshot", "Screenshot") { actions.screenshot() },
+                labelled("radio_button_checked", "Record", "Record") { actions.toggleRecording() }.also {
+                    record = it.getChildAt(0) as TextView
+                    recordLabel = it.getChildAt(1) as TextView
+                },
+                labelled("brightness_6", "Screen off", "Turn the phone screen off") { setScreenOff(true) },
+            )
+            val bar = LinearLayout(activity).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(viewRow, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+                addView(captureRow, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
             }
 
             val pad = object : FrameLayout(activity) {
@@ -146,6 +169,7 @@ class PointerPad(
                     gravity = Gravity.CENTER_HORIZONTAL
                     addView(icon)
                     addView(label, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
+                    addView(hint, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(6) })
                 }
                 addView(centre, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER))
                 addView(bar, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP))
@@ -159,7 +183,7 @@ class PointerPad(
                     contentDescription = "Turn the phone screen back on"
                     setOnClickListener { setScreenOff(false) }
                 }.also {
-                    addView(it, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, dp(96), Gravity.TOP))
+                    addView(it, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, dp(160), Gravity.TOP))
                 }
                 stats = TextView(activity).apply {
                     textSize = 12f
@@ -222,37 +246,61 @@ class PointerPad(
         }
         modeIcon?.text = symbol
         modeLabel?.text = name
+        modeHint?.text = when (mode) {
+            "phone" -> "Aim the phone · tap anywhere to click"
+            "touchpad" -> "Swipe to move · tap to click · two fingers to scroll"
+            "mouse" -> "Using the connected mouse"
+            else -> "Look to point · tap anywhere to click"
+        }
         recenterPointer?.visibility = if (mode == "phone") View.VISIBLE else View.GONE
         switchMode?.isEnabled = mode != "mouse"
         switchMode?.alpha = if (mode != "mouse") 1f else 0.3f
         record?.text = if (recording) "stop_circle" else "radio_button_checked"
         record?.setTextColor(if (recording) RECORDING else Color.WHITE)
         record?.contentDescription = if (recording) "Stop recording" else "Record"
+        recordLabel?.text = if (recording) "Stop" else "Record"
+        recordLabel?.setTextColor(if (recording) RECORDING else LABEL)
         follow?.text = if (following) "moving" else "keep"
         follow?.contentDescription = if (following) "Following: tap to lock windows in place" else "World-locked: tap to have windows follow"
+        followLabel?.text = if (following) "Following" else "Locked"
     }
 
-    private fun button(symbol: String, description: String, onClick: () -> Unit): TextView =
-        Symbols.view(activity, symbol, 24f, Color.WHITE).apply {
-            contentDescription = description
-            isClickable = true
-            isFocusable = true
-            background = RippleDrawable(
-                ColorStateList.valueOf(PRESSED),
-                GradientDrawable().apply {
-                    shape = GradientDrawable.OVAL
-                    setColor(BUTTON)
-                },
-                null,
-            )
-            setOnClickListener { onClick() }
-            // Eight buttons in gyro mode: at 48 + 12 dp each they ran past a
-            // phone's width and the last ones were cut off.
-            layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply {
-                leftMargin = dp(2)
-                rightMargin = dp(2)
-            }
+    /** A rounded strip holding a row of buttons, sharing the width evenly. */
+    private fun group(vararg buttons: View) = LinearLayout(activity).apply {
+        orientation = LinearLayout.HORIZONTAL
+        setPadding(dp(4), dp(4), dp(4), dp(4))
+        background = GradientDrawable().apply {
+            cornerRadius = dp(20).toFloat()
+            setColor(GROUP)
         }
+        buttons.forEach { addView(it, LinearLayout.LayoutParams(0, dp(60), 1f)) }
+    }
+
+    /** An icon over its name; child 0 is the icon, child 1 the name, so callers can change either. */
+    private fun labelled(symbol: String, name: String, description: String, onClick: () -> Unit) = LinearLayout(activity).apply {
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER
+        contentDescription = description
+        isClickable = true
+        isFocusable = true
+        background = RippleDrawable(
+            ColorStateList.valueOf(PRESSED),
+            null,
+            GradientDrawable().apply {
+                cornerRadius = dp(16).toFloat()
+                setColor(Color.WHITE)
+            },
+        )
+        setOnClickListener { onClick() }
+        addView(Symbols.view(activity, symbol, 22f, Color.WHITE))
+        addView(TextView(activity).apply {
+            text = name
+            textSize = 11f
+            setTextColor(LABEL)
+            gravity = Gravity.CENTER
+            maxLines = 1
+        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(2) })
+    }
 
     /**
      * The phone screen "off" while the glasses stay on: every pixel black
@@ -263,7 +311,9 @@ class PointerPad(
      * lock it and take the glasses' picture with it.
      *
      * The pad still takes gestures in the dark; a tap along the top edge,
-     * where the buttons were, turns the screen back on.
+     * where the buttons were, or either volume button turns the screen back
+     * on. With the Android apps helper running, [onScreenOff] powers the
+     * panel itself off as well.
      */
     /** Hears every switch, so the panel itself can be powered off where that is possible. */
     var onScreenOff: ((Boolean) -> Unit)? = null
@@ -301,6 +351,9 @@ class PointerPad(
             modeLabel = null
             recenterPointer = null
             record = null
+            recordLabel = null
+            followLabel = null
+            modeHint = null
             switchMode = null
             follow = null
         }
@@ -334,5 +387,7 @@ class PointerPad(
         val PRESSED = Color.argb(0x30, 0x5c, 0xc8, 0xff)
         val BUTTON = Color.argb(0x26, 0xff, 0xff, 0xff)
         val RECORDING = Color.rgb(0xff, 0x6b, 0x6b)
+        val GROUP = Color.argb(0x1a, 0xff, 0xff, 0xff)
+        val LABEL = Color.argb(0xb3, 0xff, 0xff, 0xff)
     }
 }

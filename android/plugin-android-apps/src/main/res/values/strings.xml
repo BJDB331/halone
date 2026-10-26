@@ -76,5 +76,20 @@
     <string name="setup_adb_code_hint">Or type the code here (split screen)</string>
     <string name="setup_adb_pair_code">Pair</string>
     <string name="setup_adb_after_reboot">After the phone restarts, turn Wireless debugging on again and tap Start Android apps, or tap an app window on the glasses.</string>
-    <string name="recent_title">Recent</string>
+    <string name="recent_title">RECENT</string>
+    <string name="all_apps_title">ALL APPS · %1$d</string>
+    <string name="search_results_title">RESULTS · %1$d</string>
+    <string name="setup_heading">Android apps</string>
+    <string name="setup_summary_new">Three steps, once. Nothing else to install.</string>
+    <string name="setup_summary_paired">Paired. Turn on Wireless debugging, then start Android apps.</string>
+    <string name="setup_summary_ready">Ready. Your phone\'s apps open on the glasses.</string>
+    <string name="setup_step_wireless_title">Turn on Wireless debugging</string>
+    <string name="setup_step_wireless_body">Connect to Wi-Fi, then in Developer options turn on Wireless debugging and allow your network.</string>
+    <string name="setup_step_pair_title">Pair Halone</string>
+    <string name="setup_step_pair_body">Tap Start pairing. In Wireless debugging, choose Pair device with pairing code, keep that dialog open, and type its code into Halone\'s notification.</string>
+    <string name="setup_step_pair_done">Paired with this phone.</string>
+    <string name="setup_step_start_title">Start Android apps</string>
+    <string name="setup_step_start_body">Starts on its own after pairing. After the phone restarts, turn Wireless debugging on and tap Start, or just open an app on the glasses.</string>
+    <string name="setup_step_start_done">Running.</string>
+    <string name="setup_optional">OPTIONAL</string>
 </resources>
