@@ -139,6 +139,8 @@ class AppPanelSession(
 
     private fun showNotice(state: Privileged.State) {
         val (title, body) = when (state) {
+            Privileged.State.SETUP_NEEDED -> R.string.notice_setup_title to R.string.notice_setup_body
+            Privileged.State.START_NEEDED -> R.string.notice_start_title to R.string.notice_start_body
             Privileged.State.NO_SHIZUKU -> R.string.notice_no_shizuku_title to R.string.notice_no_shizuku_body
             Privileged.State.NOT_RUNNING -> R.string.notice_not_running_title to R.string.notice_not_running_body
             Privileged.State.NO_PERMISSION -> R.string.notice_permission_title to R.string.notice_permission_body

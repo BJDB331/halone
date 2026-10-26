@@ -9,13 +9,27 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.RemoteException
 import android.util.Log
+import dev.halone.plugin.android.adb.AdbSetup
 import dev.halone.plugin.android.privileged.DisplayService
 import rikka.shizuku.Shizuku
 import rikka.sui.Sui
 
-/** The connection to [DisplayService] through Shizuku or Sui, and what is missing while there is none. */
+/**
+ * The connection to [DisplayService], and what is missing while there is none.
+ *
+ * Halone's own shell helper comes first: started through the phone's
+ * Wireless debugging ([AdbSetup]), it needs nothing installed. Shizuku or
+ * Sui, if already set up and allowed, still works, so a phone set up for the
+ * standalone plugin keeps working; Halone no longer asks for it.
+ */
 class Privileged(private val context: Context) {
-    enum class State { NO_SHIZUKU, NOT_RUNNING, NO_PERMISSION, DENIED, CONNECTING, READY }
+    enum class State {
+        /** Never paired: the phone's setup screen does it, once. */
+        SETUP_NEEDED,
+        /** Paired, but the helper is not running and could not be started: usually Wireless debugging is off. */
+        START_NEEDED,
+        NO_SHIZUKU, NOT_RUNNING, NO_PERMISSION, DENIED, CONNECTING, READY,
+    }
 
     var state = State.NOT_RUNNING
         private set
@@ -82,7 +96,14 @@ class Privileged(private val context: Context) {
     }
     private val permissionResult = Shizuku.OnRequestPermissionResultListener { _, _ -> main.post { refresh() } }
 
+    private val helperChanged: () -> Unit = { refresh() }
+
+    /** Starting the helper is tried by itself once, then again only when asked: a tap on an app window, or setup. */
+    private var autoStartTried = false
+
     fun start() {
+        HelperBridge.addListener(helperChanged)
+        AdbSetup.addListener(helperChanged)
         Sui.init(context.packageName)
         Shizuku.addBinderReceivedListenerSticky(binderReceived)
         Shizuku.addBinderDeadListener(binderDead)
@@ -91,6 +112,8 @@ class Privileged(private val context: Context) {
     }
 
     fun stop() {
+        HelperBridge.removeListener(helperChanged)
+        AdbSetup.removeListener(helperChanged)
         Shizuku.removeBinderReceivedListener(binderReceived)
         Shizuku.removeBinderDeadListener(binderDead)
         Shizuku.removeRequestPermissionResultListener(permissionResult)
@@ -111,16 +134,53 @@ class Privileged(private val context: Context) {
         if (callbacks == null) displayCallbacks.remove(displayId) else displayCallbacks[displayId] = callbacks
     }
 
-    /** Asks for whatever is missing: Shizuku's permission prompt on the phone, or a new connection. */
+    /** Asks for whatever is missing: the helper started again, or the phone's setup screen. */
     fun requestAccess() {
         refresh()
-        if (state == State.NO_PERMISSION || state == State.DENIED) requestPermission()
+        when (state) {
+            State.START_NEEDED -> AdbSetup.connect(context).also { refresh() }
+            State.SETUP_NEEDED -> openSetup()
+            State.NO_PERMISSION, State.DENIED -> requestPermission()
+            else -> Unit
+        }
+    }
+
+    private fun openSetup() {
+        runCatching {
+            context.startActivity(
+                android.content.Intent(context, SetupActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }.onFailure { Log.w(TAG, "open setup", it) }
     }
 
     fun refresh() {
         if (service?.asBinder()?.pingBinder() == true) return update(State.READY)
         service = null
-        val next = missingAccess(context) ?: State.CONNECTING.also { bind() }
+        HelperBridge.binder?.takeIf { HelperBridge.alive() }?.let { helper ->
+            val connected = IDisplayService.Stub.asInterface(helper)
+            try {
+                connected.setListener(displayListener)
+                service = connected
+                return update(State.READY)
+            } catch (e: RemoteException) {
+                Log.w(TAG, "helper setListener", e)
+            }
+        }
+        if (missingAccess(context) == null) {
+            bind()
+            return update(State.CONNECTING)
+        }
+        AdbSetup.refresh(context)
+        val next = when {
+            !AdbSetup.paired(context) -> State.SETUP_NEEDED
+            AdbSetup.phase == AdbSetup.Phase.WORKING -> State.CONNECTING
+            !autoStartTried -> {
+                autoStartTried = true
+                AdbSetup.connect(context)
+                State.CONNECTING
+            }
+            else -> State.START_NEEDED
+        }
         update(next)
     }
 

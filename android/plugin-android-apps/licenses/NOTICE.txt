@@ -1,0 +1,16 @@
+Halone's built-in Android apps include:
+
+LibADB Android 3.1.1, Copyright 2021 Muntashir Al-Islam.
+https://github.com/MuntashirAkon/libadb-android/tree/3.1.1
+Used under the Apache License 2.0 (upstream also offers GPL 3); see libadb/.
+Source in src/main/java/io/github/muntashirakon/adb, with the local changes
+made by The Unbound Launcher (github.com/MarkPronkin/the-unbound-launcher,
+MIT): bounded TCP/read timeouts, null-safe pairing cleanup, draining queued
+bytes when a short shell command closes its stream, bounded stream-open waits.
+
+The on-device pairing and helper start-up follow The Unbound Launcher's
+embedded ADB (MIT, Copyright 2026 The Unbound Launcher contributors).
+
+SPAKE2 Android 2.2.1 (LGPL-3.0), Conscrypt Android 2.5.3 (Apache-2.0) and
+Bouncy Castle bcprov-jdk15to18 1.81 (MIT-style) are linked from Maven Central
+under their own licenses.

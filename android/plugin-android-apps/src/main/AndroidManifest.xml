@@ -15,6 +15,10 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- On-device ADB: loopback sockets to Wireless debugging, and the
+         notification the pairing code is typed into. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <queries>
         <intent>
@@ -59,6 +63,18 @@
                 android:name="dev.halone.plugin.CONTRACT"
                 android:value="1" />
         </service>
+
+        <!-- Where the shell helper hands over its Binder; only the shell user may publish. -->
+        <provider
+            android:name="dev.halone.plugin.android.HelperBridge"
+            android:process=":apps"
+            android:authorities="${applicationId}.androidapps.helper"
+            android:exported="true" />
+
+        <receiver
+            android:name="dev.halone.plugin.android.adb.PairingReceiver"
+            android:process=":apps"
+            android:exported="false" />
 
         <provider
             android:name="rikka.shizuku.ShizukuProvider"

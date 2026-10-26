@@ -35,6 +35,10 @@ litert-gpu = { group = "com.google.ai.edge.litert", name = "litert-gpu", version
 litert-gpu-api = { group = "com.google.ai.edge.litert", name = "litert-gpu-api", version.ref = "litert" }
 shizuku-api = { group = "dev.rikka.shizuku", name = "api", version.ref = "shizuku" }
 shizuku-provider = { group = "dev.rikka.shizuku", name = "provider", version.ref = "shizuku" }
+spake2-android = { group = "io.github.muntashirakon", name = "spake2-android", version = "2.2.1" }
+conscrypt-android = { group = "org.conscrypt", name = "conscrypt-android", version = "2.5.3" }
+bouncycastle-bcprov = { group = "org.bouncycastle", name = "bcprov-jdk15to18", version = "1.81" }
+androidx-annotation = { group = "androidx.annotation", name = "annotation", version = "1.9.1" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 json = { group = "org.json", name = "json", version.ref = "json" }
 androidx-test-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestJunit" }

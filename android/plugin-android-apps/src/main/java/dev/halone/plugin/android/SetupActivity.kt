@@ -10,10 +10,14 @@ import android.os.Bundle
 import android.provider.Settings
 import android.util.TypedValue
 import android.view.View
+import android.text.InputType
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import dev.halone.plugin.android.adb.AdbSetup
+import dev.halone.plugin.android.adb.PairingNotification
 import rikka.shizuku.Shizuku
 import rikka.sui.Sui
 
@@ -24,6 +28,9 @@ class SetupActivity : Activity() {
     private lateinit var bluetoothStatus: TextView
     private lateinit var bluetoothButton: Button
     private var bluetoothAsked = false
+    private lateinit var adbStatus: TextView
+    private lateinit var adbConnect: Button
+    private val adbChanged: () -> Unit = { runOnUiThread(::refreshAdb) }
 
     private val binderReceived = Shizuku.OnBinderReceivedListener { runOnUiThread(::refresh) }
     private val binderDead = Shizuku.OnBinderDeadListener { runOnUiThread(::refresh) }
@@ -37,6 +44,33 @@ class SetupActivity : Activity() {
             setPadding(padding, padding, padding, padding)
         }
         column.addView(text(getString(R.string.setup_intro), 16f))
+
+        // Halone's own way in, first; Shizuku below is for phones already set up with it.
+        column.addView(heading(getString(R.string.setup_adb_title)))
+        column.addView(text(getString(R.string.setup_adb_intro), 15f))
+        adbStatus = text("", 15f).apply { setPadding(0, dp(12), 0, 0) }.also(column::addView)
+        column.addView(Button(this).apply {
+            setText(R.string.setup_adb_developer)
+            setOnClickListener { openDeveloperOptions() }
+        }, buttonParams())
+        column.addView(Button(this).apply {
+            setText(R.string.setup_adb_pair)
+            setOnClickListener { startPairing() }
+        }, buttonParams())
+        val code = EditText(this).apply {
+            hint = getString(R.string.setup_adb_code_hint)
+            inputType = InputType.TYPE_CLASS_NUMBER
+        }
+        column.addView(code, buttonParams())
+        column.addView(Button(this).apply {
+            setText(R.string.setup_adb_pair_code)
+            setOnClickListener { AdbSetup.pair(this@SetupActivity, code.text.toString().filter { it.isDigit() }) }
+        }, buttonParams())
+        adbConnect = Button(this).apply {
+            setText(R.string.setup_adb_connect)
+            setOnClickListener { AdbSetup.connect(this@SetupActivity) }
+        }.also { column.addView(it, buttonParams()) }
+        column.addView(text(getString(R.string.setup_adb_after_reboot), 13f).apply { setPadding(0, dp(8), 0, 0) })
 
         column.addView(heading(getString(R.string.setup_shizuku_title)))
         shizukuStatus = text("", 15f).also(column::addView)
@@ -53,6 +87,7 @@ class SetupActivity : Activity() {
             addView(column)
         })
 
+        AdbSetup.addListener(adbChanged)
         Sui.init(packageName)
         Shizuku.addBinderReceivedListenerSticky(binderReceived)
         Shizuku.addBinderDeadListener(binderDead)
@@ -65,6 +100,7 @@ class SetupActivity : Activity() {
     }
 
     override fun onDestroy() {
+        AdbSetup.removeListener(adbChanged)
         Shizuku.removeBinderReceivedListener(binderReceived)
         Shizuku.removeBinderDeadListener(binderDead)
         Shizuku.removeRequestPermissionResultListener(permissionResult)
@@ -73,9 +109,34 @@ class SetupActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         refresh()
+        if (requestCode == NOTIFICATION_REQUEST && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) startPairing()
+    }
+
+    private fun refreshAdb() {
+        AdbSetup.refresh(this)
+        adbStatus.text = AdbSetup.message
+        adbConnect.isEnabled = AdbSetup.paired(this) && AdbSetup.phase != AdbSetup.Phase.WORKING && AdbSetup.phase != AdbSetup.Phase.READY
+    }
+
+    /** Code entry in the notification shade, then Developer options, where Wireless debugging's pairing dialog is. */
+    private fun startPairing() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_REQUEST)
+            return
+        }
+        PairingNotification.show(this)
+        openDeveloperOptions()
+    }
+
+    private fun openDeveloperOptions() {
+        runCatching { startActivity(Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)) }
+            .onFailure { startActivity(Intent(Settings.ACTION_SETTINGS)) }
     }
 
     private fun refresh() {
+        refreshAdb()
         val (status, action, onClick) = when (Privileged.missingAccess(this)) {
             Privileged.State.NO_SHIZUKU -> Triple<Int, Int, () -> Unit>(R.string.setup_shizuku_missing, R.string.setup_get_shizuku) {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SHIZUKU_URL)))
@@ -139,6 +200,7 @@ class SetupActivity : Activity() {
 
     private companion object {
         const val BLUETOOTH_REQUEST = 1
+        const val NOTIFICATION_REQUEST = 2
         const val SHIZUKU_URL = "https://shizuku.rikka.app/"
     }
 }

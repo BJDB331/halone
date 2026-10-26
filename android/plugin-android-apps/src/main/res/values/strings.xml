@@ -17,6 +17,10 @@
     <string name="notice_permission_body">Tap here, then allow Halone Android Integration in Shizuku\'s prompt on the phone.</string>
     <string name="notice_denied_title">Access was denied</string>
     <string name="notice_denied_body">Allow Halone Android Integration in the Shizuku app on the phone, then tap here.</string>
+    <string name="notice_setup_title">Set up Android apps</string>
+    <string name="notice_setup_body">Tap here, then follow the steps on the phone. It takes a minute, once, and needs no other app.</string>
+    <string name="notice_start_title">Turn on Wireless debugging</string>
+    <string name="notice_start_body">Android apps start through Wireless debugging. Turn it on in the phone\'s Developer options, then tap here.</string>
     <string name="notice_starting_title">Starting…</string>
     <string name="notice_starting_body"></string>
     <string name="notice_failed_title">%1$s couldn\'t open</string>
@@ -37,8 +41,8 @@
         <item>strong</item>
     </string-array>
 
-    <string name="setup_intro">This plugin shows the phone\'s apps on the glasses in Halone, in Android Apps. Turn it on in Halone\'s Settings → Plugins, and give it the access below.</string>
-    <string name="setup_shizuku_title">Shizuku</string>
+    <string name="setup_intro">Halone shows the phone\'s apps on the glasses, in Android Apps. They need the access below, set up once.</string>
+    <string name="setup_shizuku_title">Shizuku (optional)</string>
     <string name="setup_shizuku_ready">Connected. Phone apps can open on the glasses.</string>
     <string name="setup_shizuku_missing">Shizuku isn\'t installed. It lets this plugin show other apps on the glasses (with root, Sui works too).</string>
     <string name="setup_shizuku_stopped">Shizuku isn\'t running. Start it in the Shizuku app; it has to be started again after the phone restarts.</string>
@@ -57,4 +61,19 @@
     <string name="setup_get_shizuku">Get Shizuku</string>
     <string name="setup_open_shizuku">Open Shizuku</string>
     <string name="setup_open_settings">Open settings</string>
+    <string name="pairing_channel">Android apps setup</string>
+    <string name="pairing_title">Pair Halone</string>
+    <string name="pairing_text">In Wireless debugging, tap Pair device with pairing code, keep that dialog open, and enter its six-digit code here.</string>
+    <string name="pairing_code_label">Six-digit code</string>
+    <string name="pairing_enter_code">Enter pairing code</string>
+    <string name="pairing_working">Pairing and starting Android apps…</string>
+    <string name="pairing_done">Done. Android apps open on the glasses.</string>
+    <string name="setup_adb_title">Android apps (no Shizuku)</string>
+    <string name="setup_adb_intro">Halone starts Android apps on the glasses through the phone\'s own Wireless debugging. Set it up once: turn on Wireless debugging in Developer options, tap Start pairing, then in Wireless debugging choose Pair device with pairing code and enter the code in Halone\'s notification.</string>
+    <string name="setup_adb_developer">Open Developer options</string>
+    <string name="setup_adb_pair">Start pairing</string>
+    <string name="setup_adb_connect">Start Android apps</string>
+    <string name="setup_adb_code_hint">Or type the code here (split screen)</string>
+    <string name="setup_adb_pair_code">Pair</string>
+    <string name="setup_adb_after_reboot">After the phone restarts, turn Wireless debugging on again and tap Start Android apps, or tap an app window on the glasses.</string>
 </resources>
