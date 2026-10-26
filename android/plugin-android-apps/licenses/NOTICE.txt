@@ -11,6 +11,14 @@ bytes when a short shell command closes its stream, bounded stream-open waits.
 The on-device pairing and helper start-up follow The Unbound Launcher's
 embedded ADB (MIT, Copyright 2026 The Unbound Launcher contributors).
 
-SPAKE2 Android 2.2.1 (LGPL-3.0), Conscrypt Android 2.5.3 (Apache-2.0) and
-Bouncy Castle bcprov-jdk15to18 1.81 (MIT-style) are linked from Maven Central
-under their own licenses.
+SPAKE2 Android 2.2.1, Copyright 2021 Muntashir Al-Islam.
+https://github.com/MuntashirAkon/spake2-java/tree/2.2.1
+GNU Lesser General Public License version 3; see spake2/. Its Java classes
+are in src/main/java/io/github/muntashirakon/crypto/spake2, and its native
+library (src/main/jniLibs/*/libspake2.so) is the one in the published
+spake2-android 2.2.1 AAR (SHA-256
+8798fb6c04b5d53a6307ed9481e9afe563227abd4e8b9e917c8514fa850071bb),
+unmodified, so it can be replaced with one built from that source.
+
+Conscrypt Android 2.5.3 (Apache-2.0) and Bouncy Castle bcprov-jdk15to18 1.81
+(MIT-style) are linked from Maven Central under their own licenses.
