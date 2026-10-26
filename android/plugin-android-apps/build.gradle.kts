@@ -38,7 +38,6 @@ dependencies {
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
     // On-device ADB, for the shell helper without Shizuku; see licenses/NOTICE.txt.
-    implementation(libs.spake2.android)
     implementation(libs.conscrypt.android)
     implementation(libs.bouncycastle.bcprov)
     implementation(libs.androidx.annotation)
