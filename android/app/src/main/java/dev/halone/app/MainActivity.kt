@@ -1399,7 +1399,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun showPad() {
         startHitHistory()
-        if (pointerPad == null) pointerPad = PointerPad(this, padGestures, padActions).also { it.show() }
+        if (pointerPad == null) pointerPad = PointerPad(this, padGestures, padActions).also {
+            it.onScreenOff = ::phoneScreenSwitched
+            it.show()
+        }
         applyTrackingSettings()
         startPadStats()
     }
@@ -2296,6 +2299,20 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val phoneScreen by lazy {
+        PhoneScreenSwitch(applicationContext, ::logOnMain).also { it.onLost = { pointerPad?.setScreenOff(false) } }
+    }
+
+    /**
+     * With the Android apps helper running, the phone's panel is really
+     * switched off; without it, the pad's black, dimmed window stands in.
+     */
+    private fun phoneScreenSwitched(off: Boolean) {
+        if (!off) return phoneScreen.turnOn()
+        val glasses = stereoSession?.display?.displayId ?: return
+        phoneScreen.turnOff(glasses) { ok -> logLine("  phone screen ${if (ok) "powered off" else "dimmed (no Android apps helper)"}") }
+    }
+
     private fun settingNumber(key: String, default: Double): Float =
         (shellSession?.shell?.settings?.let { runCatching { it.number(key) }.getOrNull() } ?: default).toFloat()
 
@@ -2423,6 +2440,13 @@ class MainActivity : AppCompatActivity() {
     private var inputTrace = false
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // Either volume button brings the phone screen back, as the wearer can't see the pad's strip.
+        if (pointerPad?.isScreenOff == true &&
+            (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP || event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)
+        ) {
+            if (event.action == KeyEvent.ACTION_UP) pointerPad?.setScreenOff(false)
+            return true
+        }
         if (inputTrace) logLine("  key ${KeyEvent.keyCodeToString(event.keyCode)} action=${event.action} source=0x${Integer.toHexString(event.source)} device='${event.device?.name}'")
         val physical = isPhysicalKeyboard(event)
         if (physical && onShortcutKey(event, captured = false)) return true
