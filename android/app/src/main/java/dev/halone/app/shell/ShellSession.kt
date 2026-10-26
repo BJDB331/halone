@@ -597,6 +597,9 @@ class ShellSession(
 
     override fun notice(text: String) = notices.show(text, forMs = DOWNLOAD_NOTICE_MS)
 
+    /** A moment's confirmation on the glasses, for a click whose effect is easy to miss. */
+    fun flash(text: String) = notices.show(text)
+
     /** An app's icon, scaled down and kept as a `data:` URL so the launcher shows it offline. */
     private fun loadIcon(url: String, done: (String?) -> Unit) {
         fun encode(bytes: ByteArray?) = background.execute { done(bytes?.let(::iconDataUrl)) }

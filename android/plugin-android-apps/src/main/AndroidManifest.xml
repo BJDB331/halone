@@ -43,7 +43,7 @@
             android:process=":apps"
             android:exported="true"
             android:label="@string/plugin_name"
-            android:theme="@android:style/Theme.DeviceDefault.DayNight">
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.APPLICATION_PREFERENCES" />
                 <category android:name="android.intent.category.DEFAULT" />

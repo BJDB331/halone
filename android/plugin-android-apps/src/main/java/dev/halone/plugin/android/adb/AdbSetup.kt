@@ -50,6 +50,11 @@ object AdbSetup {
 
     fun paired(context: Context) = prefs(context).getBoolean(KEY_PAIRED, false)
 
+    /** As [paired], from another of Halone's processes: pairing happens in ":apps", whose writes a cached copy would miss. */
+    @Suppress("DEPRECATION")
+    fun pairedSeenFromElsewhere(context: Context) =
+        context.getSharedPreferences(PREFS, Context.MODE_MULTI_PROCESS).getBoolean(KEY_PAIRED, false)
+
     /** Where things stand, without doing anything. */
     fun refresh(context: Context) {
         if (phase == Phase.WORKING) return
@@ -237,11 +242,12 @@ object AdbSetup {
 
     private fun quote(value: String) = "'" + value.replace("'", "'\\''") + "'"
 
-    private fun prefs(context: Context) = context.getSharedPreferences("android-apps-adb", Context.MODE_PRIVATE)
+    private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     private class Failure(message: String, cause: Throwable? = null) : IOException(message, cause)
 
     private const val TAG = "HaloneAndroidApps"
+    private const val PREFS = "android-apps-adb"
     private const val KEY_PAIRED = "paired"
     private const val KEY_CONNECT_PORT = "connect-port"
     private const val LOG = "/data/local/tmp/halone-android-apps.log"
