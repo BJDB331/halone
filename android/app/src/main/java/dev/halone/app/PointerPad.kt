@@ -265,9 +265,15 @@ class PointerPad(
      * The pad still takes gestures in the dark; a tap along the top edge,
      * where the buttons were, turns the screen back on.
      */
+    /** Hears every switch, so the panel itself can be powered off where that is possible. */
+    var onScreenOff: ((Boolean) -> Unit)? = null
+
+    val isScreenOff: Boolean get() = screenOff
+
     fun setScreenOff(off: Boolean) = activity.runOnUiThread {
         if (off == screenOff) return@runOnUiThread
         screenOff = off
+        onScreenOff?.invoke(off)
         visibleParts.forEach { it.visibility = if (off) View.INVISIBLE else View.VISIBLE }
         applyStats()
         wakeStrip?.visibility = if (off) View.VISIBLE else View.GONE

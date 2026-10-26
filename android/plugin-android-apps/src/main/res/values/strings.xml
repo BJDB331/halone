@@ -76,4 +76,5 @@
     <string name="setup_adb_code_hint">Or type the code here (split screen)</string>
     <string name="setup_adb_pair_code">Pair</string>
     <string name="setup_adb_after_reboot">After the phone restarts, turn Wireless debugging on again and tap Start Android apps, or tap an app window on the glasses.</string>
+    <string name="recent_title">Recent</string>
 </resources>

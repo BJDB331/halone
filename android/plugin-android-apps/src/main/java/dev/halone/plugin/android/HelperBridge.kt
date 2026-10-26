@@ -20,6 +20,11 @@ class HelperBridge : ContentProvider() {
     override fun onCreate() = true
 
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle? {
+        if (method == "get") {
+            // Halone's other processes (its phone screen switch), never anyone else.
+            if (Binder.getCallingUid() != context!!.applicationInfo.uid) throw SecurityException("Halone only")
+            return Bundle().apply { binder?.takeIf { alive() }?.let { putBinder("binder", it) } }
+        }
         if (method != "publish") throw IllegalArgumentException("unknown bridge operation")
         if (Binder.getCallingUid() != ShellMain.SHELL_UID) throw SecurityException("only the ADB shell helper may publish")
         val published = extras?.getBinder("binder") ?: throw IllegalArgumentException("missing binder")
@@ -39,6 +44,7 @@ class HelperBridge : ContentProvider() {
         private val listeners = LinkedHashSet<() -> Unit>()
 
         /** The live helper, or null. Main thread. */
+        @Volatile
         var binder: IBinder? = null
             private set
 
