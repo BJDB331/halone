@@ -35,6 +35,10 @@ android {
         // (the "skel" libraries) is loaded by the NPU itself from
         // nativeLibraryDir, and can't be read out of the APK.
         jniLibs.useLegacyPackaging = true
+        // Parts of Qualcomm's runtime Halone never loads: its own GPU
+        // backend (LiteRT has one) and the NPU of the Snapdragon 888 (V68),
+        // older than the delegate supports. ~7 MB of the APK.
+        jniLibs.excludes += setOf("**/libQnnGpu*.so", "**/libQnnHtpV68*.so")
     }
 
     buildFeatures {
