@@ -67,6 +67,10 @@ class LiteRtDepthEstimator(
     private val output = ByteBuffer.allocateDirect(SIZE * SIZE * 4).order(ByteOrder.nativeOrder())
     private val raw = FloatArray(SIZE * SIZE)
     private val pixels = ByteArray(SIZE * SIZE * 4)
+    private val rgb = FloatArray(SIZE * SIZE * 3)
+    /** The last estimate's steps, in ms: preparing the picture, and refining the depth after. */
+    @Volatile private var prepMs = 0L
+    @Volatile private var postMs = 0L
     private val luma = FloatArray(SIZE * SIZE)
     private val stabilisers = LinkedHashMap<String, DepthStabiliser>()
 
@@ -100,6 +104,7 @@ class LiteRtDepthEstimator(
         worker.execute {
             try {
                 val model = interpreter ?: return@execute
+                val prepStarted = System.nanoTime()
                 rgba.position(0)
                 rgba.get(pixels)
                 rgba.position(0)
@@ -110,14 +115,18 @@ class LiteRtDepthEstimator(
                     val g = pixels[i * 4 + 1].toInt() and 0xFF
                     val b = pixels[i * 4 + 2].toInt() and 0xFF
                     brightness += r + g + b
-                    luma[i] = (0.299f * r + 0.587f * g + 0.114f * b) / 255f
-                    input.putFloat(r / 255f)
-                    input.putFloat(g / 255f)
-                    input.putFloat(b / 255f)
+                    luma[i] = (0.299f * r + 0.587f * g + 0.114f * b) * INV_255
+                    rgb[i * 3] = r * INV_255
+                    rgb[i * 3 + 1] = g * INV_255
+                    rgb[i * 3 + 2] = b * INV_255
                 }
+                // In one go: a putFloat per value was most of this step.
+                input.position(0)
+                input.asFloatBuffer().put(rgb)
                 input.position(0)
                 output.position(0)
                 val started = System.nanoTime()
+                prepMs = (started - prepStarted) / 1_000_000
                 model.run(input, output)
                 lastMs = (System.nanoTime() - started) / 1_000_000
                 if (backend == Backend.NPU && npuTrial.exists()) {
@@ -141,6 +150,7 @@ class LiteRtDepthEstimator(
                     fallBack()
                     return@execute
                 }
+                val postStarted = System.nanoTime()
                 val stabiliser = stabilisers.getOrPut(panelId) { DepthStabiliser() }
                 stabiliser.smoothing = smoothingAmount
                 val map = stabiliser.next(raw, SIZE, luma, SIZE)
@@ -151,16 +161,20 @@ class LiteRtDepthEstimator(
                 var low = Float.MAX_VALUE
                 var high = -Float.MAX_VALUE
                 for (v in raw) { if (v < low) low = v; if (v > high) high = v }
-                summary = "3D ${lastMs} ms ${backend.label}, picture %d%%, depth %.2f..%.2f, relief %.2f, used %d%%${if (stabiliser.lastCut) ", cut" else ""}".format(
+                postMs = (System.nanoTime() - postStarted) / 1_000_000
+                summary = "3D ${lastMs} ms ${backend.label} (prep $prepMs, post $postMs), picture %d%%, depth %.2f..%.2f, relief %.2f, used %d%%${if (stabiliser.lastCut) ", cut" else ""}".format(
                     (brightness * 100 / (SIZE * SIZE * 3L * 255L)).toInt(), low, high, stabiliser.lastRelief, (stabiliser.lastGain * 100).toInt(),
                 )
                 if (estimates++ % LOG_EVERY == 0L) log("  depth: $summary")
+                // The debug pictures after the map is handed over: compressing
+                // them held one estimate in five seconds back noticeably.
                 val now = System.currentTimeMillis()
-                if (debugDir != null && now - lastDebugAt > DEBUG_EVERY_MS) {
-                    lastDebugAt = now
-                    saveDebug(rgba, map.texels)
-                }
+                val debug = debugDir != null && now - lastDebugAt > DEBUG_EVERY_MS
                 done(map)
+                if (debug) {
+                    lastDebugAt = now
+                    saveDebug(pixels, map.texels)
+                }
             } catch (e: Throwable) {
                 log("  depth: estimate failed: $e")
             } finally {
@@ -170,11 +184,10 @@ class LiteRtDepthEstimator(
     }
 
     /** The picture as the model saw it and the depth it gave, as PNGs; overwritten each time. */
-    private fun saveDebug(rgba: ByteBuffer, map: ByteArray) {
+    private fun saveDebug(rgba: ByteArray, map: ByteArray) {
         runCatching {
             val picture = android.graphics.Bitmap.createBitmap(SIZE, SIZE, android.graphics.Bitmap.Config.ARGB_8888)
-            rgba.position(0)
-            picture.copyPixelsFromBuffer(rgba)
+            picture.copyPixelsFromBuffer(ByteBuffer.wrap(rgba))
             File(debugDir, "picture.png").outputStream().use { picture.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
             picture.recycle()
             val size = DepthPost.OUTPUT_SIZE
@@ -306,7 +319,7 @@ class LiteRtDepthEstimator(
                     npuTrial.delete()
                     null
                 } else {
-                    runCatching { Interpreter(modelFile, Interpreter.Options().addDelegate(delegate.delegate)) }
+                    runCatching { Interpreter(modelFile, Interpreter.Options().setNumThreads(CPU_THREADS).addDelegate(delegate.delegate)) }
                         .onSuccess { npu = delegate }
                         .onFailure { delegate.close(); npuTrial.delete() }
                         .getOrThrow()
@@ -320,7 +333,7 @@ class LiteRtDepthEstimator(
             else {
                 val options = compatibility.bestOptionsForThisDevice.apply { if (backend == Backend.GPU_FULL) setPrecisionLossAllowed(false) }
                 val delegate = GpuDelegate(options)
-                runCatching { Interpreter(modelFile, Interpreter.Options().addDelegate(delegate)) }
+                runCatching { Interpreter(modelFile, Interpreter.Options().setNumThreads(CPU_THREADS).addDelegate(delegate)) }
                     .onSuccess { gpu = delegate }
                     .onFailure { delegate.close() }
                     .getOrThrow()
@@ -337,6 +350,7 @@ class LiteRtDepthEstimator(
     private companion object {
         const val SIZE = 518
         const val CPU_THREADS = 4
+        const val INV_255 = 1f / 255f
         const val MAX_REMEMBERED = 8
         const val LOG_EVERY = 50L
         const val DEBUG_EVERY_MS = 5_000L
