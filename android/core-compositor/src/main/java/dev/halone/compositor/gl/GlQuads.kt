@@ -60,7 +60,13 @@ internal object Gl {
  * Same external-texture sampling as the flat spike, but with a real MVP so the
  * panel can sit at a pose in the world rather than filling the screen.
  */
-internal class TexturedQuad3D {
+internal class TexturedQuad3D(
+    /**
+     * Samples an external texture, as a window's live picture is; false for a
+     * `GL_TEXTURE_2D`, such as a picture held back in a [FrameRing].
+     */
+    private val external: Boolean = true,
+) {
     private var program = 0
     private var aPosition = 0
     private var aTexCoord = 0
@@ -86,7 +92,7 @@ internal class TexturedQuad3D {
     private var gridIndices = 0
 
     fun initialise() {
-        program = Gl.program(VERTEX, FRAGMENT)
+        program = Gl.program(VERTEX, if (external) FRAGMENT else FRAGMENT_2D)
         uAlpha = GLES20.glGetUniformLocation(program, "uAlpha")
         uStereo = GLES20.glGetUniformLocation(program, "uStereo")
         uStereoRect = GLES20.glGetUniformLocation(program, "uStereoRect")
@@ -184,7 +190,7 @@ internal class TexturedQuad3D {
         GLES20.glUniform1f(uConvergence, convergence)
         GLES20.glUniform1i(uShowDepth, if (showDepth) 1 else 0)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
-        GLES20.glBindTexture(Gl.TEXTURE_EXTERNAL_OES, textureId)
+        GLES20.glBindTexture(if (external) Gl.TEXTURE_EXTERNAL_OES else GLES20.GL_TEXTURE_2D, textureId)
         GLES20.glUniformMatrix4fv(uMvp, 1, false, mvp, 0)
         GLES20.glUniformMatrix4fv(uTexTransform, 1, false, texTransform, 0)
         GLES20.glUniform2f(uScanRotation, scanYaw, scanPitch)
@@ -389,6 +395,10 @@ internal class TexturedQuad3D {
                 fragColor = texture(uTexture, texCoord) * (coverage * uAlpha);
             }
         """.withRoundedRect()
+
+        private val FRAGMENT_2D = FRAGMENT
+            .replace("#extension GL_OES_EGL_image_external_essl3 : require\n", "")
+            .replace("uniform samplerExternalOES uTexture;", "uniform sampler2D uTexture;")
     }
 }
 

@@ -18,6 +18,10 @@ internal class DepthCapture {
     private var program = 0
     private var aPosition = 0
     private var uTexTransform = 0
+    /** The same, sampling a `GL_TEXTURE_2D`: a picture held in a [FrameRing]. */
+    private var program2D = 0
+    private var aPosition2D = 0
+    private var uTexTransform2D = 0
     private var framebuffer = 0
     private var target = 0
     var size = 0
@@ -38,6 +42,9 @@ internal class DepthCapture {
         program = Gl.program(VERTEX, FRAGMENT)
         aPosition = GLES20.glGetAttribLocation(program, "aPosition")
         uTexTransform = GLES20.glGetUniformLocation(program, "uTexTransform")
+        program2D = Gl.program(VERTEX, FRAGMENT_2D)
+        aPosition2D = GLES20.glGetAttribLocation(program2D, "aPosition")
+        uTexTransform2D = GLES20.glGetUniformLocation(program2D, "uTexTransform")
         vertices = Gl.floatBuffer(floatArrayOf(-1f, -1f, 1f, -1f, -1f, 1f, 1f, 1f))
 
         val ids = IntArray(1)
@@ -68,6 +75,7 @@ internal class DepthCapture {
         framebuffer = 0
         target = 0
         program = 0
+        program2D = 0
     }
 
     /** Frees everything, so [initialise] can run again at another size. */
@@ -78,6 +86,8 @@ internal class DepthCapture {
         if (framebuffer != 0) GLES20.glDeleteFramebuffers(1, intArrayOf(framebuffer), 0)
         if (target != 0) GLES20.glDeleteTextures(1, intArrayOf(target), 0)
         if (program != 0) GLES20.glDeleteProgram(program)
+        if (program2D != 0) GLES20.glDeleteProgram(program2D)
+        program2D = 0
         pixelBuffer = 0
         framebuffer = 0
         target = 0
@@ -88,7 +98,7 @@ internal class DepthCapture {
      * Draws external texture [textureId] (with its [texTransform]) into the
      * square and starts copying it out; [collect] it on a later frame.
      */
-    fun start(textureId: Int, texTransform: FloatArray) {
+    fun start(textureId: Int, texTransform: FloatArray, external: Boolean = true) {
         if (pending) return
         GLES20.glGetIntegerv(GLES20.GL_VIEWPORT, saved, 0)
         GLES20.glGetIntegerv(GLES20.GL_FRAMEBUFFER_BINDING, savedFramebuffer, 0)
@@ -99,15 +109,16 @@ internal class DepthCapture {
 
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, framebuffer)
         GLES20.glViewport(0, 0, size, size)
-        GLES20.glUseProgram(program)
+        val position = if (external) aPosition else aPosition2D
+        GLES20.glUseProgram(if (external) program else program2D)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
-        GLES20.glBindTexture(Gl.TEXTURE_EXTERNAL_OES, textureId)
-        GLES20.glUniformMatrix4fv(uTexTransform, 1, false, texTransform, 0)
+        GLES20.glBindTexture(if (external) Gl.TEXTURE_EXTERNAL_OES else GLES20.GL_TEXTURE_2D, textureId)
+        GLES20.glUniformMatrix4fv(if (external) uTexTransform else uTexTransform2D, 1, false, texTransform, 0)
         vertices.position(0)
-        GLES20.glVertexAttribPointer(aPosition, 2, GLES20.GL_FLOAT, false, 0, vertices)
-        GLES20.glEnableVertexAttribArray(aPosition)
+        GLES20.glVertexAttribPointer(position, 2, GLES20.GL_FLOAT, false, 0, vertices)
+        GLES20.glEnableVertexAttribArray(position)
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
-        GLES20.glDisableVertexAttribArray(aPosition)
+        GLES20.glDisableVertexAttribArray(position)
         GLES20.glBindBuffer(GLES30.GL_PIXEL_PACK_BUFFER, pixelBuffer)
         GLES30.glReadPixels(0, 0, size, size, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, 0)
         GLES20.glBindBuffer(GLES30.GL_PIXEL_PACK_BUFFER, 0)
@@ -166,6 +177,15 @@ internal class DepthCapture {
             #extension GL_OES_EGL_image_external_essl3 : require
             precision mediump float;
             uniform samplerExternalOES uTexture;
+            in vec2 vTexCoord;
+            out vec4 fragColor;
+            void main() { fragColor = vec4(texture(uTexture, vTexCoord).rgb, 1.0); }
+        """.trimIndent()
+
+        val FRAGMENT_2D = """
+            #version 300 es
+            precision mediump float;
+            uniform sampler2D uTexture;
             in vec2 vTexCoord;
             out vec4 fragColor;
             void main() { fragColor = vec4(texture(uTexture, vTexCoord).rgb, 1.0); }
