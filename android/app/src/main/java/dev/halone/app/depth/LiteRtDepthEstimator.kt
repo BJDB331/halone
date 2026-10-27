@@ -42,10 +42,11 @@ class LiteRtDepthEstimator(
 
     override val inputSize = SIZE
 
-    // Ten a second on the NPU, which draws nothing; four on the GPU, where
+    // As fast as it keeps up on the NPU, which draws nothing, so each held
+    // picture of a video can have depth of its own; four a second on the GPU, where
     // each estimate holds up drawing.
     override val intervalNs: Long
-        get() = if (backend == Backend.NPU) 100_000_000L else 250_000_000L
+        get() = if (backend == Backend.NPU) 33_000_000L else 250_000_000L
 
     private val dir = File(context.filesDir, "depth")
     /** Where Qualcomm's NPU libraries are unpacked; the NPU loads its half from this path. */

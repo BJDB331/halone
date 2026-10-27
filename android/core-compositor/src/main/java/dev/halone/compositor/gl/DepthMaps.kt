@@ -45,41 +45,61 @@ internal class DepthMaps {
         framing = ids[0]
     }
 
-    /** Each converted window's estimated map, once one has arrived. */
-    private val estimated = HashMap<String, Int>()
+    /** A map, and the number of the held picture it was estimated from (0 for a live one). */
+    private class Estimate(val texture: Int, var sequence: Long)
 
-    /** The map to draw [panelId] with: its estimate, or the framing guess until there is one. */
-    fun forPanel(panelId: String): Int = estimated[panelId] ?: framing
+    /** Each converted window's last few estimated maps, oldest first, once one has arrived. */
+    private val estimated = HashMap<String, ArrayDeque<Estimate>>()
 
-    /** Uploads [texels] ([size] squared, rows top down) as [panelId]'s map. */
-    fun upload(panelId: String, size: Int, texels: ByteArray) {
-        val texture = estimated.getOrPut(panelId) {
-            val ids = IntArray(1)
-            GLES20.glGenTextures(1, ids, 0)
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, ids[0])
-            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
-            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
-            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
-            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
-            ids[0]
-        }
+    /**
+     * The map to draw [panelId] with when showing held picture [sequence]:
+     * the newest estimated from that picture or one before it, else the
+     * oldest there is, else the framing guess. Null [sequence] takes the newest.
+     */
+    fun forPanel(panelId: String, sequence: Long? = null): Int {
+        val maps = estimated[panelId]?.takeIf { it.isNotEmpty() } ?: return framing
+        if (sequence == null) return maps.last().texture
+        return maps.lastOrNull { it.sequence <= sequence }?.texture ?: maps.first().texture
+    }
+
+    /** Uploads [texels] ([size] squared, rows top down) as [panelId]'s map for held picture [sequence]. */
+    fun upload(panelId: String, size: Int, texels: ByteArray, sequence: Long = 0L) {
+        val maps = estimated.getOrPut(panelId) { ArrayDeque() }
+        // Reuse the oldest texture once enough are kept.
+        val slot = if (maps.size >= KEPT) maps.removeFirst().also { it.sequence = sequence } else Estimate(newTexture(), sequence)
+        maps.addLast(slot)
         val buffer = ByteBuffer.allocateDirect(texels.size).order(ByteOrder.nativeOrder()).put(texels)
         buffer.position(0)
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texture)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, slot.texture)
         GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, 1)
         GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES30.GL_R8, size, size, 0, GLES30.GL_RED, GLES20.GL_UNSIGNED_BYTE, buffer)
         GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, 4)
+    }
+
+    private fun newTexture(): Int {
+        val ids = IntArray(1)
+        GLES20.glGenTextures(1, ids, 0)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, ids[0])
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+        return ids[0]
     }
 
     /** Frees the maps of windows not in [keep]. */
     fun retain(keep: Set<String>) {
         val gone = estimated.keys.filter { it !in keep }
         if (gone.isEmpty()) return
-        GLES20.glDeleteTextures(gone.size, gone.map { estimated.remove(it)!! }.toIntArray(), 0)
+        val textures = gone.flatMap { id -> estimated.remove(id)!!.map { it.texture } }
+        GLES20.glDeleteTextures(textures.size, textures.toIntArray(), 0)
     }
 
     companion object {
         const val SIZE = 64
+
+        /** Maps kept per window: enough to cover the pictures a [FrameRing] holds back. */
+        const val KEPT = 4
 
         /**
          * The framing guess at ([u], [v]) across the window, 0..1 with v down:
