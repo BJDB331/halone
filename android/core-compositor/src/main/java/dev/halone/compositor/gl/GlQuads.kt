@@ -76,10 +76,14 @@ internal class TexturedQuad3D {
     private var uStereo = 0
     private var uStereoRect = 0
     private var uEye = 0
-    private var uDepthPx = 0
+    private var uDepthGain = 0
     private var uConvergence = 0
     private var uShowDepth = 0
+    private var uModel = 0
+    private var uViewProjection = 0
     private lateinit var vertices: FloatBuffer
+    private var gridVertices = 0
+    private var gridIndices = 0
 
     fun initialise() {
         program = Gl.program(VERTEX, FRAGMENT)
@@ -97,7 +101,9 @@ internal class TexturedQuad3D {
         uRectPx = GLES20.glGetUniformLocation(program, "uRectPx")
         uCropV = GLES20.glGetUniformLocation(program, "uCropV")
         uRadiusPx = GLES20.glGetUniformLocation(program, "uRadiusPx")
-        uDepthPx = GLES20.glGetUniformLocation(program, "uDepthPx")
+        uDepthGain = GLES20.glGetUniformLocation(program, "uDepthGain")
+        uModel = GLES20.glGetUniformLocation(program, "uModel")
+        uViewProjection = GLES20.glGetUniformLocation(program, "uViewProjection")
         uConvergence = GLES20.glGetUniformLocation(program, "uConvergence")
         uShowDepth = GLES20.glGetUniformLocation(program, "uShowDepth")
         // The depth map lives on unit 1 for good: two sampler types sharing
@@ -106,6 +112,20 @@ internal class TexturedQuad3D {
         GLES20.glUniform1i(GLES20.glGetUniformLocation(program, "uTexture"), 0)
         GLES20.glUniform1i(GLES20.glGetUniformLocation(program, "uDepth"), 1)
         vertices = Gl.floatBuffer(QUAD)
+        val buffers = IntArray(2)
+        GLES20.glGenBuffers(2, buffers, 0)
+        gridVertices = buffers[0]
+        gridIndices = buffers[1]
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, gridVertices)
+        val grid = Gl.floatBuffer(gridVertexData())
+        GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, grid.capacity() * 4, grid, GLES20.GL_STATIC_DRAW)
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0)
+        GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, gridIndices)
+        val indices = gridIndexData()
+        val indexBuffer = java.nio.ByteBuffer.allocateDirect(indices.size * 2).order(java.nio.ByteOrder.nativeOrder()).asShortBuffer().put(indices)
+        indexBuffer.position(0)
+        GLES20.glBufferData(GLES20.GL_ELEMENT_ARRAY_BUFFER, indices.size * 2, indexBuffer, GLES20.GL_STATIC_DRAW)
+        GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, 0)
     }
 
     fun newTexture(): Int {
@@ -135,21 +155,32 @@ internal class TexturedQuad3D {
         cropV: Float = 1f,
         stereo: StereoRegion? = null,
         eye: Int = 0,
-        /** Most an eye's picture moves for the nearest depth, in window pixels; 0 draws it flat. */
-        depthPx: Float = 0f,
-        /** A `GL_TEXTURE_2D` depth map over the whole window, 1 nearest; read when [depthPx] is set. */
+        /**
+         * 2D to 3D: how far the window's picture is pushed toward and away
+         * from the wearer by its depth map, as the most the nearest point's
+         * inverse distance grows (0.6 brings it to 1/1.6 of the window's
+         * distance); 0 draws it flat. Needs [model] and [viewProjection].
+         */
+        depthGain: Float = 0f,
+        /** A `GL_TEXTURE_2D` depth map over the whole window, 1 nearest; read when [depthGain] is set. */
         depthTexture: Int = 0,
+        /** The quad's model matrix alone, when [depthGain] is set; [mvp] is this times [viewProjection]. */
+        model: FloatArray? = null,
+        viewProjection: FloatArray? = null,
         /** The depth, 0..1, drawn at the window's own distance: nearer comes out, farther goes in. */
         convergence: Float = 0.5f,
         /** Draws the depth map itself, white nearest, instead of the picture: to see what conversion is working with. */
         showDepth: Boolean = false,
     ) {
         GLES20.glUseProgram(program)
-        if (depthPx > 0f && depthTexture != 0) {
+        val mesh = depthGain > 0f && depthTexture != 0 && stereo == null && model != null && viewProjection != null
+        if (mesh) {
             GLES20.glActiveTexture(GLES20.GL_TEXTURE1)
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, depthTexture)
+            GLES20.glUniformMatrix4fv(uModel, 1, false, model, 0)
+            GLES20.glUniformMatrix4fv(uViewProjection, 1, false, viewProjection, 0)
         }
-        GLES20.glUniform1f(uDepthPx, if (depthTexture != 0 && stereo == null) depthPx else 0f)
+        GLES20.glUniform1f(uDepthGain, if (mesh) depthGain else 0f)
         GLES20.glUniform1f(uConvergence, convergence)
         GLES20.glUniform1i(uShowDepth, if (showDepth) 1 else 0)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
@@ -175,20 +206,71 @@ internal class TexturedQuad3D {
         if (stereo != null) GLES20.glUniform4f(uStereoRect, stereo.xPx, stereo.yPx, stereo.widthPx, stereo.heightPx)
         GLES20.glUniform1f(uEye, eye.toFloat())
 
-        vertices.position(0)
-        GLES20.glVertexAttribPointer(aPosition, 3, GLES20.GL_FLOAT, false, STRIDE, vertices)
-        GLES20.glEnableVertexAttribArray(aPosition)
-        vertices.position(3)
-        GLES20.glVertexAttribPointer(aTexCoord, 2, GLES20.GL_FLOAT, false, STRIDE, vertices)
-        GLES20.glEnableVertexAttribArray(aTexCoord)
-
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+        if (mesh) {
+            GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, gridVertices)
+            GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, gridIndices)
+            GLES20.glVertexAttribPointer(aPosition, 3, GLES20.GL_FLOAT, false, STRIDE, 0)
+            GLES20.glEnableVertexAttribArray(aPosition)
+            GLES20.glVertexAttribPointer(aTexCoord, 2, GLES20.GL_FLOAT, false, STRIDE, 3 * 4)
+            GLES20.glEnableVertexAttribArray(aTexCoord)
+            GLES20.glDrawElements(GLES20.GL_TRIANGLES, GRID_INDEX_COUNT, GLES20.GL_UNSIGNED_SHORT, 0)
+            GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0)
+            GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, 0)
+        } else {
+            vertices.position(0)
+            GLES20.glVertexAttribPointer(aPosition, 3, GLES20.GL_FLOAT, false, STRIDE, vertices)
+            GLES20.glEnableVertexAttribArray(aPosition)
+            vertices.position(3)
+            GLES20.glVertexAttribPointer(aTexCoord, 2, GLES20.GL_FLOAT, false, STRIDE, vertices)
+            GLES20.glEnableVertexAttribArray(aTexCoord)
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+        }
         GLES20.glDisableVertexAttribArray(aPosition)
         GLES20.glDisableVertexAttribArray(aTexCoord)
     }
 
     companion object {
         private const val STRIDE = 5 * 4
+
+        /**
+         * The depth mesh: cells across and down a converted window. Fine
+         * enough that its 128-texel depth map is followed closely, and still
+         * only ~6,000 vertices — cheaper than looking depth up per pixel.
+         */
+        internal const val GRID_COLUMNS = 96
+        internal const val GRID_ROWS = 64
+        internal const val GRID_INDEX_COUNT = GRID_COLUMNS * GRID_ROWS * 6
+
+        /** The unit quad, subdivided: x and y in -0.5..0.5 with texture coordinates, as [QUAD]. */
+        internal fun gridVertexData(): FloatArray {
+            val data = FloatArray((GRID_COLUMNS + 1) * (GRID_ROWS + 1) * 5)
+            var i = 0
+            for (row in 0..GRID_ROWS) for (column in 0..GRID_COLUMNS) {
+                val u = column.toFloat() / GRID_COLUMNS
+                val v = row.toFloat() / GRID_ROWS
+                data[i++] = u - 0.5f
+                data[i++] = v - 0.5f
+                data[i++] = 0f
+                data[i++] = u
+                data[i++] = v
+            }
+            return data
+        }
+
+        internal fun gridIndexData(): ShortArray {
+            val data = ShortArray(GRID_INDEX_COUNT)
+            var i = 0
+            val stride = GRID_COLUMNS + 1
+            for (row in 0 until GRID_ROWS) for (column in 0 until GRID_COLUMNS) {
+                val a = row * stride + column
+                val b = a + 1
+                val c = a + stride
+                val d = c + 1
+                data[i++] = a.toShort(); data[i++] = b.toShort(); data[i++] = c.toShort()
+                data[i++] = b.toShort(); data[i++] = d.toShort(); data[i++] = c.toShort()
+            }
+            return data
+        }
 
         /** Unit quad in the XY plane, normal facing +Z, so it faces a viewer at +Z. */
         private val QUAD = floatArrayOf(
@@ -212,10 +294,36 @@ internal class TexturedQuad3D {
             // The share of the texture shown, from its top: a layer cropped to
             // the band it is drawn in.
             uniform float uCropV;
+            // 2D to 3D, as geometry: each vertex of the window's mesh is
+            // moved along its line from the wearer's head, so its inverse
+            // distance grows by up to uDepthGain where the map says nearest
+            // and shrinks where it says farthest. Seen from between the eyes
+            // the picture is unchanged; each eye, drawn from where it really
+            // is, sees true parallax. Zero is off.
+            uniform highp float uDepthGain;
+            uniform sampler2D uDepth;
+            uniform float uConvergence;
+            uniform mat4 uModel;
+            uniform mat4 uViewProjection;
             out vec2 vTexCoord;
             out highp vec2 vLocal;
             void main() {
-                vec4 clip = uMvp * vec4(aPosition, 1.0);
+                vec4 clip;
+                if (uDepthGain > 0.0) {
+                    // Rows top down in the map, as in the window.
+                    vec2 uv = vec2(aTexCoord.x, 1.0 - aTexCoord.y);
+                    float d = textureLod(uDepth, uv, 0.0).r;
+                    // Eased to the window's own distance at its very edges, so
+                    // its outline stays where its frame and title bar are.
+                    vec2 edge = min(uv, 1.0 - uv) / 0.03;
+                    float taper = clamp(min(edge.x, edge.y), 0.0, 1.0);
+                    float growth = max(1.0 + uDepthGain * 2.0 * (d - uConvergence) * taper, 0.25);
+                    vec4 world = uModel * vec4(aPosition, 1.0);
+                    world.xyz /= growth;
+                    clip = uViewProjection * world;
+                } else {
+                    clip = uMvp * vec4(aPosition, 1.0);
+                }
                 vLocal = aTexCoord;
 
                 // The panel does not appear all at once: it is scanned out over a
@@ -252,12 +360,9 @@ internal class TexturedQuad3D {
             uniform int uStereo;
             uniform highp vec4 uStereoRect;
             uniform float uEye;
-            // 2D to 3D: each eye samples the picture shifted by up to uDepthPx
-            // window pixels, by uDepth (1 nearest, 0.5 at the window's own
-            // distance, 0 farthest), in opposite directions per eye. Zero is off.
+            // 2D to 3D is done by the mesh; the map is only read here to show it.
             uniform sampler2D uDepth;
-            uniform float uDepthPx;
-            uniform float uConvergence;
+            uniform highp float uDepthGain;
             uniform int uShowDepth;
             in vec2 vTexCoord;
             in highp vec2 vLocal;
@@ -277,20 +382,7 @@ internal class TexturedQuad3D {
                         texCoord = (uTexTransform * vec4(p.x / uSizePx.x, 1.0 - p.y / uSizePx.y, 0.0, 1.0)).xy;
                     }
                 }
-                if (uDepthPx > 0.0) {
-                    // The left eye sees near things further right, so it reads
-                    // from the left of where it draws. Looked up twice: the
-                    // depth that matters is the one where the sample lands.
-                    float side = uEye < 0.5 ? 1.0 : -1.0;
-                    highp vec2 p = window;
-                    for (int i = 0; i < 2; i++) {
-                        float d = texture(uDepth, p / uSizePx).r;
-                        p = vec2(window.x - side * (d - uConvergence) * 2.0 * uDepthPx, window.y);
-                    }
-                    p = clamp(p, vec2(0.5), uSizePx - 0.5);
-                    texCoord = (uTexTransform * vec4(p.x / uSizePx.x, 1.0 - p.y / uSizePx.y, 0.0, 1.0)).xy;
-                }
-                if (uDepthPx > 0.0 && uShowDepth != 0) {
+                if (uDepthGain > 0.0 && uShowDepth != 0) {
                     fragColor = vec4(vec3(texture(uDepth, window / uSizePx).r), 1.0) * (coverage * uAlpha);
                     return;
                 }
@@ -450,6 +542,46 @@ internal class BitmapQuad {
 
     companion object {
         private const val STRIDE = 5 * 4
+
+        /**
+         * The depth mesh: cells across and down a converted window. Fine
+         * enough that its 128-texel depth map is followed closely, and still
+         * only ~6,000 vertices — cheaper than looking depth up per pixel.
+         */
+        internal const val GRID_COLUMNS = 96
+        internal const val GRID_ROWS = 64
+        internal const val GRID_INDEX_COUNT = GRID_COLUMNS * GRID_ROWS * 6
+
+        /** The unit quad, subdivided: x and y in -0.5..0.5 with texture coordinates, as [QUAD]. */
+        internal fun gridVertexData(): FloatArray {
+            val data = FloatArray((GRID_COLUMNS + 1) * (GRID_ROWS + 1) * 5)
+            var i = 0
+            for (row in 0..GRID_ROWS) for (column in 0..GRID_COLUMNS) {
+                val u = column.toFloat() / GRID_COLUMNS
+                val v = row.toFloat() / GRID_ROWS
+                data[i++] = u - 0.5f
+                data[i++] = v - 0.5f
+                data[i++] = 0f
+                data[i++] = u
+                data[i++] = v
+            }
+            return data
+        }
+
+        internal fun gridIndexData(): ShortArray {
+            val data = ShortArray(GRID_INDEX_COUNT)
+            var i = 0
+            val stride = GRID_COLUMNS + 1
+            for (row in 0 until GRID_ROWS) for (column in 0 until GRID_COLUMNS) {
+                val a = row * stride + column
+                val b = a + 1
+                val c = a + stride
+                val d = c + 1
+                data[i++] = a.toShort(); data[i++] = b.toShort(); data[i++] = c.toShort()
+                data[i++] = b.toShort(); data[i++] = d.toShort(); data[i++] = c.toShort()
+            }
+            return data
+        }
 
         /** Bitmap rows run top down, so the top of the quad samples row zero. */
         private val QUAD = floatArrayOf(

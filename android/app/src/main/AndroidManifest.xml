@@ -47,6 +47,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Material3.DayNight.NoActionBar">
 
+        <!-- The vendor libraries Qualcomm's NPU runtime talks to the NPU
+             through; since Android 12 an app has to ask for them, or opening
+             an NPU session is refused. Optional: other phones lack them. -->
+        <uses-native-library android:name="libcdsprpc.so" android:required="false" />
+        <uses-native-library android:name="libOpenCL.so" android:required="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.files"

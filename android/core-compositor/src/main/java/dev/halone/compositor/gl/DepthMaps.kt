@@ -24,6 +24,8 @@ internal class DepthMaps {
         private set
 
     fun initialise() {
+        // A new GL context: maps uploaded into the last one are gone with it.
+        estimated.clear()
         val size = SIZE
         val texels = ByteBuffer.allocateDirect(size * size).order(ByteOrder.nativeOrder())
         for (row in 0 until size) for (column in 0 until size) {

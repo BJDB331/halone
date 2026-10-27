@@ -24,6 +24,13 @@ interface DepthEstimator {
 
     /** How much of the last depth to keep where a window's picture is unchanged, 0..0.9. */
     fun setSmoothing(amount: Float) = Unit
+
+    /**
+     * The least time between two estimates of one window. Short where the
+     * model runs beside the GPU (an NPU), longer where it shares the GPU
+     * with drawing and every estimate costs frames.
+     */
+    val intervalNs: Long get() = 200_000_000L
 }
 
 /** [size] squared texels, rows top down: 255 nearest, 128 at the window's own distance. */
@@ -136,7 +143,7 @@ class DepthStabiliser(
         const val OUTPUT_SIZE = 128
         const val DEFAULT_SMOOTHING = 0.35f
         private const val RELIEF_FLAT = 0.1f
-        private const val RELIEF_FULL = 0.6f
+        private const val RELIEF_FULL = 0.35f
         // StereoLab's 9x9 window at full size; at 128 texels a little
         // further, since one texel here covers several of its pixels.
         private const val GUIDE_RADIUS = 2
