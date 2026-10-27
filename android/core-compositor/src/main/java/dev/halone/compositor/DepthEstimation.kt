@@ -141,7 +141,7 @@ class DepthStabiliser(
 
     companion object {
         const val OUTPUT_SIZE = 128
-        const val DEFAULT_SMOOTHING = 0.35f
+        const val DEFAULT_SMOOTHING = 0f
         private const val RELIEF_FLAT = 0.1f
         private const val RELIEF_FULL = 0.35f
         // StereoLab's 9x9 window at full size; at 128 texels a little
