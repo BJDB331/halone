@@ -606,7 +606,7 @@ class StereoCompositor(
      * in 3D; in 2D both eyes see one picture.
      */
     @Volatile
-    var depthStrength = 0.6f
+    var depthStrength = 0.2f
 
     /**
      * Estimates each converted window's depth from its picture; null draws
@@ -625,11 +625,11 @@ class StereoCompositor(
 
     /** Which depth, 0..1, sits at a converted window's own distance; see `TexturedQuad3D`. */
     @Volatile
-    var depthConvergence = 0.5f
+    var depthConvergence = 1f
 
     /** How steady converted windows' depth is held where their picture does not change. */
     @Volatile
-    var depthSmoothing = 0.35f
+    var depthSmoothing = 0f
         set(value) {
             field = value
             depthEstimator?.setSmoothing(value)
