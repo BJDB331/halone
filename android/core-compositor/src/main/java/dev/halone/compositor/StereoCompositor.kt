@@ -515,6 +515,9 @@ class StereoCompositor(
     private val immersiveTransform = FloatArray(16)
 
     private val quad = TexturedQuad3D()
+    /** Draws converted windows' held-back pictures, which are 2D textures. */
+    private val heldQuad = TexturedQuad3D(external = false)
+    private val frameCopier = dev.halone.compositor.gl.FrameCopier()
     private val solid = SolidQuad()
     private val frame = FrameQuad()
     private val bitmapQuad = BitmapQuad()
@@ -634,12 +637,75 @@ class StereoCompositor(
 
     private val depthCapture = dev.halone.compositor.gl.DepthCapture()
     private var depthInput: java.nio.ByteBuffer? = null
-    private val depthArrived = java.util.concurrent.ConcurrentHashMap<String, DepthMap>()
+    /** A map back from the estimator, with the held picture it was made from (0: a live one). */
+    private class DepthArrival(val sequence: Long, val startedNs: Long, val map: DepthMap)
+
+    private val depthArrived = java.util.concurrent.ConcurrentHashMap<String, DepthArrival>()
+
+    /** Each converted window's held-back pictures; see [FrameRing]. */
+    private val heldFrames = HashMap<String, dev.halone.compositor.gl.FrameRing>()
+    /** The source timestamp of the picture last copied into each window's [heldFrames]. */
+    private val heldStamps = HashMap<String, Long>()
+    /** The held picture each converted window shows this frame, chosen once for both eyes. */
+    private val heldShown = HashMap<String, dev.halone.compositor.gl.FrameRing.Frame>()
+    private val identityTransform = FloatArray(16).also { Matrix.setIdentityM(it, 0) }
+
+    /**
+     * How long converted windows' pictures are held back: as long as an
+     * estimate takes, from a picture arriving to its depth being ready, as
+     * measured, so each picture is shown with its own depth.
+     */
+    @Volatile
+    private var holdBackNs = 66_000_000L
+
+    /** How far behind converted windows are shown, in ms, for the stats line. */
+    val depthHoldBackMs: Int get() = (holdBackNs / 1_000_000L).toInt()
+
+    /** Whether [panel] is drawn converted this frame. */
+    private fun isConverted(panel: Panel): Boolean =
+        panel.depth3D && !mono && panel.textureId != 0 && panel.stereoRegion == null && panel.engine.topLayer == null
+
+    /**
+     * Before drawing: latches each converted window's newest picture and
+     * copies it into its [FrameRing], then picks the held picture each will
+     * show. Windows that are not converted, or have no estimator to wait
+     * for, are drawn live as before.
+     */
+    private fun holdConvertedPictures() {
+        val now = System.nanoTime()
+        heldShown.clear()
+        val wanted = HashSet<String>()
+        if (depthEstimator != null) for (panel in scene.panels) {
+            if (!isConverted(panel)) continue
+            val texture = panel.surfaceTexture ?: continue
+            wanted += panel.id
+            val ring = heldFrames.getOrPut(panel.id) { dev.halone.compositor.gl.FrameRing() }
+            if (!scene.isAnimatingResize(panel)) {
+                texture.updateTexImage()
+                val stamp = texture.timestamp
+                if (stamp != heldStamps[panel.id] || ring.newest() == null) {
+                    heldStamps[panel.id] = stamp
+                    texture.getTransformMatrix(texTransform)
+                    ring.push(frameCopier, panel.textureId, texTransform, panel.widthPx, panel.heightPx, now)
+                }
+            }
+            ring.at(now - holdBackNs)?.let { heldShown[panel.id] = it }
+        }
+        val gone = heldFrames.keys.filter { it !in wanted }
+        gone.forEach { id ->
+            heldFrames.remove(id)?.release()
+            heldStamps.remove(id)
+        }
+    }
     private val depthAskedAt = HashMap<String, Long>()
     private var depthNext = 0
 
     /** The window whose picture [depthCapture] is copying out, while it is. */
     private var depthCapturing: String? = null
+    private var depthCapturingSequence = 0L
+    private var depthCapturingStartedNs = 0L
+    /** The held picture each window's depth was last estimated from. */
+    private val depthEstimatedSequence = HashMap<String, Long>()
 
     /**
      * Once a frame, after drawing: puts arrived estimates in place, hands the
@@ -651,21 +717,37 @@ class StereoCompositor(
      */
     private fun updateDepth() {
         val converted = scene.panels.filter { it.depth3D && it.textureId != 0 && it.stereoRegion == null }
-        depthArrived.keys.toList().forEach { id -> depthArrived.remove(id)?.let { depthMaps.upload(id, it.size, it.texels) } }
+        depthArrived.keys.toList().forEach { id ->
+            val arrival = depthArrived.remove(id) ?: return@forEach
+            depthMaps.upload(id, arrival.map.size, arrival.map.texels, arrival.sequence)
+            // How long a picture waits for its depth, to hold pictures back
+            // by: from its copy starting, plus the frame it can wait before
+            // the copy is started.
+            if (arrival.sequence != 0L) {
+                val waited = (System.nanoTime() - arrival.startedNs + FRAME_SLACK_NS).coerceIn(MIN_HOLD_BACK_NS, MAX_HOLD_BACK_NS)
+                holdBackNs += ((waited - holdBackNs) * HOLD_BACK_EASING).toLong()
+            }
+        }
         depthMaps.retain(converted.mapTo(HashSet()) { it.id })
         depthAskedAt.keys.retainAll(converted.mapTo(HashSet()) { it.id })
+        depthEstimatedSequence.keys.retainAll(heldFrames.keys)
         val estimator = depthEstimator ?: return
         if (depthCapture.pending) {
             val input = depthInput ?: return
             if (!estimator.ready() || !depthCapture.collect(input)) return
             val id = depthCapturing ?: return
+            val sequence = depthCapturingSequence
+            val started = depthCapturingStartedNs
             depthCapturing = null
-            if (converted.any { it.id == id }) estimator.estimate(id, input) { map -> depthArrived[id] = map }
+            if (converted.any { it.id == id }) estimator.estimate(id, input) { map -> depthArrived[id] = DepthArrival(sequence, started, map) }
             return
         }
         if (converted.isEmpty() || mono || !estimator.ready()) return
         val now = System.nanoTime()
-        val panel = converted.minByOrNull { depthAskedAt[it.id] ?: Long.MIN_VALUE } ?: return
+        // A still held picture already has its depth: nothing new to estimate.
+        val panel = converted
+            .filter { candidate -> heldFrames[candidate.id]?.newest()?.let { depthEstimatedSequence[candidate.id] != it.sequence } ?: true }
+            .minByOrNull { depthAskedAt[it.id] ?: Long.MIN_VALUE } ?: return
         if (now - (depthAskedAt[panel.id] ?: Long.MIN_VALUE / 2) < estimator.intervalNs) return
         val texture = panel.surfaceTexture ?: return
         val size = estimator.inputSize
@@ -676,9 +758,19 @@ class StereoCompositor(
         if (depthInput?.capacity() != size * size * 4) {
             depthInput = java.nio.ByteBuffer.allocateDirect(size * size * 4).order(java.nio.ByteOrder.nativeOrder())
         }
-        texture.getTransformMatrix(texTransform)
-        depthCapture.start(panel.textureId, texTransform)
+        val held = heldFrames[panel.id]?.newest()
+        if (held != null) {
+            depthEstimatedSequence[panel.id] = held.sequence
+            // The newest held picture, so its depth is ready when it is shown.
+            depthCapture.start(held.texture, identityTransform, external = false)
+            depthCapturingSequence = held.sequence
+        } else {
+            texture.getTransformMatrix(texTransform)
+            depthCapture.start(panel.textureId, texTransform)
+            depthCapturingSequence = 0L
+        }
         depthCapturing = panel.id
+        depthCapturingStartedNs = now
         depthAskedAt[panel.id] = now
     }
 
@@ -686,6 +778,12 @@ class StereoCompositor(
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
         quad.initialise()
+        heldQuad.initialise()
+        frameCopier.initialise()
+        // Held pictures lived in the old context.
+        heldFrames.clear()
+        heldStamps.clear()
+        heldShown.clear()
         depthMaps.initialise()
         // A new context: the old one's names mean nothing here.
         depthCapture.lost()
@@ -763,6 +861,7 @@ class StereoCompositor(
         freeAbandonedTextures()
         titleBars.forget(panels.mapTo(HashSet()) { it.id }).forEach { abandonedTextures += it }
         val stacked = scene.drawOrder()
+        holdConvertedPictures()
 
         for (eye in 0 until eyeCount) {
             if (distortionReady) {
@@ -1082,7 +1181,9 @@ class StereoCompositor(
         // While a window eases into a new size its last picture is held and
         // stretched, so the page never shows half laid out.
         val frozen = scene.isAnimatingResize(panel)
-        if (eye == 0 && !frozen) texture.updateTexImage()
+        val held = heldShown[panel.id]
+        // A held window's picture was latched before drawing.
+        if (eye == 0 && !frozen && held == null) texture.updateTexImage()
         val layer = panel.engine.topLayer
         val layerTexture = panel.layerSurfaceTexture
         if (eye == 0 && !frozen) layerTexture?.updateTexImage()
@@ -1093,6 +1194,11 @@ class StereoCompositor(
         texture.getTransformMatrix(texTransform)
         val stereo = panel.stereoRegion.takeIf { layer == null }
         val depthGain = if (panel.depth3D && !mono && layer == null && stereo == null) depthStrength else 0f
+        if (held != null) {
+            System.arraycopy(identityTransform, 0, texTransform, 0, 16)
+            drawPart(panel, viewProjection, held.texture, 0f, height, 1f, scanYaw, scanPitch, alpha, null, eye, depthGain, held.sequence)
+            return true
+        }
         drawPart(panel, viewProjection, panel.textureId, band, height - band, 1f, scanYaw, scanPitch, alpha, stereo, eye, depthGain)
         if (band > 0f && layer != null && layerTexture != null) {
             layerTexture.getTransformMatrix(texTransform)
@@ -1118,6 +1224,8 @@ class StereoCompositor(
         stereo: StereoRegion? = null,
         eye: Int = 0,
         depthGain: Float = 0f,
+        /** Draws [textureId] as held picture number [heldSequence], a 2D texture, with that picture's depth. */
+        heldSequence: Long? = null,
     ) {
         val pose = panel.pose
         val width = panel.widthPx.toFloat()
@@ -1133,7 +1241,7 @@ class StereoCompositor(
         partRect[1] = top
         partRect[2] = width
         partRect[3] = partHeight
-        quad.draw(
+        (if (heldSequence != null) heldQuad else quad).draw(
             mvp, textureId, texTransform,
             scanYaw = scanYaw, scanPitch = scanPitch,
             clipPerRadianX = clipPerRadianX, clipPerRadianY = clipPerRadianY,
@@ -1145,7 +1253,7 @@ class StereoCompositor(
             stereo = stereo,
             eye = eye,
             depthGain = depthGain,
-            depthTexture = depthMaps.forPanel(panel.id),
+            depthTexture = depthMaps.forPanel(panel.id, heldSequence),
             model = model,
             viewProjection = viewProjection,
             convergence = depthConvergence,
@@ -1748,6 +1856,13 @@ class StereoCompositor(
          * since on this hardware they are 4.3 s apart.
          */
         private const val MAX_BEACON_AGE_NS = 20_000_000_000L
+
+        /** Converted windows are held back at least a frame, and never so long that sound visibly leads. */
+        private const val MIN_HOLD_BACK_NS = 16_000_000L
+        private const val MAX_HOLD_BACK_NS = 100_000_000L
+        /** How quickly the hold-back follows the measured wait: slowly, so playback stays even. */
+        private const val HOLD_BACK_EASING = 0.05f
+        private const val FRAME_SLACK_NS = 16_000_000L
 
         /** Two refreshes at 60 Hz: past this the latch is not coming and waiting only drops frames. */
         private const val LATCH_WAIT_LIMIT_NS = 33_000_000L

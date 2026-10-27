@@ -2259,7 +2259,9 @@ class MainActivity : AppCompatActivity() {
     private var depthStarted = false
 
     /** The 3D conversion line for the stats, once a window has been converted. */
-    private fun depthSummary(): String? = if (depthStarted) depthEstimator.summary else null
+    private fun depthSummary(): String? = if (depthStarted) depthEstimator.summary?.let { summary ->
+        stereoSession?.compositor?.depthHoldBackMs?.let { "$summary, held $it ms" } ?: summary
+    } else null
 
     /** For 2D-to-3D conversion; loads its model the first time a window is converted. */
     private val depthEstimator by lazy {
