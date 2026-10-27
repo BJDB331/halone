@@ -16,6 +16,7 @@ espresso = "3.7.0"
 geckoview = "154.0.20260814215756"
 haloneSdk = "0.1.0"
 litert = "1.4.0"
+qnn = "2.50.0"
 shizuku = "13.1.5"
 
 [libraries]
@@ -33,6 +34,8 @@ kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-cor
 litert = { group = "com.google.ai.edge.litert", name = "litert", version.ref = "litert" }
 litert-gpu = { group = "com.google.ai.edge.litert", name = "litert-gpu", version.ref = "litert" }
 litert-gpu-api = { group = "com.google.ai.edge.litert", name = "litert-gpu-api", version.ref = "litert" }
+qnn-runtime = { group = "com.qualcomm.qti", name = "qnn-runtime", version.ref = "qnn" }
+qnn-litert-delegate = { group = "com.qualcomm.qti", name = "qnn-litert-delegate", version.ref = "qnn" }
 shizuku-api = { group = "dev.rikka.shizuku", name = "api", version.ref = "shizuku" }
 shizuku-provider = { group = "dev.rikka.shizuku", name = "provider", version.ref = "shizuku" }
 conscrypt-android = { group = "org.conscrypt", name = "conscrypt-android", version = "2.5.3" }

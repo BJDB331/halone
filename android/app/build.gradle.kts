@@ -30,6 +30,13 @@ android {
         }
     }
 
+    packaging {
+        // Unpacked on install, as files: the NPU half of Qualcomm's runtime
+        // (the "skel" libraries) is loaded by the NPU itself from
+        // nativeLibraryDir, and can't be read out of the APK.
+        jniLibs.useLegacyPackaging = true
+    }
+
     buildFeatures {
         viewBinding = true
         buildConfig = true
@@ -76,6 +83,9 @@ dependencies {
     implementation(libs.litert)
     implementation(libs.litert.gpu)
     implementation(libs.litert.gpu.api)
+    // The Snapdragon NPU, for estimating depth off the GPU.
+    implementation(libs.qnn.runtime)
+    implementation(libs.qnn.litert.delegate)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.junit)
