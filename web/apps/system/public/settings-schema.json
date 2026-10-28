@@ -8,6 +8,7 @@
   "dock.visibility": { "type": "enum", "default": "always", "values": ["always", "auto-hide"] },
   "windows.autoHide": { "type": "boolean", "default": false },
   "windows.autoHideDelaySeconds": { "type": "number", "default": 1, "min": 0.2, "max": 5 },
+  "windows.autoHideTitleBars": { "type": "boolean", "default": false },
   "windows.shapeButton": { "type": "boolean", "default": false },
   "windows.reclaimPhone": { "type": "boolean", "default": true },
   "windows.depthButton": { "type": "boolean", "default": true },

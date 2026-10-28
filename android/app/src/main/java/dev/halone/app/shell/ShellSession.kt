@@ -786,6 +786,7 @@ class ShellSession(
         scene.shapeButtons = settings.boolean(ShellSettings.WINDOWS_SHAPE_BUTTON)
         scene.depthButtons = settings.boolean(ShellSettings.WINDOWS_DEPTH_BUTTON)
         stereo.compositor?.let { compositor ->
+            compositor.titleBarsAutoHide = settings.boolean(ShellSettings.WINDOWS_AUTO_HIDE_TITLE_BARS)
             compositor.depthStrength = settings.number(ShellSettings.DISPLAY_DEPTH_STRENGTH).toFloat()
             compositor.depthConvergence = settings.number(ShellSettings.DISPLAY_DEPTH_CONVERGENCE).toFloat()
             compositor.depthSmoothing = settings.number(ShellSettings.DISPLAY_DEPTH_SMOOTHING).toFloat()

@@ -193,6 +193,13 @@ const allSections: Section[] = [
             step: 0.1,
             format: (v) => `${v.toFixed(1)} s`,
           },
+          {
+            kind: 'toggle',
+            // Not in the published SDK's settings yet.
+            key: 'windows.autoHideTitleBars' as SettingKey,
+            label: 'Hide title bars when not pointing at them',
+            help: 'Each window\'s title bar fades out until the pointer is on that window, so what it shows is uncluttered.',
+          },
         ],
       },
       {

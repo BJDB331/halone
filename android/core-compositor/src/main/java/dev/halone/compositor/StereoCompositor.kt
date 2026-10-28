@@ -859,7 +859,10 @@ class StereoCompositor(
         overlays.forEach { attachIfNeeded(it) }
         val background = attachImmersive()
         freeAbandonedTextures()
-        titleBars.forget(panels.mapTo(HashSet()) { it.id }).forEach { abandonedTextures += it }
+        val liveIds = panels.mapTo(HashSet()) { it.id }
+        titleBars.forget(liveIds).forEach { abandonedTextures += it }
+        titleBarAlpha.keys.retainAll(liveIds)
+        titleBarStepped.keys.retainAll(liveIds)
         val stacked = scene.drawOrder()
         holdConvertedPictures()
 
@@ -1329,7 +1332,45 @@ class StereoCompositor(
     }
 
     /** The pill under the panel, in the panel's own plane. */
+    /**
+     * Title bars fade out until the pointer is on their window (or its bar),
+     * so content is shown clean; one being dragged or resized stays. The bar
+     * still answers clicks while faded: pointing at it brings it back first.
+     * Off by default (`windows.autoHideTitleBars`).
+     */
+    @Volatile
+    var titleBarsAutoHide = false
+
+    private val titleBarAlpha = HashMap<String, Float>()
+    private val titleBarStepped = HashMap<String, Long>()
+    private var titleBarClock = 0L
+    private var titleBarFrame = -1L
+    private var titleBarSeconds = 0f
+
+    /** How visible [panel]'s title bar is, 0..1; stepped once a frame, though drawn once an eye. */
+    private fun titleBarVisibility(panel: Panel): Float {
+        if (!titleBarsAutoHide) return 1f
+        if (titleBarFrame != framesDrawn) {
+            val now = System.nanoTime()
+            titleBarSeconds = if (titleBarClock == 0L) 0f else ((now - titleBarClock) / 1e9f).coerceIn(0f, 0.1f)
+            titleBarClock = now
+            titleBarFrame = framesDrawn
+        }
+        val current = titleBarAlpha[panel.id] ?: 0f
+        if (titleBarStepped[panel.id] == framesDrawn) return current
+        titleBarStepped[panel.id] = framesDrawn
+        val wanted = lastHit?.panel === panel || scene.grabbed === panel || scene.resizing?.let { it.panel === panel } == true
+        val target = if (wanted) 1f else 0f
+        // In quickly, so a reach for the bar finds it; out slowly, so it does not flicker away.
+        val rate = if (target > current) TITLE_BAR_IN_PER_S else TITLE_BAR_OUT_PER_S
+        val next = if (target > current) minOf(target, current + rate * titleBarSeconds) else maxOf(target, current - rate * titleBarSeconds)
+        titleBarAlpha[panel.id] = next
+        return next
+    }
+
     private fun drawTitleBar(panel: Panel, viewProjection: FloatArray, active: Boolean, opacity: Float) {
+        val visibility = titleBarVisibility(panel)
+        if (visibility <= 0f) return
         val hit = lastHit
         val texture = titleBars.texture(panel, hovered = hit?.part?.takeIf { hit.panel === panel }, shape = scene.shapeButtons, depth = scene.depthButtons)
         val pose = panel.pose
@@ -1346,7 +1387,7 @@ class StereoCompositor(
         )
         Matrix.scaleM(cursorModel, 0, bar.width * metresPerPx, bar.height * metresPerPx, 1f)
         Matrix.multiplyMM(mvp, 0, viewProjection, 0, cursorModel, 0)
-        bitmapQuad.draw(mvp, texture, (if (active) 1f else INACTIVE_TITLE_BAR) * opacity)
+        bitmapQuad.draw(mvp, texture, (if (active) 1f else INACTIVE_TITLE_BAR) * opacity * visibility)
     }
 
     /**
@@ -1893,6 +1934,8 @@ class StereoCompositor(
 
         /** An unfocused window's title bar, as in the simulator. */
         private const val INACTIVE_TITLE_BAR = 0.55f
+        private const val TITLE_BAR_IN_PER_S = 8f
+        private const val TITLE_BAR_OUT_PER_S = 1.5f
 
         /** An unfocused panel's border is present but quiet. */
         private const val UNFOCUSED_CHROME = 0.3f
