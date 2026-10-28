@@ -133,6 +133,21 @@ class LiteRtDepthEstimator(
                     npuTrial.delete()
                     log("  depth: first estimate on the NPU took $lastMs ms")
                 }
+                if (backend == Backend.NPU && npuTimings.size < NPU_TRIAL_RUNS) {
+                    // The first run builds the NPU's graph; judge the ones after.
+                    if (estimates > 0) npuTimings += lastMs
+                    if (npuTimings.size == NPU_TRIAL_RUNS) {
+                        val median = npuTimings.sorted()[NPU_TRIAL_RUNS / 2]
+                        log("  depth: NPU takes $median ms an estimate")
+                        if (median > NPU_SLOW_MS) {
+                            // Most of the model is running on the CPU behind
+                            // it: the GPU does better.
+                            log("  depth: the NPU is slower than the GPU would be; switching")
+                            fallBack()
+                            return@execute
+                        }
+                    }
+                }
                 output.position(0)
                 output.asFloatBuffer().get(raw)
                 if (raw.any { !it.isFinite() }) {
@@ -266,6 +281,7 @@ class LiteRtDepthEstimator(
     @Volatile
     private var backend = Backend.CPU
     private var npu: Npu? = null
+    private val npuTimings = ArrayList<Long>()
 
     /** A marker that the NPU was being tried: still there at the next start means it crashed the app. */
     private val npuTrial = File(dir, "npu-trial")
@@ -314,7 +330,7 @@ class LiteRtDepthEstimator(
             } else {
                 dir.mkdirs()
                 npuTrial.writeText("")
-                val delegate = Npu.create(nativeLibraryDir, log)
+                val delegate = Npu.create(nativeLibraryDir, File(dir, "npu-cache").apply { mkdirs() }.absolutePath, log)
                 if (delegate == null) {
                     npuTrial.delete()
                     null
@@ -351,6 +367,10 @@ class LiteRtDepthEstimator(
         const val SIZE = 518
         const val CPU_THREADS = 4
         const val INV_255 = 1f / 255f
+        /** Estimates timed on the NPU before deciding it is worth keeping. */
+        const val NPU_TRIAL_RUNS = 5
+        /** Slower than this, the NPU is running most of the model on the CPU, and the GPU should do better. */
+        const val NPU_SLOW_MS = 120L
         const val MAX_REMEMBERED = 8
         const val LOG_EVERY = 50L
         const val DEBUG_EVERY_MS = 5_000L
