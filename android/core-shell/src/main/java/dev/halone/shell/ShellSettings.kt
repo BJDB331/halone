@@ -108,7 +108,7 @@ class ShellSettings(private val store: SettingsStore, schemaJson: String) {
         const val WINDOWS_RECLAIM_PHONE = "windows.reclaimPhone"
         /** A 3D button on every title bar, converting that window from 2D. */
         const val WINDOWS_DEPTH_BUTTON = "windows.depthButton"
-        /** How far a converted window's picture moves per eye, in percent of its width. */
+        /** How strongly converted windows are shaped: the most their nearest point's inverse distance grows (0.2: to 1/1.2 of the window's distance). */
         const val DISPLAY_DEPTH_STRENGTH = "display.depthStrength"
         /** Which depth, 0..1, sits at a converted window's own distance. */
         const val DISPLAY_DEPTH_CONVERGENCE = "display.depthConvergence"

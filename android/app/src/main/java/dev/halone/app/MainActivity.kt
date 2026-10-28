@@ -1459,7 +1459,7 @@ class MainActivity : AppCompatActivity() {
                     }
                     pointerPad?.setStats(
                         "Glasses ${mode.physicalWidth}×${mode.physicalHeight} @ ${mode.refreshRate.roundToInt()} Hz " +
-                            "(offers $offered, switching: $switching) · drawing ${fps?.roundToInt() ?: "–"} fps"+
+                            "(offers $offered, switching: $switching) · drawing ${fps?.roundToInt() ?: "–"} fps" +
                             (depthSummary()?.let { "\n$it" } ?: "")
                     )
                 }
